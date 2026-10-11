@@ -19,7 +19,7 @@ import {
   type Vec3,
 } from '../core';
 import type { SfxName } from './audio/sfx';
-import { FollowCamera, menuCamera } from './camera';
+import { FollowCamera, menuCamera, type ZoomLevel } from './camera';
 import type { Input } from './input/input';
 import { CharacterBody } from './physics';
 import { Character } from './scene/character';
@@ -74,6 +74,12 @@ export class GameSession {
   paused = false;
   /** Écran d'accueil : la caméra tourne autour de la pyramide, le jeu ne démarre pas. */
   attract = false;
+  /** Introduction du niveau (s restantes) : vue large, puis zoom vers la vue de jeu ; chronomètre arrêté. */
+  private intro = 0;
+  private introZoom: ZoomLevel = 1;
+  /** Temps passé à marcher (s), pour le tutoriel de déplacement. */
+  movedTime = 0;
+  onIntroEnd?: () => void;
   private attractTime = 0;
 
   constructor(
@@ -128,6 +134,10 @@ export class GameSession {
     }
     dt = Math.min(dt, 0.1);
     const frame = this.input.consume();
+    if (this.intro > 0) {
+      this.playIntro(dt, frame.jump || frame.interact || Math.hypot(frame.moveX, frame.moveY) > 0.3);
+      return;
+    }
     this.camera.addUserInput(frame.camDX, frame.camDY, frame.camActive);
 
     if (!this.finished) this.clock += dt * 1000;
@@ -143,6 +153,7 @@ export class GameSession {
         z: fz * frame.moveY - Math.sin(yaw) * frame.moveX,
         jumpPressed: frame.jump,
       };
+      if (Math.hypot(frame.moveX, frame.moveY) > 0.3) this.movedTime += dt;
       this.accumulator += dt;
       let steps = 0;
       while (this.accumulator >= STEP && steps < 5) {
@@ -446,10 +457,31 @@ export class GameSession {
   }
 
   /**
+   * Introduction du niveau : la caméra montre toute la pyramide, puis zoome vers la vue de jeu choisie.
+   * Le chronomètre ne démarre qu'à la fin ; toucher l'écran ou bouger la passe.
+   */
+  startIntro(targetZoom: ZoomLevel, seconds = 2.6): void {
+    this.intro = seconds;
+    this.introZoom = targetZoom;
+    this.camera.zoom = 2;
+  }
+
+  private playIntro(dt: number, skip: boolean): void {
+    this.intro = skip ? 0 : this.intro - dt;
+    if (this.intro < 1.3) this.camera.zoom = this.introZoom;
+    if (this.intro <= 0) this.onIntroEnd?.();
+    this.tweens.update(dt);
+    this.world.update(dt);
+    this.character.animate(dt, 0, 0, 0, true);
+    this.camera.update(dt, this.character.root.position, this.world.pyramidHalf, this.config.floors * FLOOR_HEIGHT, 0);
+  }
+
+  /**
    * Outil de mesure (vues de référence) : place le joueur sur un étage, devant la porte la plus proche du centre
    * de la face donnée, sans passer par les règles du jeu.
    */
   debugPlace(floor: number, side = 0): void {
+    this.intro = 0;
     const target = landingPoint(this.config, floor, side, 0);
     this.player.floor = floor;
     this.body.teleport(target);

@@ -12,6 +12,7 @@ import { loadLevelThumbnails, renderPortrait } from './thumbnails';
 import { formatTime, Hud } from './ui/hud';
 import { applyIcons } from './ui/icons';
 import { enterFullscreen, setupFullscreen } from './ui/fullscreen';
+import { MoveTutorial } from './ui/tutorial';
 import { renderLevelCards, renderLevelInfo, renderRecords, showThumbnail, type MenuState } from './ui/menu';
 import { preloadComponents } from './scene/components';
 import { installDebugApi } from './debug/api';
@@ -109,7 +110,8 @@ bindSegmented('opt-hints', 'mode', () => hintMode, (v) => {
 });
 renderHintRule();
 
-let zoom = Math.min(2, Math.max(0, Number(storage.get('zoom') ?? 0))) as ZoomLevel;
+/** Zoom de jeu par défaut : moyen (on voit plusieurs étages). */
+let zoom = Math.min(2, Math.max(0, Number(storage.get('zoom') ?? 1))) as ZoomLevel;
 const renderZoomOptions = bindSegmented('opt-zoom', 'zoom', () => String(zoom), (v) => setZoom(Number(v)));
 function setZoom(level: number, announce = false): void {
   zoom = Math.min(2, Math.max(0, level)) as ZoomLevel;
@@ -259,6 +261,8 @@ async function startGame(seed: number, level: Level = selected): Promise<void> {
   session = created;
   hud.setLevel(level.number, level.name);
   show(null);
+  created.onIntroEnd = () => tutorial.start(created);
+  created.startIntro(zoom);
   performance.measure('pyrarush:level-ready', 'pyrarush:level-start');
 }
 
@@ -365,6 +369,9 @@ function resize(): void {
 }
 window.addEventListener('resize', resize);
 
+// ---------- Tutoriel de déplacement (première partie) ----------
+const tutorial = new MoveTutorial(isTouch, storage);
+
 // ---------- Mesures (étape 0 de la bible graphique) ----------
 /** ?stats=1 affiche le compteur ; en développement ou avec ?debug=1, window.__debug expose les outils de mesure. */
 const stats = new PerfStats(renderer.renderer, params.has('stats'));
@@ -394,6 +401,7 @@ renderer.renderer.setAnimationLoop((now) => {
   if (session) {
     stats.beginFrame(now);
     if (!frozen) session.frame(dt);
+    tutorial.update();
     renderer.render(session.world.scene, session.camera.camera);
     stats.endFrame(now);
   }
