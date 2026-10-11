@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { doorFront, duelConfig, floorY, Game, landingPoint, mineSpotValid, MINE_ARM_MS, IMMUNITY_MS, SEAL_MS, type Level, type Vec3 } from '../src/core';
+import { doorFront, floorY, Game, POWER_RESPAWN_MS, landingPoint, mineSpotValid, MINE_ARM_MS, IMMUNITY_MS, SEAL_MS, type Level, type Vec3 } from '../src/core';
 import { levels } from '../src/levels';
 import { DUEL_COUNTDOWN_MS, type ServerMessage } from '../src/net/protocol';
 import { Lobby, type Clock, type Peer } from './rooms';
@@ -41,7 +41,7 @@ function duel(level: Level = levels[0]) {
   const lobby = new Lobby(levels, clock, () => 0.5);
   const a = peer('a');
   const b = peer('b');
-  lobby.handle(a, { t: 'create', level: level.number, name: 'Alice' });
+  lobby.handle(a, { t: 'create', level: level.number, name: 'Alice', powers: 'many' });
   const code = a.last('room')!.code;
   lobby.handle(b, { t: 'join', code: code.toLowerCase(), name: 'Bob' });
   return { lobby, a, b, code, advance };
@@ -71,7 +71,7 @@ describe('duel : salles', () => {
     const level = levels[0];
     const seed = a.last('start')!.seed;
     // Le serveur et les clients génèrent la même pyramide à partir de la graine.
-    const mirror = new Game(duelConfig(level.config), seed);
+    const mirror = new Game(level.config, seed);
     const passage = (floor: number) => mirror.layout.doorsByFloor[floor].find((d) => d.mechanic === 'passage')!;
     const front = (floor: number) => {
       const p = doorFront(level.config, passage(floor));
@@ -94,7 +94,7 @@ describe('duel : salles', () => {
   it('une porte trop loin du joueur est refusée (anti-triche)', () => {
     const { lobby, a, b, advance } = duel();
     advance(DUEL_COUNTDOWN_MS);
-    const mirror = new Game(duelConfig(levels[0].config), a.last('start')!.seed);
+    const mirror = new Game(levels[0].config, a.last('start')!.seed);
     const door = mirror.layout.doorsByFloor[1].find((d) => d.mechanic === 'passage')!;
     lobby.handle(a, { t: 'interact', seq: 1, doorId: door.id, p: [500, 0, 500] });
     expect(b.last('floor')).toBeUndefined();
@@ -110,7 +110,7 @@ describe('duel : salles', () => {
   it('la revanche ne repart que quand les deux joueurs la demandent, avec une nouvelle course', () => {
     const { lobby, a, b, advance } = duel();
     advance(DUEL_COUNTDOWN_MS);
-    const mirror = new Game(duelConfig(levels[0].config), a.last('start')!.seed);
+    const mirror = new Game(levels[0].config, a.last('start')!.seed);
     for (let f = 1; f <= levels[0].config.floors; f++) {
       const door = mirror.layout.doorsByFloor[f].find((d) => d.mechanic === 'passage')!;
       const p = doorFront(levels[0].config, door);
@@ -125,18 +125,42 @@ describe('duel : salles', () => {
     expect(starts()).toBe(2);
   });
 
-  it('une porte à pouvoir donne un pouvoir à celui qui l’ouvre, et le serveur tient la réserve', () => {
-    const { lobby, a, advance } = duel();
+  it('un pouvoir caché derrière une porte vide revient à celui qui l’ouvre, puis réapparaît ailleurs 15 s plus tard', () => {
+    const { lobby, a, b, advance } = duel();
     advance(DUEL_COUNTDOWN_MS);
-    const mirror = new Game(duelConfig(levels[0].config), a.last('start')!.seed);
-    const door = mirror.layout.doorsByFloor[1].find((d) => d.mechanic === 'powerDoor')!;
-    const p = doorFront(levels[0].config, door);
-    lobby.handle(a, { t: 'interact', seq: 7, doorId: door.id, p: [p.x, p.y, p.z] });
+    const room = [...lobby.rooms.values()][0];
+    const config = levels[0].config;
+    const mirror = new Game(config, a.last('start')!.seed);
+    const hiddenOn = (floor: number) => [...room.hidden].filter((id) => mirror.doorsById.get(id)!.floor === floor);
+    // « Beaucoup » : 3 pouvoirs à l'étage 1 (16 portes), toujours derrière des portes vides.
+    expect(hiddenOn(1)).toHaveLength(3);
+    expect([...room.hidden].every((id) => mirror.doorsById.get(id)!.mechanic === 'wall')).toBe(true);
+    const doorId = hiddenOn(1)[0];
+    const p = doorFront(config, mirror.doorsById.get(doorId)!);
+    lobby.handle(a, { t: 'interact', seq: 7, doorId, p: [p.x, p.y, p.z] });
     const gain = a.last('gain')!;
-    expect(gain.doorId).toBe(door.id);
-    const self = a.last('self')!;
-    expect(self.seq).toBe(7);
-    expect(self.powers[gain.power]).toBe(1);
+    expect(gain.doorId).toBe(doorId);
+    expect(a.last('self')).toMatchObject({ seq: 7, powers: { [gain.power]: 1 } });
+    // Le pouvoir a disparu : l'autre joueur ne trouve rien derrière la même porte.
+    lobby.handle(b, { t: 'interact', seq: 1, doorId, p: [p.x, p.y, p.z] });
+    expect(b.last('gain')).toBeUndefined();
+    expect(hiddenOn(1)).toHaveLength(2);
+    advance(POWER_RESPAWN_MS);
+    expect(hiddenOn(1)).toHaveLength(3);
+    expect(room.hidden.has(doorId)).toBe(false);
+  });
+
+  it('« peu de pouvoirs » en cache moins, et jamais aucun à un étage', () => {
+    const { clock, advance } = manualClock();
+    const lobby = new Lobby(levels, clock, () => 0.5);
+    const a = peer('a');
+    const b = peer('b');
+    lobby.handle(a, { t: 'create', level: 1, name: 'A', powers: 'few' });
+    lobby.handle(b, { t: 'join', code: a.last('room')!.code, name: 'B' });
+    advance(DUEL_COUNTDOWN_MS);
+    const room = [...lobby.rooms.values()][0];
+    expect(a.last('room')!.powers).toBe('few');
+    expect(room.hidden.size).toBe(levels[0].config.floors); // un par étage au niveau 1
   });
 
   it('un pouvoir que l’on ne possède pas est refusé ; un pouvoir inutilisable n’est pas consommé', () => {
@@ -166,7 +190,7 @@ describe('duel : salles', () => {
   it('une mine armée explose sous l’adversaire : il perd un étage, puis il est immunisé ; le bouclier l’absorbe', () => {
     const { lobby, a, b, advance } = duel();
     advance(DUEL_COUNTDOWN_MS);
-    const config = duelConfig(levels[0].config);
+    const config = levels[0].config;
     const mirror = new Game(config, a.last('start')!.seed);
     // b monte à l'étage 2 ; a y pose des mines au milieu de la terrasse.
     const door = mirror.layout.doorsByFloor[1].find((d) => d.mechanic === 'passage')!;
@@ -187,7 +211,7 @@ describe('duel : salles', () => {
     expect(b.last('boom')).toBeUndefined();
     advance(MINE_ARM_MS);
     walk(0.5);
-    expect(b.last('boom')).toMatchObject({ target: 'b', shielded: false, from: 2, to: 1 });
+    expect(b.last('boom')).toMatchObject({ target: 'b', result: 'knocked', from: 2, to: 1 });
     expect(b.last('self')).toMatchObject({ floor: 1, immuneMs: IMMUNITY_MS });
     expect(a.last('floor')).toEqual({ t: 'floor', id: 'b', floor: 1 });
     // Une mine ne se déclenche jamais sous son propriétaire.
@@ -200,7 +224,7 @@ describe('duel : salles', () => {
   it('une mine ne se pose pas devant une porte (pouvoir conservé)', () => {
     const { lobby, a, advance } = duel();
     advance(DUEL_COUNTDOWN_MS);
-    const config = duelConfig(levels[0].config);
+    const config = levels[0].config;
     const mirror = new Game(config, a.last('start')!.seed);
     const p = doorFront(config, mirror.layout.doorsByFloor[1][0]);
     give(lobby, a, 'mine');
@@ -212,7 +236,7 @@ describe('duel : salles', () => {
   it('le sceau est annoncé aux deux joueurs et bloque la porte pour l’adversaire', () => {
     const { lobby, a, b, advance } = duel();
     advance(DUEL_COUNTDOWN_MS);
-    const config = duelConfig(levels[0].config);
+    const config = levels[0].config;
     const mirror = new Game(config, a.last('start')!.seed);
     const door = mirror.layout.doorsByFloor[1].find((d) => d.mechanic === 'passage')!;
     const front = doorFront(config, door);

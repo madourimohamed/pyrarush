@@ -91,6 +91,25 @@ export const SFX = {
     [67, 71, 74, 79].forEach((n, i) => tone(ctx, out, t + i * 0.07, midiToFreq(n), 0.6, { type: 'triangle', gain: 0.1 }));
     tone(ctx, out, t + 0.3, midiToFreq(86), 0.9, { type: 'sine', gain: 0.07, vibrato: [5, 6] });
   },
+  /** Pouvoir trouvé : petit carillon ascendant. */
+  pickup: (ctx, out, t) => [76, 83, 88].forEach((n, i) => tone(ctx, out, t + i * 0.05, midiToFreq(n), 0.3, { type: 'square', gain: 0.06, lowpass: 4000 })),
+  /** Turbo : souffle qui accélère. */
+  turbo: (ctx, out, t) => {
+    noise(ctx, out, t, 0.45, { filter: 'bandpass', freq: 600, to: 3000, gain: 0.18 });
+    tone(ctx, out, t, 220, 0.4, { type: 'sawtooth', to: 880, gain: 0.05, lowpass: 2500 });
+  },
+  /** Mine posée : bip-bip. */
+  mine: (ctx, out, t) => [0, 0.12].forEach((d) => tone(ctx, out, t + d, 1320, 0.06, { type: 'square', gain: 0.05 })),
+  /** Explosion de mine : « BOUM ! ». */
+  boom: (ctx, out, t) => {
+    noise(ctx, out, t, 0.7, { filter: 'lowpass', freq: 1800, to: 120, gain: 0.5 });
+    tone(ctx, out, t, 90, 0.6, { to: 35, gain: 0.5 });
+  },
+  /** Sceau magique : accord mystérieux. */
+  seal: (ctx, out, t) => {
+    [62, 66, 69, 73].forEach((n, i) => tone(ctx, out, t + i * 0.04, midiToFreq(n), 0.8, { type: 'sine', gain: 0.07, vibrato: [6, 5] }));
+    noise(ctx, out, t, 0.3, { filter: 'highpass', freq: 5000, gain: 0.04 });
+  },
   /** Coffre : grincement du couvercle puis étincelles. */
   chest: (ctx, out, t) => {
     tone(ctx, out, t, 220, 0.3, { type: 'sawtooth', to: 140, gain: 0.06, lowpass: 900, vibrato: [30, 12] });

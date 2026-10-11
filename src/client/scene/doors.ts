@@ -15,6 +15,7 @@ const TRIED_LOOK: Record<Traced, { panel: THREE.Color; glyph: THREE.Color }> = {
   trap: { panel: new THREE.Color(0x4a1712), glyph: new THREE.Color(1.6, 0.25, 0.12) },
   power: { panel: new THREE.Color(0x3a2350), glyph: new THREE.Color(1.3, 0.7, 1.9) },
 };
+const SEALED_PANEL = new THREE.Color(0x6a2aa8);
 const isTraced = (t: TriedOutcome | null | undefined): t is Traced => !!t && t !== 'up';
 
 interface DoorState {
@@ -36,6 +37,9 @@ interface DoorState {
   offset: THREE.Vector3;
   marker?: THREE.Mesh;
   beam?: THREE.Mesh;
+  /** Duel : porte scellée (cercle de runes et chaînes devant la porte). */
+  sealed: boolean;
+  seal?: THREE.Mesh;
 }
 
 /**
@@ -54,6 +58,8 @@ export class DoorsView {
   private readonly markerGeo = new THREE.OctahedronGeometry(0.3);
   private readonly markerMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 1.8, 0.4) });
   private readonly beamGeo = new THREE.CylinderGeometry(0.6, 0.9, 18, 14, 1, true);
+  private readonly sealGeo = new THREE.PlaneGeometry(1.9, 1.9);
+  private sealMat: THREE.MeshBasicMaterial | null = null;
   private readonly beamMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 2.2, 2.6), transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending });
   private dirty = new Set<DoorState>();
   private time = 0;
@@ -126,6 +132,7 @@ export class DoorsView {
         highlighted: false,
         privateHint: false,
         revealed: false,
+        sealed: false,
         flashColor: null,
         flashUntil: 0,
         offset: new THREE.Vector3(),
@@ -156,6 +163,18 @@ export class DoorsView {
       if (s.privateHint && !s.marker) s.marker = this.attach(s, new THREE.Mesh(this.markerGeo, this.markerMat), DOOR_HEIGHT / 2 + 1, 0.5);
       if (s.marker) s.marker.visible = s.privateHint;
     }
+  }
+
+  /** Duel : sceau magique devant la porte (violet, chaînes), visible par les deux joueurs. */
+  setSealed(doorId: string, on: boolean): void {
+    const s = this.states.get(doorId);
+    if (!s) return;
+    s.sealed = on;
+    if (on && !s.seal) {
+      this.sealMat ??= new THREE.MeshBasicMaterial({ map: runeTexture(), color: new THREE.Color(1.8, 0.9, 2.4), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+      s.seal = this.attach(s, new THREE.Mesh(this.sealGeo, this.sealMat), 0, 0.14);
+    }
+    if (s.seal) s.seal.visible = on;
   }
 
   setReveal(doorId: string, on: boolean): void {
@@ -205,6 +224,9 @@ export class DoorsView {
       if (s.flashColor && this.time < s.flashUntil) {
         panel.copy(s.flashColor);
         glow.copy(s.flashColor).multiplyScalar(0.9);
+      } else if (s.sealed) {
+        panel.set(SEALED_PANEL);
+        glow.set(SEALED_PANEL).multiplyScalar(0.4 + 0.3 * pulse);
       } else if (s.revealed) {
         panel.set(COLORS.reveal);
         glow.set(COLORS.reveal).multiplyScalar(0.6 + 0.6 * pulse);
@@ -233,6 +255,7 @@ export class DoorsView {
     this.emblems.instanceColor!.needsUpdate = true;
     this.emissive.needsUpdate = true;
     this.beamMat.opacity = 0.2 + 0.2 * pulse;
+    for (const s of this.states.values()) if (s.seal?.visible) s.seal.rotation.z = this.time * 0.8;
     for (const s of this.dirty) this.writeMatrix(s);
     if (this.dirty.size) {
       this.panels.instanceMatrix.needsUpdate = true;
@@ -318,5 +341,47 @@ function chestCanvas(): HTMLCanvasElement {
   g.stroke();
   g.fillRect(58, 74, 12, 16);
   return c;
+}
+
+/** Sceau magique : cercle de runes et deux chaînes croisées (texture claire, teintée en violet lumineux). */
+function runeTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d')!;
+  g.strokeStyle = g.fillStyle = '#ffffff';
+  g.lineWidth = 7;
+  g.beginPath();
+  g.arc(128, 128, 112, 0, Math.PI * 2);
+  g.stroke();
+  g.lineWidth = 4;
+  g.beginPath();
+  g.arc(128, 128, 88, 0, Math.PI * 2);
+  g.stroke();
+  // Runes entre les deux cercles.
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    g.save();
+    g.translate(128 + Math.cos(a) * 100, 128 + Math.sin(a) * 100);
+    g.rotate(a + Math.PI / 2);
+    g.fillRect(-2, -8, 4, 16);
+    g.fillRect(-7, i % 2 ? -8 : 2, 14, 4);
+    g.restore();
+  }
+  // Chaînes croisées : maillons ovales.
+  g.lineWidth = 6;
+  for (const dir of [1, -1]) {
+    for (let k = -3; k <= 3; k++) {
+      g.save();
+      g.translate(128 + k * 24, 128 + k * 24 * dir);
+      g.rotate(dir * Math.PI / 4 + (k % 2 ? Math.PI / 2 : 0));
+      g.beginPath();
+      g.ellipse(0, 0, 13, 7, 0, 0, Math.PI * 2);
+      g.stroke();
+      g.restore();
+    }
+  }
+  const texture = new THREE.CanvasTexture(c);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
 }
 

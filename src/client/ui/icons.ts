@@ -34,6 +34,9 @@ const ICONS = {
   eye: stroke('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3" fill="currentColor"/>'),
   shield: stroke('<path d="M12 2.8l8 3v6c0 5-3.5 8.3-8 9.6-4.5-1.3-8-4.6-8-9.6v-6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>'),
   hourglass: stroke('<path d="M6.5 3h11M6.5 21h11M7.5 3c0 5 4.5 6 4.5 9s-4.5 4-4.5 9M16.5 3c0 5-4.5 6-4.5 9s4.5 4 4.5 9"/><path d="M9.5 19h5l-2.5-3z" fill="currentColor"/>'),
+  bolt: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 2L4.5 13.5h6L9.5 22l9.5-12h-6.2z" fill="currentColor"/></svg>',
+  seal: stroke('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><path d="M12 3.5v4M12 16.5v4M3.5 12h4M16.5 12h4"/>'),
+  bomb: stroke('<circle cx="10.5" cy="14" r="6.5" fill="currentColor" stroke="none"/><path d="M14.5 9.5l2.5-2.5M17 7l1.5-1.5M19.5 3.5v1.5M21 6h-1.5M20.5 4.5l-1 1"/>'),
   pow: stroke('<path d="M12 2.5l2 5.5 5.5-1.5-3 5 4.5 3.5-5.8.6L16 21l-4-4.2L8 21l.8-5.4L3 15l4.5-3.5-3-5L10 8z"/>'),
   pyramid:
     '<svg viewBox="0 0 100 88" aria-hidden="true"><defs><linearGradient id="pyr-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff2b0"/><stop offset="0.5" stop-color="#ffc83d"/><stop offset="1" stop-color="#e08a1e"/></linearGradient></defs><path d="M50 3L97 85H3z" fill="url(#pyr-g)"/><path d="M50 3L97 85H50z" fill="#000" opacity="0.16"/><path d="M27 46h46M16 66h68" stroke="#7a4210" stroke-width="3" opacity="0.45"/><path d="M50 3l6 10H44z" fill="#fff8d6"/></svg>',

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { levels } from '../levels';
 import {
   doorFront,
-  duelConfig,
   floorY,
   Game,
   generateLayout,
@@ -10,15 +9,15 @@ import {
   mineSpotValid,
   mineTriggered,
   pickPower,
-  POWER_DOORS_PER_FLOOR,
   POWER_IDS,
+  powerSpotCount,
   SEAL_COOLDOWN_MS,
   SEAL_MS,
   SEAL_WINDOW_MS,
   standing,
 } from './index';
 
-const config = duelConfig(levels[0].config);
+const config = levels[0].config;
 
 /** Fait monter un joueur d'un étage par la première bonne porte, à l'instant `now`. */
 function climb(game: Game, id: string, now: number) {
@@ -29,30 +28,12 @@ function climb(game: Game, id: string, now: number) {
 }
 
 describe('duel : règles du socle', () => {
-  it('chaque niveau en duel reste valide et terminable, avec ses portes à pouvoir à chaque étage', () => {
-    for (const level of levels) {
-      for (let seed = 1; seed <= 15; seed++) {
-        const layout = generateLayout(duelConfig(level.config), seed);
-        for (let f = 1; f <= level.config.floors; f++) {
-          const count = layout.doorsByFloor[f].filter((d) => d.mechanic === 'powerDoor').length;
-          expect(count).toBeGreaterThanOrEqual(1);
-          expect(count).toBeLessThanOrEqual(POWER_DOORS_PER_FLOOR);
-        }
-      }
-    }
-    // Le solo n'a jamais de porte à pouvoir.
-    expect(generateLayout(levels[0].config, 3).doors.some((d) => d.mechanic === 'powerDoor')).toBe(false);
-  });
-
-  it('une porte à pouvoir ne fait pas changer d’étage et ne sert qu’une fois par joueur, pour chacun des deux', () => {
-    const game = new Game(config, 5);
-    game.addPlayer('a');
-    game.addPlayer('b');
-    const door = game.layout.doorsByFloor[1].find((d) => d.mechanic === 'powerDoor')!;
-    expect(game.interact('a', door.id, 0)[0]).toMatchObject({ fx: 'power', from: 1, to: 1 });
-    expect(game.players.get('a')!.tried.get(door.id)).toBe('power');
-    expect(game.interact('a', door.id, 0)[0]).toMatchObject({ mechanic: 'wall' });
-    expect(game.interact('b', door.id, 0)[0]).toMatchObject({ fx: 'power' });
+  it('le nombre de pouvoirs cachés dépend du réglage et du nombre de portes de l’étage', () => {
+    expect(powerSpotCount(16, 10, 'few')).toBe(1);
+    expect(powerSpotCount(16, 10, 'many')).toBe(3);
+    expect(powerSpotCount(28, 20, 'many')).toBe(6);
+    expect(powerSpotCount(8, 4, 'few')).toBe(1); // jamais aucun
+    expect(powerSpotCount(8, 1, 'many')).toBe(1); // jamais plus que de portes vides
   });
 
   it('le Sceau bloque la dernière bonne porte franchie pour l’adversaire seulement, puis se lève tout seul', () => {

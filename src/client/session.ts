@@ -13,6 +13,11 @@ import {
   summitFloor,
   INTERACT_RANGE,
   FLOOR_HEIGHT,
+  MINE_MAX_ACTIVE,
+  mineSpotValid,
+  SEAL_WINDOW_MS,
+  TURBO_SPEED,
+  type PowerId,
   type BonusId,
   type Door,
   type GameEvent,
@@ -27,7 +32,8 @@ import { FollowCamera, menuCamera, type ZoomLevel } from './camera';
 import type { Input } from './input/input';
 import { CharacterBody } from './physics';
 import { Character } from './scene/character';
-import { burst, easeInOut, Tweens } from './scene/fx';
+import { burst, easeInOut, shieldBubble, Trail, Tweens } from './scene/fx';
+import { Mines } from './scene/mines';
 import { releaseScarab } from './scene/props';
 import { HINT_COLORS, World } from './scene/world';
 import { BONUS_INFO } from './ui/bonus';
@@ -109,15 +115,21 @@ export class GameSession {
   net: DuelLink | null = null;
   private rival: Rival | null = null;
   private posTimer = 0;
+  private mines: Mines | null = null;
+  private trail: Trail | null = null;
+  /** Fin du turbo et de l'immunité (horloge de la partie), d'après le serveur. */
+  private turboUntil = 0;
+  private immuneUntil = 0;
+  /** Étage imposé par le serveur pendant une animation : appliqué dès qu'elle se termine. */
+  private pendingFloor: number | null = null;
+  /** Mines posées par le joueur (pour la limite). */
+  private ownMines = new Set<number>();
   /** En duel, l'introduction sert de compte à rebours : on ne peut pas la passer. */
   introSkippable = true;
   /** Passage montré par l'Œil de Râ, jusqu'à `until` (ms de jeu). */
   private eyeReveal: { doorId: string; until: number } | null = null;
   /** Bulle dorée autour du personnage tant que le Bouclier d'Anubis est actif. */
-  private readonly shieldBubble = new THREE.Mesh(
-    new THREE.SphereGeometry(1.25, 24, 16),
-    new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false }),
-  );
+  private readonly shieldBubble = shieldBubble();
 
   constructor(
     config: PyramidConfig,
@@ -137,8 +149,6 @@ export class GameSession {
     this.body = new CharacterBody(this.world.colliders, spawnPoint(config));
     this.world.scene.add(this.character.root);
     this.character.faceTowards(0, -1);
-    this.shieldBubble.position.y = 1;
-    this.shieldBubble.visible = false;
     this.character.root.add(this.shieldBubble);
     this.syncCharacter();
 
@@ -270,10 +280,114 @@ export class GameSession {
     this.syncCharacter();
   }
 
-  /** Affiche l'adversaire (duel). */
+  /** Duel : affiche l'adversaire et prépare les effets des pouvoirs (mines, traînée du turbo). */
   addRival(name: string): void {
-    this.rival = new Rival(name);
+    this.rival = new Rival(name, this.world.scene);
     this.world.scene.add(this.rival.character.root);
+    this.mines = new Mines(this.world.scene, this.tweens, this.world.theme.top);
+    this.trail = new Trail(this.world.scene, 0x9ad8ff);
+  }
+
+  setRivalState(shield: boolean, turboMs: number, immuneMs: number): void {
+    this.rival?.setState(shield, turboMs, immuneMs);
+  }
+
+  /** Position des pieds (pour poser une mine). */
+  get feet(): Vec3 {
+    return { ...this.body.pos };
+  }
+
+  /**
+   * Un pouvoir peut-il servir maintenant ? Renvoie la raison sinon (le pouvoir n'est alors pas envoyé ni consommé).
+   * Le serveur refait les mêmes vérifications.
+   */
+  powerBlocker(power: PowerId): string | null {
+    if (this.intro > 0 || this.finished) return 'Pas maintenant';
+    switch (power) {
+      case 'turbo':
+        return this.clock < this.turboUntil ? 'Turbo déjà actif' : null;
+      case 'shield':
+        return this.player.shield ? 'Bouclier déjà actif' : null;
+      case 'seal': {
+        const last = this.player.lastPassage;
+        if (!last || this.clock - last.at > SEAL_WINDOW_MS) return 'Franchis d’abord une bonne porte';
+        return this.game.seals.has(last.doorId) ? 'Porte déjà scellée' : null;
+      }
+      case 'mine':
+        if (this.ownMines.size >= MINE_MAX_ACTIVE) return `${MINE_MAX_ACTIVE} mines déjà posées`;
+        if (this.locked || !this.body.grounded || !mineSpotValid(this.game.layout, this.body.pos)) return 'Pas ici (trop près d’une porte ou d’un trou)';
+        return null;
+    }
+  }
+
+  /**
+   * État de référence envoyé par le serveur. Turbo et immunité s'appliquent toujours ; l'étage et le bouclier
+   * seulement si le client n'attend plus de réponse (`reconcile`), sinon une réponse plus récente arrivera.
+   */
+  applyServerState(s: { floor: number; shield: boolean; turboMs: number; immuneMs: number }, reconcile: boolean): void {
+    const turboWasOff = this.clock >= this.turboUntil;
+    this.turboUntil = this.clock + s.turboMs;
+    this.immuneUntil = this.clock + s.immuneMs;
+    if (turboWasOff && s.turboMs > 0) {
+      this.sound.play('turbo');
+      this.hud.showToast('Turbo !', 'good', 1.5, 'Vitesse ×2 pendant 10 s');
+    }
+    if (!reconcile) return;
+    if (s.shield && !this.player.shield) {
+      this.sound.play('bonus');
+      this.hud.showToast("Bouclier d'Anubis", 'good', 1.8, 'Il absorbe le prochain coup');
+    }
+    this.player.shield = s.shield;
+    if (s.floor !== this.player.floor) this.pendingFloor = s.floor;
+  }
+
+  /** Pouvoir trouvé derrière une porte vide : la porte s'ouvre, gerbe violette, et la porte garde la marque « coffre vidé ». */
+  powerGained(name: string, doorId: string): void {
+    const door = this.game.doorsById.get(doorId);
+    this.world.doors.markTried(doorId, 'power');
+    this.world.openDoor(doorId, 0.5);
+    this.world.flashDoor(doorId, 0xc58cff, 0.8);
+    const front = door ? doorFront(this.config, door) : this.body.pos;
+    const at = new THREE.Vector3(front.x, front.y + 1.4, front.z);
+    burst(this.world.scene, this.tweens, at, 0xc58cff, 18, 3, 2.5);
+    this.sound.play('pickup');
+    this.hud.showToast(`${name} !`, 'good', 1.8, 'Ajouté à ta réserve');
+  }
+
+  addMine(id: number, p: Vec3, own: boolean): void {
+    this.mines?.add(id, p, own);
+    if (own) {
+      this.ownMines.add(id);
+      this.sound.play('mine');
+    }
+  }
+
+  removeMine(id: number): void {
+    this.ownMines.delete(id);
+    this.mines?.remove(id);
+  }
+
+  /** Une mine a explosé ; si c'est sous le joueur, il est projeté (ou protégé). */
+  mineExploded(id: number, onMe: boolean, result: 'knocked' | 'shielded' | 'immune', at: Vec3): void {
+    this.ownMines.delete(id);
+    this.mines?.explode(id, at);
+    this.sound.play('boom');
+    if (!onMe) return;
+    navigator.vibrate?.([60, 30, 120]);
+    if (result === 'immune') return;
+    if (result === 'shielded') {
+      this.player.shield = true; // le moteur consomme le bouclier et produit l'événement « shielded »
+      this.handle(this.game.knockDown(PLAYER_ID, this.clock));
+      return;
+    }
+    this.player.shield = false;
+    this.handle(this.game.knockDown(PLAYER_ID, this.clock));
+  }
+
+  /** Sceau annoncé par le serveur (le sien ou celui de l'adversaire). */
+  applySeal(doorId: string, own: boolean, ms: number): void {
+    this.handle(this.game.applySeal(doorId, own ? PLAYER_ID : 'rival', this.clock + ms));
+    if (own) this.hud.showToast('Porte scellée !', 'good', 1.8, 'Bloquée 10 s pour ton adversaire');
   }
 
   rivalMoved(p: Vec3Tuple, ry: number): void {
@@ -289,6 +403,19 @@ export class GameSession {
     if (door.floor === this.player.floor) this.hud.showToast(`${name} a trouvé un passage !`, 'info', 2.2, 'Vite, il brille encore à ton étage');
   }
 
+  /** Recalage sur l'étage du serveur (rare : une action locale a croisé un coup ou un sceau). */
+  private correctFloor(floor: number): void {
+    this.pendingFloor = null;
+    if (floor === this.player.floor) return;
+    this.player.floor = floor;
+    const { side, tangent } = sideCoords(this.body.pos);
+    this.body.teleport(landingPoint(this.config, floor, side, tangent));
+    this.syncCharacter();
+    this.hud.setFloor(floor, this.player.bestFloor);
+    this.world.setPrivateHints(this.player.knownPassages, floor);
+    this.onAltitude(floor);
+  }
+
   /** Fin du duel décidée par le serveur : la partie s'arrête pour tout le monde. */
   endDuel(): void {
     this.finished = true;
@@ -296,7 +423,15 @@ export class GameSession {
   }
 
   private updateDuel(dt: number): void {
-    this.rival?.update(dt, this.camera.zoomSmooth);
+    this.rival?.update(dt, this.camera.zoomSmooth, this.camera.camera);
+    if (this.rival) {
+      const turbo = this.clock < this.turboUntil;
+      this.body.speedScale = turbo ? TURBO_SPEED : 1;
+      this.trail?.update(dt, this.character.root.position, turbo, this.camera.camera);
+      this.character.body.visible = this.clock >= this.immuneUntil || this.clock % 200 < 120;
+      this.mines?.update(dt);
+      if (this.pendingFloor !== null && !this.locked) this.correctFloor(this.pendingFloor);
+    }
     if (!this.net) return;
     this.posTimer -= dt;
     if (this.posTimer > 0) return;
@@ -350,6 +485,22 @@ export class GameSession {
         case 'shielded':
           this.onShielded(event.cause, event.floor);
           break;
+        case 'knocked':
+          this.onKnocked(event.from, event.to);
+          break;
+        case 'sealed':
+          this.world.doors.setSealed(event.doorId, true);
+          this.sound.play('seal');
+          break;
+        case 'unsealed':
+          this.world.doors.setSealed(event.doorId, false);
+          break;
+        case 'doorSealed':
+          this.world.shakeDoor(event.doorId);
+          this.character.react('bump');
+          this.sound.play('wall');
+          this.hud.showToast('Porte scellée !', 'bad', 1.8, 'Ton adversaire l’a bloquée… patiente ou cherche ailleurs');
+          break;
         case 'publicReveal':
           this.world.setReveal(event.doorId, true);
           break;
@@ -396,6 +547,13 @@ export class GameSession {
     });
   }
 
+  /** Coup reçu (mine) : projeté, puis atterrit devant une porte de l'étage `to` (au plus un de moins). */
+  private onKnocked(from: number, to: number): void {
+    const { side, tangent } = sideCoords(this.body.pos);
+    this.hud.showToast('BOUM !', 'bad', 2, to < from ? 'Une mine ! Tu redescends d’un étage' : 'Une mine ! Tu es repoussé');
+    this.playKnockback(landingPoint(this.config, to, side, tangent), false);
+  }
+
   private onBonusUsed(bonus: BonusId, timeBonusMs = 0): void {
     const info = BONUS_INFO[bonus];
     this.sound.play('bonus');
@@ -409,7 +567,7 @@ export class GameSession {
   private onShielded(cause: 'door' | 'fall' | 'attack', floor: number): void {
     this.sound.play('shield');
     navigator.vibrate?.(40);
-    this.hud.showToast("Bouclier d'Anubis !", 'good', 2, cause === 'door' ? 'Le piège est annulé' : 'Ta chute est annulée');
+    this.hud.showToast("Bouclier d'Anubis !", 'good', 2, { door: 'Le piège est annulé', fall: 'Ta chute est annulée', attack: 'La mine est neutralisée' }[cause]);
     const root = this.character.root;
     burst(this.world.scene, this.tweens, root.position.clone().add(new THREE.Vector3(0, 1, 0)), GOLD, 22, 4, 2.5);
     if (cause === 'fall') {

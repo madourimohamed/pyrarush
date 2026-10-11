@@ -220,7 +220,7 @@ export const GUARDIANS: Record<TrapStyle, () => TrapGuardian> = {
 };
 
 /** Onomatopée de bande dessinée (éclat coloré + texte), affichée au moment de l'impact. */
-function comicTexture(text: string, fill: string, edge: string, ink: string): THREE.CanvasTexture {
+export function comicTexture(text: string, fill: string, edge: string, ink: string): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = 256;
   c.height = 160;

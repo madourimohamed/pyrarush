@@ -1,5 +1,4 @@
 import {
-  duelConfig,
   emptyReserve,
   Game,
   IMMUNITY_MS,
@@ -9,11 +8,14 @@ import {
   MINE_LIFETIME_MS,
   MINE_MAX_ACTIVE,
   pickPower,
+  powerSpotCount,
+  POWER_RESPAWN_MS,
   randomSeed,
   standing,
   TURBO_MS,
   type GameEvent,
   type Level,
+  type PowerDensity,
   type PowerId,
   type PowerReserve,
   type Vec3,
@@ -87,10 +89,14 @@ export class Room {
   private fighters = new Map<string, Fighter>();
   private mines = new Map<number, Mine>();
   private nextMine = 1;
+  /** Portes vides qui cachent un pouvoir en ce moment (secret : jamais envoyé aux navigateurs). */
+  readonly hidden = new Set<string>();
+  private respawns: (() => void)[] = [];
 
   constructor(
     readonly code: string,
     readonly level: Level,
+    readonly density: PowerDensity,
     private readonly clock: Clock,
     private readonly seeds: () => number = randomSeed,
     private readonly random: () => number = Math.random,
@@ -168,9 +174,10 @@ export class Room {
 
   private start(): void {
     this.rematch.clear();
-    this.clearMines();
+    this.clearTimers();
     const seed = this.seeds();
-    this.game = new Game(duelConfig(this.level.config), seed);
+    this.game = new Game(this.level.config, seed);
+    this.hidePowers(this.game);
     this.fighters.clear();
     for (const peer of this.peers) {
       this.game.addPlayer(peer.id);
@@ -234,7 +241,8 @@ export class Room {
       const shielded = events.some((e) => e.type === 'shielded');
       const after = this.game!.players.get(peer.id)!.floor;
       if (!immune && !shielded) fighter.immuneUntil = now + IMMUNITY_MS;
-      this.broadcast({ t: 'boom', mine: mine.id, target: peer.id, shielded: shielded || immune, from: before, to: after });
+      const result = immune ? 'immune' : shielded ? 'shielded' : 'knocked';
+      this.broadcast({ t: 'boom', mine: mine.id, target: peer.id, result, p: [mine.p.x, mine.p.y, mine.p.z], from: before, to: after });
       this.apply(peer, events);
       this.sendSelf(peer);
       this.broadcastState(peer);
@@ -249,8 +257,8 @@ export class Room {
         this.others(peer, { t: 'reveal', id: peer.id, doorId: event.doorId, ms: event.until - this.raceTime() });
       } else if (event.type === 'floorChanged') {
         this.others(peer, { t: 'floor', id: peer.id, floor: event.to });
-      } else if (event.type === 'doorResult' && event.fx === 'power') {
-        this.grant(peer, event.doorId);
+      } else if (event.type === 'doorResult' && event.mechanic === 'wall' && this.hidden.has(event.doorId)) {
+        this.take(peer, event.doorId);
       } else if (event.type === 'shielded') {
         this.broadcastState(peer);
       } else if (event.type === 'victory') {
@@ -266,7 +274,32 @@ export class Room {
     }
   }
 
-  /** Porte à pouvoir : tirage selon le classement (le joueur en retard reçoit plutôt de quoi revenir). */
+  /** Cache les pouvoirs du départ : derrière des portes vides au hasard, selon la quantité choisie pour la salle. */
+  private hidePowers(game: Game): void {
+    this.hidden.clear();
+    for (let floor = 1; floor <= game.config.floors; floor++) {
+      const doors = game.layout.doorsByFloor[floor];
+      const walls = doors.filter((d) => d.mechanic === 'wall');
+      for (let i = powerSpotCount(doors.length, walls.length, this.density); i > 0; i--) this.hideOne(floor);
+    }
+  }
+
+  /** Cache un pouvoir derrière une porte vide libre de l'étage (si possible pas `avoid`, la porte qu'on vient de vider). */
+  private hideOne(floor: number, avoid?: string): void {
+    const free = this.game!.layout.doorsByFloor[floor].filter((d) => d.mechanic === 'wall' && !this.hidden.has(d.id));
+    const choices = free.length > 1 ? free.filter((d) => d.id !== avoid) : free;
+    if (choices.length) this.hidden.add(choices[Math.floor(this.random() * choices.length)].id);
+  }
+
+  /** Pouvoir ramassé : il disparaît, puis réapparaît POWER_RESPAWN_MS plus tard derrière une autre porte vide du même étage. */
+  private take(peer: Peer, doorId: string): void {
+    this.hidden.delete(doorId);
+    const floor = this.game!.doorsById.get(doorId)!.floor;
+    this.respawns.push(this.clock.later(POWER_RESPAWN_MS, () => this.state === 'racing' && this.hideOne(floor, doorId)));
+    this.grant(peer, doorId);
+  }
+
+  /** Tirage du pouvoir selon le classement (le joueur en retard reçoit plutôt de quoi revenir). */
   private grant(peer: Peer, doorId: string): void {
     const fighter = this.fighters.get(peer.id)!;
     const me = this.game!.players.get(peer.id)!.floor;
@@ -309,14 +342,17 @@ export class Room {
     if (notify) this.broadcast({ t: 'mineGone', id });
   }
 
-  private clearMines(): void {
+  /** Mines posées et réapparitions de pouvoirs en attente. */
+  private clearTimers(): void {
     for (const mine of this.mines.values()) mine.cancel();
     this.mines.clear();
+    this.respawns.forEach((cancel) => cancel());
+    this.respawns = [];
   }
 
   private finish(winner: string, reason: 'summit' | 'forfeit', peers: Peer[]): void {
     this.state = 'finished';
-    this.clearMines();
+    this.clearTimers();
     const results: DuelResult[] = peers.map((p) => {
       const player = this.game?.players.get(p.id);
       return {
@@ -333,7 +369,7 @@ export class Room {
 
   private broadcastRoom(): void {
     const players: RoomPlayer[] = this.peers.map((p) => ({ id: p.id, name: p.name }));
-    for (const peer of this.peers) peer.send({ t: 'room', code: this.code, level: this.level.number, you: peer.id, players });
+    for (const peer of this.peers) peer.send({ t: 'room', code: this.code, level: this.level.number, powers: this.density, you: peer.id, players });
   }
 
   private broadcast(message: ServerMessage): void {
@@ -364,7 +400,7 @@ export class Lobby {
         if (!level) return peer.send({ t: 'error', message: 'Niveau inconnu.' });
         this.leave(peer);
         peer.name = cleanName(message.name);
-        const created = new Room(this.newCode(), level, this.clock, randomSeed, this.random);
+        const created = new Room(this.newCode(), level, message.powers, this.clock, randomSeed, this.random);
         this.rooms.set(created.code, created);
         this.enter(peer, created);
         return;

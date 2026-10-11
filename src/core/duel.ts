@@ -1,9 +1,10 @@
 import { doorFront, floorAtY, floorY, holeTangent, sideCoords, terraceOuterHalf, wallHalf, HOLE_WIDTH, type Vec3 } from './geometry';
-import type { Layout, PyramidConfig } from './types';
+import type { Layout } from './types';
 
 /**
  * Règles du duel (TypeScript pur, partagé par le navigateur et le serveur) : pouvoirs, réglages, mines.
- * L'état (réserves, mines posées, immunités) est tenu par le serveur ; le moteur (Game) gère les sceaux et les coups.
+ * L'état (pouvoirs cachés derrière les portes, réserves, mines posées, immunités) est tenu par le serveur seul,
+ * pour éviter la triche ; le moteur (Game) gère les sceaux et les coups. La pyramide est celle du solo.
  * Tous les réglages d'équilibrage sont ici.
  */
 
@@ -12,8 +13,19 @@ export type PowerId = (typeof POWER_IDS)[number];
 export type PowerReserve = Record<PowerId, number>;
 export const emptyReserve = (): PowerReserve => ({ turbo: 0, shield: 0, seal: 0, mine: 0 });
 
-/** Portes à pouvoir ajoutées à chaque étage en duel, à la place de murs (moins si l'étage est déjà plein, jamais aucune). */
-export const POWER_DOORS_PER_FLOOR = 2;
+/**
+ * Pouvoirs cachés derrière les portes vides (murs). Le créateur de la salle choisit « peu » ou « beaucoup » ;
+ * le jeu en déduit le nombre par étage d'après le nombre de portes de l'étage (il varie donc avec le niveau).
+ * Un pouvoir ramassé réapparaît POWER_RESPAWN_MS plus tard derrière une autre porte vide du même étage.
+ */
+export type PowerDensity = 'few' | 'many';
+export const POWER_DENSITY: Record<PowerDensity, number> = { few: 0.08, many: 0.2 };
+export const POWER_RESPAWN_MS = 15000;
+
+/** Nombre de pouvoirs cachés à un étage (au moins un, jamais plus que de portes vides). */
+export function powerSpotCount(doors: number, walls: number, density: PowerDensity): number {
+  return Math.min(walls, Math.max(1, Math.round(doors * POWER_DENSITY[density])));
+}
 /** Turbo : multiplicateur de vitesse au sol et durée. */
 export const TURBO_SPEED = 2;
 export const TURBO_MS = 10000;
@@ -34,16 +46,8 @@ export const IMMUNITY_MS = 4000;
 /** Affichage des compteurs (pas une limite de jeu). */
 export const POWER_DISPLAY_MAX = 9;
 
-/** Règles d'un niveau jouées en duel : mêmes étages et portes, plus des portes à pouvoir à la place de murs. */
-export function duelConfig(config: PyramidConfig): PyramidConfig {
-  return {
-    ...config,
-    bands: config.bands.map((band) => ({ ...band, mechanics: { ...band.mechanics, powerDoor: POWER_DOORS_PER_FLOOR } })),
-  };
-}
-
 /**
- * Contenu d'une porte à pouvoir selon le classement au moment de l'ouverture (comme Mario Kart) :
+ * Contenu d'un pouvoir caché, tiré au moment où il est ramassé, selon le classement (comme Mario Kart) :
  * le joueur en retard reçoit plutôt de quoi revenir (turbo, bouclier), celui en tête de quoi ralentir l'autre.
  */
 export type Standing = 'behind' | 'tied' | 'ahead';

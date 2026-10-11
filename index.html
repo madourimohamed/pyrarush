@@ -41,6 +41,7 @@
       </div>
       <div id="floor-banner"><b></b><small></small></div>
       <div id="countdown" aria-live="assertive"></div>
+      <div id="power-bar" aria-label="Pouvoirs du duel"></div>
       <div id="toast">
         <span class="toast-icon"></span>
         <div><b class="toast-title"></b><small class="toast-sub"></small></div>
@@ -167,6 +168,7 @@
           <li>Après une chute, les passages que tu as déjà trouvés restent marqués en <b class="c-hint">doré</b>, pour toi seul.</li>
           <li>Les portes ne changent jamais pendant une partie : mémorise-les !</li>
           <li>Chaque niveau terminé débloque le suivant, avec un nouveau décor et de nouveaux pièges.</li>
+          <li><b>Duel entre amis</b> : des pouvoirs sont cachés derrière certaines portes vides (turbo, bouclier, sceau, mine). Garde-les dans ta barre de pouvoirs et utilise-les quand tu veux (touches 1 à 4 sur ordinateur). Un pouvoir ramassé réapparaît plus tard derrière une autre porte.</li>
           <li>Au sommet, ouvre un des <b class="c-hint">trois coffres</b> : il contient un bonus à utiliser une fois (bouton bonus ou touche B) — <b>Œil de Râ</b>, <b>Bouclier d'Anubis</b> ou <b>Sablier de Thot</b>.</li>
           <li>Le bouton <b>loupe</b> change le zoom : proche, moyen, ou large pour voir toute la pyramide.</li>
         </ul>
@@ -194,7 +196,14 @@
         <div class="eyebrow">Duel entre amis</div>
         <h2>Course à deux</h2>
         <div id="duel-home">
-          <p class="duel-lead">Le premier au sommet gagne. Même pyramide pour vous deux !</p>
+          <p class="duel-lead">Le premier au sommet gagne. Même pyramide pour vous deux, et des portes qui cachent des pouvoirs : turbo, bouclier, sceau, mine !</p>
+          <div class="option-row">
+            <span>Pouvoirs cachés</span>
+            <div id="duel-powers" class="segmented">
+              <button data-powers="few">Peu</button>
+              <button data-powers="many">Beaucoup</button>
+            </div>
+          </div>
           <button id="btn-duel-create" class="primary">Créer une salle · <span id="duel-level-name"></span></button>
           <div class="duel-join">
             <input id="duel-code" type="text" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" />
@@ -209,6 +218,7 @@
             <button id="btn-duel-share">Partager</button>
           </div>
           <ul id="duel-players" class="duel-players"></ul>
+          <p id="duel-room-powers" class="duel-lead"></p>
         </div>
         <p id="duel-status" class="duel-status" aria-live="polite"></p>
         <button id="btn-duel-close">Retour</button>

@@ -26,16 +26,10 @@ export function generateLayout(config: PyramidConfig, seed: number): Layout {
     const total = perSide * 4;
 
     const assignments: string[] = Array(Math.max(1, band.passages)).fill('passage');
-    // Les mécaniques facultatives (fillsWalls) passent en dernier, sur les portes restantes.
-    const entries = Object.entries(band.mechanics);
-    const ordered = [...entries.filter(([id]) => !getMechanic(id).fillsWalls), ...entries.filter(([id]) => getMechanic(id).fillsWalls)];
-    for (const [id, spec] of ordered) {
+    for (const [id, spec] of Object.entries(band.mechanics)) {
       const mechanic = getMechanic(id);
       if (mechanic.canPlace && !mechanic.canPlace(floor, config)) continue;
-      const remaining = Math.min(
-        (config.limits?.[id] ?? Infinity) - (used[id] ?? 0),
-        mechanic.fillsWalls ? total - assignments.length : Infinity,
-      );
+      const remaining = (config.limits?.[id] ?? Infinity) - (used[id] ?? 0);
       const count = Math.min(resolveCount(rng, spec), remaining);
       for (let i = 0; i < count; i++) assignments.push(id);
       used[id] = (used[id] ?? 0) + Math.max(0, count);

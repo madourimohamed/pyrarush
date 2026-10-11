@@ -92,3 +92,58 @@ export function symbolTexture(symbol: string, color = '#ffffff'): THREE.CanvasTe
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
+
+/** Bulle dorée du Bouclier d'Anubis, à accrocher à un personnage (le sien ou celui de l'adversaire). */
+export function shieldBubble(): THREE.Mesh {
+  const bubble = new THREE.Mesh(
+    new THREE.SphereGeometry(1.25, 24, 16),
+    new THREE.MeshBasicMaterial({ color: 0xffd34a, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false }),
+  );
+  bubble.position.y = 1;
+  bubble.visible = false;
+  return bubble;
+}
+
+const trailGeometry = new THREE.PlaneGeometry(0.5, 0.5);
+
+/**
+ * Traînée légère (Turbo) : quelques bouffées lumineuses laissées derrière le personnage, qui s'estompent.
+ * Réserve fixe de sprites réutilisés : aucun objet créé pendant la course.
+ */
+export class Trail {
+  private readonly puffs: { mesh: THREE.Mesh; life: number }[] = [];
+  private next = 0;
+  private timer = 0;
+
+  constructor(scene: THREE.Scene, color: number, count = 18) {
+    const material = new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    for (let i = 0; i < count; i++) {
+      const mesh = new THREE.Mesh(trailGeometry, material.clone());
+      mesh.visible = false;
+      scene.add(mesh);
+      this.puffs.push({ mesh, life: 0 });
+    }
+  }
+
+  /** `at` = pieds du personnage ; `active` = turbo en cours (sinon les bouffées finissent de s'estomper). */
+  update(dt: number, at: THREE.Vector3, active: boolean, camera: THREE.Camera): void {
+    this.timer -= dt;
+    if (active && this.timer <= 0) {
+      this.timer = 0.045;
+      const puff = this.puffs[this.next];
+      this.next = (this.next + 1) % this.puffs.length;
+      puff.life = 1;
+      puff.mesh.position.set(at.x + (Math.random() - 0.5) * 0.3, at.y + 0.4 + Math.random() * 0.6, at.z + (Math.random() - 0.5) * 0.3);
+      puff.mesh.visible = true;
+    }
+    for (const puff of this.puffs) {
+      if (puff.life <= 0) continue;
+      puff.life -= dt / 0.4;
+      puff.mesh.visible = puff.life > 0;
+      puff.mesh.quaternion.copy(camera.quaternion);
+      puff.mesh.scale.setScalar(0.4 + puff.life * 0.8);
+      (puff.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, puff.life) * 0.7;
+    }
+  }
+}
+

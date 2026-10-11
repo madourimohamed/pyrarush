@@ -79,7 +79,7 @@ export class Game {
       player.knownPassages.add(door.id);
       player.lastPassage = { doorId: door.id, at: now };
     }
-    player.tried.set(door.id, to > from ? 'up' : outcome.fx === 'power' ? 'power' : to < from || outcome.fx !== 'wall' ? 'trap' : 'wall');
+    player.tried.set(door.id, to > from ? 'up' : to < from || outcome.fx !== 'wall' ? 'trap' : 'wall');
 
     const events: GameEvent[] = [
       {

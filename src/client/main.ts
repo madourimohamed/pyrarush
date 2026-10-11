@@ -359,6 +359,7 @@ const duel = new DuelController({
   hud,
   selected: () => selected,
   playerName: () => storage.get('name') || 'Explorateur',
+  storage,
   show,
   startRace: (level, seed, seconds) => startGame(seed, level, seconds),
   backToMenu,
@@ -403,6 +404,7 @@ window.addEventListener('keydown', (e) => {
   if (current === null && !(e.target instanceof HTMLInputElement)) {
     if (e.code === 'KeyC') setZoom((zoom + 1) % 3, true);
     if (e.code === 'KeyB') useBonus();
+    if (duel.active && /^Digit[1-4]$/.test(e.code)) duel.usePowerAt(Number(e.code.slice(5)) - 1);
     if (e.code === 'Equal' || e.code === 'NumpadAdd') setZoom(zoom - 1, true);
     if (e.code === 'Minus' || e.code === 'NumpadSubtract') setZoom(zoom + 1, true);
   }

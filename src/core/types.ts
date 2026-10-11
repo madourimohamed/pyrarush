@@ -122,6 +122,7 @@ export const BONUS_EYE_MS = 5000;
 export const BONUS_HOURGLASS_MS = 10000;
 
 /** Ce qu'un joueur a découvert derrière une porte : un passage (monte), un mur, ou un piège (descend ou repousse). */
+/** 'power' : en duel, un pouvoir a été trouvé derrière cette porte vide (marque ajoutée par le navigateur). */
 export type TriedOutcome = 'up' | 'wall' | 'trap' | 'power';
 
 /** Étage spécial : atteindre floors + 1 signifie être au sommet. */

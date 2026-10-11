@@ -1,9 +1,10 @@
-import type { Level } from '../../core';
+import { emptyReserve, POWER_IDS, type Level, type PowerDensity, type PowerId, type PowerReserve } from '../../core';
 import { normalizeRoomCode, ROOM_CODE_LENGTH, type DuelResult, type RoomPlayer, type ServerMessage } from '../../net/protocol';
 import type { SfxName } from '../audio/sfx';
 import type { GameSession } from '../session';
 import { formatTime } from '../ui/hud';
 import type { Hud } from '../ui/hud';
+import { POWER_INFO, renderPowerBar, setupPowerBar } from '../ui/powers';
 import { DuelConnection } from './connection';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -14,6 +15,7 @@ export interface DuelHost {
   hud: Hud;
   selected(): Level;
   playerName(): string;
+  storage: { get(key: string): string | null; set(key: string, value: string): void };
   show(screen: 'screen-duel' | 'screen-duel-result' | null): void;
   /** Lance la course : session créée avec la graine commune, introduction de `seconds` (compte à rebours). */
   startRace(level: Level, seed: number, seconds: number): Promise<GameSession | null>;
@@ -37,6 +39,10 @@ export class DuelController {
   private timers: number[] = [];
   /** Numéro de la dernière action envoyée (voir protocol.ts : recalage sur l'état du serveur). */
   private seq = 0;
+  /** Réserve de pouvoirs, telle que le serveur l'annonce (lui seul la modifie). */
+  private reserve: PowerReserve = emptyReserve();
+  private density: PowerDensity = 'many';
+  private barTimer = 0;
   /** Une course (compte à rebours compris) est en cours ou vient de finir : on est « en duel ». */
   active = false;
 
@@ -52,6 +58,41 @@ export class DuelController {
     $('btn-dr-rematch').addEventListener('click', () => this.rematch());
     $('btn-dr-quit').addEventListener('click', () => this.quit());
     $('btn-duel-share').style.display = 'share' in navigator ? '' : 'none';
+    setupPowerBar((power) => this.usePower(power));
+    for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>('#duel-powers button'))) {
+      button.addEventListener('click', () => this.setDensity(button.dataset.powers as PowerDensity));
+    }
+    this.setDensity(host.storage.get('duel-powers') === 'few' ? 'few' : 'many');
+  }
+
+  /** Quantité de pouvoirs cachés choisie par le créateur de la salle (mémorisée). */
+  private setDensity(density: PowerDensity): void {
+    this.density = density;
+    this.host.storage.set('duel-powers', density);
+    document.querySelectorAll<HTMLButtonElement>('#duel-powers button').forEach((b) => b.classList.toggle('selected', b.dataset.powers === density));
+  }
+
+  /** Utilise un pouvoir (barre ou touches 1 à 4). Rien n'est envoyé ni consommé s'il ne peut pas servir. */
+  usePower(power: PowerId): void {
+    const session = this.session;
+    if (!session || !this.active) return;
+    if (this.reserve[power] <= 0) return this.host.hud.showToast(`Aucun ${POWER_INFO[power].name.toLowerCase()} en réserve`, 'info', 1.5, 'Ouvre des portes pour trouver des pouvoirs');
+    const blocker = session.powerBlocker(power);
+    if (blocker) return this.host.hud.showToast(POWER_INFO[power].name, 'info', 1.5, blocker);
+    const p = session.feet;
+    this.connection.send({ t: 'power', seq: ++this.seq, power, p: [round(p.x), round(p.y), round(p.z)] });
+  }
+
+  /** Raccourci clavier : 1 à 4. */
+  usePowerAt(index: number): void {
+    const power = POWER_IDS[index];
+    if (power) this.usePower(power);
+  }
+
+  private renderBar(): void {
+    const session = this.session;
+    const blockers = Object.fromEntries(POWER_IDS.map((id) => [id, session ? session.powerBlocker(id) : 'Pas maintenant'])) as Record<PowerId, string | null>;
+    renderPowerBar(this.reserve, blockers);
   }
 
   get rival(): RoomPlayer | undefined {
@@ -78,7 +119,7 @@ export class DuelController {
 
   private async create(): Promise<void> {
     if (!(await this.connect())) return;
-    this.connection.send({ t: 'create', level: this.host.selected().number, name: this.host.playerName() });
+    this.connection.send({ t: 'create', level: this.host.selected().number, name: this.host.playerName(), powers: this.density });
   }
 
   private async join(raw: string): Promise<void> {
@@ -106,6 +147,7 @@ export class DuelController {
         this.me = m.you;
         this.code = m.code;
         this.players = m.players;
+        $('duel-room-powers').textContent = m.powers === 'few' ? 'Peu de pouvoirs cachés derrière les portes' : 'Beaucoup de pouvoirs cachés derrière les portes';
         this.renderRoom();
         break;
       case 'start':
@@ -113,6 +155,30 @@ export class DuelController {
         break;
       case 'pos':
         this.session?.rivalMoved(m.p, m.ry);
+        break;
+      case 'self':
+        this.reserve = m.powers;
+        this.session?.applyServerState(m, m.seq === this.seq);
+        this.renderBar();
+        break;
+      case 'gain':
+        this.session?.powerGained(POWER_INFO[m.power].name, m.doorId);
+        break;
+      case 'state':
+        if (m.id !== this.me) this.session?.setRivalState(m.shield, m.turboMs, m.immuneMs);
+        break;
+      case 'seal':
+        this.session?.applySeal(m.doorId, m.owner === this.me, m.ms);
+        break;
+      case 'mine':
+        this.session?.addMine(m.id, vec(m.p), m.owner === this.me);
+        break;
+      case 'mineGone':
+        this.session?.removeMine(m.id);
+        break;
+      case 'boom':
+        this.session?.mineExploded(m.mine, m.target === this.me, m.result, vec(m.p));
+        if (m.target !== this.me && m.result === 'knocked') this.host.hud.showToast('BOUM !', 'good', 1.8, `${this.rival?.name ?? 'Ton ami'} a marché sur ta mine !`);
         break;
       case 'reveal':
         this.session?.rivalReveal(m.doorId, m.ms, this.rival?.name ?? 'Ton ami');
@@ -161,6 +227,11 @@ export class DuelController {
       pos: (p, ry) => this.connection.send({ t: 'pos', p: [round(p.x), round(p.y), round(p.z)], ry: round(ry) }),
     };
     this.host.hud.setRivalFloor(1);
+    this.seq = 0;
+    this.reserve = emptyReserve();
+    this.renderBar();
+    window.clearInterval(this.barTimer);
+    this.barTimer = window.setInterval(() => this.renderBar(), 200);
     // Compte à rebours calé sur le départ du serveur (le chargement de la pyramide a déjà pris un peu de temps).
     const left = inMs - (performance.now() - startedAt);
     for (const [text, at] of [['3', 3000], ['2', 2000], ['1', 1000], ['Go !', 0]] as const) {
@@ -218,6 +289,7 @@ export class DuelController {
 
   private reset(): void {
     this.clearTimers();
+    window.clearInterval(this.barTimer);
     this.active = false;
     this.code = '';
     this.players = [];
@@ -264,4 +336,5 @@ export class DuelController {
 }
 
 const round = (v: number) => Math.round(v * 100) / 100;
+const vec = ([x, y, z]: [number, number, number]) => ({ x, y, z });
 const escape = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);

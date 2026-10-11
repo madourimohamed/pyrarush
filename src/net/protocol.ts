@@ -1,4 +1,4 @@
-import { POWER_IDS, type PowerId, type PowerReserve } from '../core';
+import { POWER_IDS, type PowerDensity, type PowerId, type PowerReserve } from '../core';
 
 /**
  * Protocole du duel entre amis (WebSocket, messages JSON), partagé par le navigateur et le serveur.
@@ -12,7 +12,8 @@ import { POWER_IDS, type PowerId, type PowerReserve } from '../core';
 export type Vec3Tuple = [number, number, number];
 
 export type ClientMessage =
-  | { t: 'create'; level: number; name: string }
+  /** Créer une salle : niveau et quantité de pouvoirs cachés (le jeu en déduit le nombre par étage). */
+  | { t: 'create'; level: number; name: string; powers: PowerDensity }
   | { t: 'join'; code: string; name: string }
   /** Position du personnage affiché (pieds) et orientation, ~15 fois par seconde. */
   | { t: 'pos'; p: Vec3Tuple; ry: number }
@@ -39,7 +40,7 @@ export interface DuelResult extends RoomPlayer {
 
 export type ServerMessage =
   /** État de la salle (à la création, à chaque arrivée ou départ). `you` = identifiant du destinataire. */
-  | { t: 'room'; code: string; level: number; you: string; players: RoomPlayer[] }
+  | { t: 'room'; code: string; level: number; powers: PowerDensity; you: string; players: RoomPlayer[] }
   /** Départ : même graine pour tous, la course démarre dans `inMs`. */
   | { t: 'start'; seed: number; level: number; inMs: number }
   | { t: 'pos'; id: string; p: Vec3Tuple; ry: number }
@@ -49,15 +50,15 @@ export type ServerMessage =
   | { t: 'finish'; winner: string; reason: 'summit' | 'forfeit'; results: DuelResult[] }
   /** État de référence du destinataire après ses actions (ou un coup reçu). Durées restantes en ms. */
   | { t: 'self'; seq: number; floor: number; shield: boolean; powers: PowerReserve; turboMs: number; immuneMs: number }
-  /** Pouvoir trouvé derrière une porte à pouvoir. */
+  /** Pouvoir trouvé derrière une porte vide (les emplacements restent secrets, connus du serveur seul). */
   | { t: 'gain'; power: PowerId; doorId: string }
   /** Ce que l'on voit d'un joueur : bouclier, turbo, immunité (durées restantes en ms). */
   | { t: 'state'; id: string; shield: boolean; turboMs: number; immuneMs: number }
   | { t: 'seal'; doorId: string; owner: string; ms: number }
   | { t: 'mine'; id: number; owner: string; p: Vec3Tuple }
   | { t: 'mineGone'; id: number }
-  /** Une mine a explosé sous `target` : bouclier ou projection (étage `from` → `to`). */
-  | { t: 'boom'; mine: number; target: string; shielded: boolean; from: number; to: number }
+  /** Une mine a explosé sous `target` : projeté (étage `from` → `to`), protégé par son bouclier, ou encore immunisé. */
+  | { t: 'boom'; mine: number; target: string; result: 'knocked' | 'shielded' | 'immune'; p: Vec3Tuple; from: number; to: number }
   /** Un joueur demande une revanche (en attente de l'autre). */
   | { t: 'rematch'; id: string }
   | { t: 'error'; message: string };
@@ -86,7 +87,7 @@ export function parseClientMessage(raw: string): ClientMessage | null {
   const vec = (v: unknown) => Array.isArray(v) && v.length === 3 && v.every(num);
   switch (msg.t) {
     case 'create':
-      return num(msg.level) && str(msg.name) ? (msg as ClientMessage) : null;
+      return num(msg.level) && str(msg.name) && (msg.powers === 'few' || msg.powers === 'many') ? (msg as ClientMessage) : null;
     case 'join':
       return str(msg.code, 12) && str(msg.name) ? (msg as ClientMessage) : null;
     case 'pos':

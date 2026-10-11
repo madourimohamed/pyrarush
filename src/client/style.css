@@ -1950,3 +1950,92 @@ body.duel #btn-new {
   }
 }
 
+/* ---------- Barre de pouvoirs (duel) ---------- */
+#power-bar {
+  position: absolute;
+  left: 50%;
+  bottom: calc(14px + var(--safe-b));
+  display: none;
+  gap: 10px;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+body.duel #power-bar {
+  display: flex;
+}
+body.duel #btn-bonus {
+  display: none;
+}
+#power-bar .power {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border-radius: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  color: white;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  touch-action: none;
+  transition: transform 0.1s, opacity 0.15s, filter 0.15s;
+}
+#power-bar .power svg {
+  width: 30px;
+  height: 30px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+}
+#power-bar .turbo {
+  background: linear-gradient(150deg, #3ec6ff, #1b6fd6);
+}
+#power-bar .shield {
+  background: linear-gradient(150deg, #ffd84a, #e08a10);
+}
+#power-bar .seal {
+  background: linear-gradient(150deg, #c58cff, #6a2aa8);
+}
+#power-bar .mine {
+  background: linear-gradient(150deg, #ff7a5a, #b8261a);
+}
+#power-bar .count {
+  position: absolute;
+  right: -6px;
+  top: -6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 11px;
+  font-size: 13px;
+  line-height: 22px;
+  color: #2a1a05;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+#power-bar .key {
+  position: absolute;
+  bottom: -18px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+body.touch #power-bar .key {
+  display: none;
+}
+#power-bar .power.empty {
+  opacity: 0.35;
+  filter: grayscale(0.8);
+}
+#power-bar .power.blocked {
+  opacity: 0.6;
+}
+#power-bar .power:active {
+  transform: scale(0.9);
+}
+body.touch #power-bar {
+  bottom: calc(10px + var(--safe-b));
+  gap: 8px;
+}
+body.touch #power-bar .power {
+  width: 50px;
+  height: 50px;
+}
+

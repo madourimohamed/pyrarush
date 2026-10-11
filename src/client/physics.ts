@@ -33,6 +33,8 @@ export class CharacterBody {
   /** Vient de toucher le sol à ce pas (avec la vitesse d'impact). */
   landedSpeed = 0;
   jumped = false;
+  /** Multiplicateur de vitesse au sol (Turbo du duel) ; le saut ne change pas. */
+  speedScale = 1;
   private coyote = 0;
   private jumpBuffer = 0;
 
@@ -56,8 +58,9 @@ export class CharacterBody {
     this.jumped = false;
 
     const accel = this.grounded ? GROUND_ACCEL : AIR_ACCEL;
-    this.vel.x = approach(this.vel.x, intent.x * SPEED, accel * dt);
-    this.vel.z = approach(this.vel.z, intent.z * SPEED, accel * dt);
+    const speed = SPEED * this.speedScale;
+    this.vel.x = approach(this.vel.x, intent.x * speed, accel * this.speedScale * dt);
+    this.vel.z = approach(this.vel.z, intent.z * speed, accel * this.speedScale * dt);
 
     this.coyote = this.grounded ? COYOTE_TIME : this.coyote - dt;
     this.jumpBuffer = intent.jumpPressed ? JUMP_BUFFER : this.jumpBuffer - dt;
