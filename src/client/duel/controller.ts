@@ -83,7 +83,7 @@ export class DuelController {
     this.connection.send({ t: 'power', seq: ++this.seq, power, p: [round(p.x), round(p.y), round(p.z)] });
   }
 
-  /** Raccourci clavier : 1 à 4. */
+  /** Raccourci clavier : 1 à 6. */
   usePowerAt(index: number): void {
     const power = POWER_IDS[index];
     if (power) this.usePower(power);
@@ -157,6 +157,7 @@ export class DuelController {
         this.session?.rivalMoved(m.p, m.ry);
         break;
       case 'self':
+        if (m.powers.cloud < this.reserve.cloud) this.host.hud.showToast('Nuage envoyé !', 'good', 1.5, `${this.rival?.name ?? 'Ton ami'} ne voit plus très clair`);
         this.reserve = m.powers;
         this.session?.applyServerState(m, m.seq === this.seq);
         this.renderBar();
@@ -165,7 +166,12 @@ export class DuelController {
         this.session?.powerGained(POWER_INFO[m.power].name, m.doorId);
         break;
       case 'state':
-        if (m.id !== this.me) this.session?.setRivalState(m.shield, m.turboMs, m.immuneMs);
+        if (m.id !== this.me) this.session?.setRivalState(m.shield, m.turboMs, m.bootsMs, m.immuneMs);
+        break;
+      case 'cloud':
+        this.host.hud.showCloud(m.ms);
+        this.host.play('cloud');
+        this.host.hud.showToast('Nuage de confusion !', 'bad', 1.8, `${this.rival?.name ?? 'Ton ami'} brouille ta vue`);
         break;
       case 'seal':
         this.session?.applySeal(m.doorId, m.owner === this.me, m.ms);
@@ -289,6 +295,7 @@ export class DuelController {
 
   private reset(): void {
     this.clearTimers();
+    this.host.hud.hideCloud();
     window.clearInterval(this.barTimer);
     this.active = false;
     this.code = '';

@@ -404,7 +404,7 @@ window.addEventListener('keydown', (e) => {
   if (current === null && !(e.target instanceof HTMLInputElement)) {
     if (e.code === 'KeyC') setZoom((zoom + 1) % 3, true);
     if (e.code === 'KeyB') useBonus();
-    if (duel.active && /^Digit[1-4]$/.test(e.code)) duel.usePowerAt(Number(e.code.slice(5)) - 1);
+    if (duel.active && /^Digit[1-6]$/.test(e.code)) duel.usePowerAt(Number(e.code.slice(5)) - 1);
     if (e.code === 'Equal' || e.code === 'NumpadAdd') setZoom(zoom - 1, true);
     if (e.code === 'Minus' || e.code === 'NumpadSubtract') setZoom(zoom + 1, true);
   }

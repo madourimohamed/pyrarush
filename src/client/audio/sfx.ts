@@ -105,6 +105,13 @@ export const SFX = {
     noise(ctx, out, t, 0.7, { filter: 'lowpass', freq: 1800, to: 120, gain: 0.5 });
     tone(ctx, out, t, 90, 0.6, { to: 35, gain: 0.5 });
   },
+  /** Nuage de confusion : souffle feutré qui tourbillonne. */
+  cloud: (ctx, out, t) => {
+    noise(ctx, out, t, 0.9, { filter: 'lowpass', freq: 700, to: 300, gain: 0.2 });
+    tone(ctx, out, t, 330, 0.8, { type: 'sine', to: 220, gain: 0.05, vibrato: [4, 12] });
+  },
+  /** Saut avec les Bottes rebondissantes : « boing ». */
+  boing: (ctx, out, t) => tone(ctx, out, t, 180, 0.3, { type: 'sine', to: 700, gain: 0.14, vibrato: [30, 20] }),
   /** Sceau magique : accord mystérieux. */
   seal: (ctx, out, t) => {
     [62, 66, 69, 73].forEach((n, i) => tone(ctx, out, t + i * 0.04, midiToFreq(n), 0.8, { type: 'sine', gain: 0.07, vibrato: [6, 5] }));

@@ -17,6 +17,9 @@
   <body>
     <canvas id="game"></canvas>
 
+    <!-- Duel : voile du Nuage de confusion (sous les commandes, qui restent nettes) -->
+    <div id="cloud-overlay" aria-hidden="true"><span></span><span></span><span></span></div>
+
     <!-- Commandes tactiles -->
     <div id="touch">
       <div id="joy-base"><div id="joy-knob"></div></div>
@@ -168,7 +171,7 @@
           <li>Après une chute, les passages que tu as déjà trouvés restent marqués en <b class="c-hint">doré</b>, pour toi seul.</li>
           <li>Les portes ne changent jamais pendant une partie : mémorise-les !</li>
           <li>Chaque niveau terminé débloque le suivant, avec un nouveau décor et de nouveaux pièges.</li>
-          <li><b>Duel entre amis</b> : des pouvoirs sont cachés derrière certaines portes vides (turbo, bouclier, sceau, mine). Garde-les dans ta barre de pouvoirs et utilise-les quand tu veux (touches 1 à 4 sur ordinateur). Un pouvoir ramassé réapparaît plus tard derrière une autre porte.</li>
+          <li><b>Duel entre amis</b> : des pouvoirs sont cachés derrière certaines portes vides (turbo, bouclier, sceau, mine, nuage de confusion, bottes rebondissantes). Garde-les dans ta barre de pouvoirs et utilise-les quand tu veux (touches 1 à 6 sur ordinateur). Un pouvoir ramassé réapparaît plus tard derrière une autre porte.</li>
           <li>Au sommet, ouvre un des <b class="c-hint">trois coffres</b> : il contient un bonus à utiliser une fois (bouton bonus ou touche B) — <b>Œil de Râ</b>, <b>Bouclier d'Anubis</b> ou <b>Sablier de Thot</b>.</li>
           <li>Le bouton <b>loupe</b> change le zoom : proche, moyen, ou large pour voir toute la pyramide.</li>
         </ul>
@@ -196,7 +199,7 @@
         <div class="eyebrow">Duel entre amis</div>
         <h2>Course à deux</h2>
         <div id="duel-home">
-          <p class="duel-lead">Le premier au sommet gagne. Même pyramide pour vous deux, et des portes qui cachent des pouvoirs : turbo, bouclier, sceau, mine !</p>
+          <p class="duel-lead">Le premier au sommet gagne. Même pyramide pour vous deux, et des portes qui cachent des pouvoirs : turbo, bouclier, sceau, mine, nuage, bottes !</p>
           <div class="option-row">
             <span>Pouvoirs cachés</span>
             <div id="duel-powers" class="segmented">

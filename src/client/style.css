@@ -2044,3 +2044,63 @@ body.touch #power-bar .power {
 body.duel #prompt {
   bottom: calc(96px + var(--safe-b));
 }
+
+/* Nuage de confusion : brouille la vue sans toucher aux commandes (le voile est sous le HUD et les boutons). */
+#cloud-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  background: rgba(120, 100, 140, 0.18);
+}
+#cloud-overlay.show {
+  opacity: 1;
+}
+#cloud-overlay span {
+  position: absolute;
+  width: 55vmax;
+  height: 55vmax;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(225, 215, 240, 0.55), rgba(225, 215, 240, 0) 65%);
+  animation: cloud-drift 3s ease-in-out infinite alternate;
+}
+#cloud-overlay span:nth-child(1) {
+  left: -10vmax;
+  top: -15vmax;
+}
+#cloud-overlay span:nth-child(2) {
+  right: -15vmax;
+  top: 10vmax;
+  animation-delay: -1s;
+}
+#cloud-overlay span:nth-child(3) {
+  left: 20vmax;
+  bottom: -25vmax;
+  animation-delay: -2s;
+}
+@keyframes cloud-drift {
+  to {
+    transform: translate(6vmax, 3vmax) scale(1.15);
+  }
+}
+#power-bar .cloud {
+  background: linear-gradient(150deg, #b9b2d6, #6c6496);
+}
+#power-bar .boots {
+  background: linear-gradient(150deg, #7ee06a, #2c9a3e);
+}
+body.touch #power-bar {
+  gap: 6px;
+}
+body.touch #power-bar .power {
+  width: 46px;
+  height: 46px;
+}
+body.touch #power-bar .power svg {
+  width: 26px;
+  height: 26px;
+}
+

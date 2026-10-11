@@ -85,6 +85,20 @@ export class Hud {
     }
   }
 
+  /** Nuage de confusion : voile sur la vue pendant `ms` (les commandes restent nettes et utilisables). */
+  private cloudTimer = 0;
+  showCloud(ms: number): void {
+    const overlay = $('cloud-overlay');
+    overlay.classList.add('show');
+    window.clearTimeout(this.cloudTimer);
+    this.cloudTimer = window.setTimeout(() => overlay.classList.remove('show'), ms);
+  }
+
+  hideCloud(): void {
+    window.clearTimeout(this.cloudTimer);
+    $('cloud-overlay').classList.remove('show');
+  }
+
   /** Grand chiffre du compte à rebours (« 3 », « 2 », « 1 », « Go ! »). */
   showCountdown(text: string): void {
     const el = $('countdown');

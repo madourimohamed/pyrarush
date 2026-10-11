@@ -9,9 +9,11 @@ export const POWER_INFO: Record<PowerId, { name: string; icon: IconName }> = {
   shield: { name: "Bouclier d'Anubis", icon: 'shield' },
   seal: { name: 'Sceau magique', icon: 'seal' },
   mine: { name: 'Mine', icon: 'bomb' },
+  cloud: { name: 'Nuage de confusion', icon: 'cloud' },
+  boots: { name: 'Bottes rebondissantes', icon: 'boots' },
 };
 
-/** Barre de pouvoirs du duel : une icône par pouvoir avec son compteur ; un toucher ou un clic l'utilise (touches 1 à 4). */
+/** Barre de pouvoirs du duel : une icône par pouvoir avec son compteur ; un toucher ou un clic l'utilise (touches 1 à 6). */
 export function setupPowerBar(onUse: (power: PowerId) => void): void {
   const bar = $('power-bar');
   bar.innerHTML = POWER_IDS.map(

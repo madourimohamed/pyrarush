@@ -17,6 +17,7 @@ import {
   mineSpotValid,
   SEAL_WINDOW_MS,
   TURBO_SPEED,
+  BOOTS_JUMP,
   type PowerId,
   type BonusId,
   type Door,
@@ -119,6 +120,7 @@ export class GameSession {
   private trail: Trail | null = null;
   /** Fin du turbo et de l'immunité (horloge de la partie), d'après le serveur. */
   private turboUntil = 0;
+  private bootsUntil = 0;
   private immuneUntil = 0;
   /** Étage imposé par le serveur pendant une animation : appliqué dès qu'elle se termine. */
   private pendingFloor: number | null = null;
@@ -221,7 +223,7 @@ export class GameSession {
       while (this.accumulator >= STEP && steps < 5) {
         this.body.step(STEP, intent);
         if (this.body.landedSpeed > 4) this.character.land(this.body.landedSpeed);
-        if (this.body.jumped) this.sound.play('jump');
+        if (this.body.jumped) this.sound.play(this.body.jumpScale > 1 ? 'boing' : 'jump');
         if (this.body.landedSpeed > 9) this.sound.play('land');
         intent.jumpPressed = false;
         this.accumulator -= STEP;
@@ -288,8 +290,8 @@ export class GameSession {
     this.trail = new Trail(this.world.scene, 0x9ad8ff);
   }
 
-  setRivalState(shield: boolean, turboMs: number, immuneMs: number): void {
-    this.rival?.setState(shield, turboMs, immuneMs);
+  setRivalState(shield: boolean, turboMs: number, bootsMs: number, immuneMs: number): void {
+    this.rival?.setState(shield, turboMs, bootsMs, immuneMs);
   }
 
   /** Position des pieds (pour poser une mine). */
@@ -306,6 +308,10 @@ export class GameSession {
     switch (power) {
       case 'turbo':
         return this.clock < this.turboUntil ? 'Turbo déjà actif' : null;
+      case 'boots':
+        return this.clock < this.bootsUntil ? 'Bottes déjà actives' : null;
+      case 'cloud':
+        return this.rival ? null : 'Pas d’adversaire';
       case 'shield':
         return this.player.shield ? 'Bouclier déjà actif' : null;
       case 'seal': {
@@ -324,9 +330,15 @@ export class GameSession {
    * État de référence envoyé par le serveur. Turbo et immunité s'appliquent toujours ; l'étage et le bouclier
    * seulement si le client n'attend plus de réponse (`reconcile`), sinon une réponse plus récente arrivera.
    */
-  applyServerState(s: { floor: number; shield: boolean; turboMs: number; immuneMs: number }, reconcile: boolean): void {
+  applyServerState(s: { floor: number; shield: boolean; turboMs: number; bootsMs: number; immuneMs: number }, reconcile: boolean): void {
     const turboWasOff = this.clock >= this.turboUntil;
+    const bootsWereOff = this.clock >= this.bootsUntil;
     this.turboUntil = this.clock + s.turboMs;
+    this.bootsUntil = this.clock + s.bootsMs;
+    if (bootsWereOff && s.bootsMs > 0) {
+      this.sound.play('boing');
+      this.hud.showToast('Bottes rebondissantes !', 'good', 1.5, 'Saut renforcé pendant 8 s');
+    }
     this.immuneUntil = this.clock + s.immuneMs;
     if (turboWasOff && s.turboMs > 0) {
       this.sound.play('turbo');
@@ -426,8 +438,10 @@ export class GameSession {
     this.rival?.update(dt, this.camera.zoomSmooth, this.camera.camera);
     if (this.rival) {
       const turbo = this.clock < this.turboUntil;
+      const boots = this.clock < this.bootsUntil;
       this.body.speedScale = turbo ? TURBO_SPEED : 1;
-      this.trail?.update(dt, this.character.root.position, turbo, this.camera.camera);
+      this.body.jumpScale = boots ? BOOTS_JUMP : 1;
+      this.trail?.update(dt, this.character.root.position, turbo || (boots && !this.body.grounded), this.camera.camera);
       this.character.body.visible = this.clock >= this.immuneUntil || this.clock % 200 < 120;
       this.mines?.update(dt);
       if (this.pendingFloor !== null && !this.locked) this.correctFloor(this.pendingFloor);

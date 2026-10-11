@@ -8,10 +8,10 @@ import type { Layout } from './types';
  * Tous les réglages d'équilibrage sont ici.
  */
 
-export const POWER_IDS = ['turbo', 'shield', 'seal', 'mine'] as const;
+export const POWER_IDS = ['turbo', 'shield', 'seal', 'mine', 'cloud', 'boots'] as const;
 export type PowerId = (typeof POWER_IDS)[number];
 export type PowerReserve = Record<PowerId, number>;
-export const emptyReserve = (): PowerReserve => ({ turbo: 0, shield: 0, seal: 0, mine: 0 });
+export const emptyReserve = (): PowerReserve => ({ turbo: 0, shield: 0, seal: 0, mine: 0, cloud: 0, boots: 0 });
 
 /**
  * Pouvoirs cachés derrière les portes vides (murs). Le créateur de la salle choisit « peu » ou « beaucoup » ;
@@ -41,6 +41,14 @@ export const MINE_RADIUS = 0.9;
 export const MINE_DOOR_CLEARANCE = 2;
 /** Au-dessus de cette hauteur (m) au-dessus de la terrasse, on saute par-dessus la mine. */
 export const MINE_JUMP_HEIGHT = 0.5;
+/** Nuage de confusion : durée du voile sur l'écran de l'adversaire (les commandes restent nettes). */
+export const CLOUD_MS = 3000;
+/**
+ * Bottes rebondissantes : durée et multiplicateur de l'impulsion du saut. Le sommet du saut reste sous la hauteur
+ * d'une marche (3 m) : impossible de monter sans passer par les portes (vérifié par un test de la physique).
+ */
+export const BOOTS_MS = 8000;
+export const BOOTS_JUMP = 1.15;
 /** Immunité après une attaque subie (pas d'attaques en chaîne). */
 export const IMMUNITY_MS = 4000;
 /** Affichage des compteurs (pas une limite de jeu). */
@@ -52,9 +60,9 @@ export const POWER_DISPLAY_MAX = 9;
  */
 export type Standing = 'behind' | 'tied' | 'ahead';
 export const POWER_ODDS: Record<Standing, PowerReserve> = {
-  behind: { turbo: 40, shield: 35, seal: 10, mine: 15 },
-  tied: { turbo: 25, shield: 25, seal: 25, mine: 25 },
-  ahead: { turbo: 15, shield: 20, seal: 30, mine: 35 },
+  behind: { turbo: 30, shield: 25, seal: 6, mine: 10, cloud: 9, boots: 20 },
+  tied: { turbo: 17, shield: 17, seal: 16, mine: 17, cloud: 16, boots: 17 },
+  ahead: { turbo: 10, shield: 15, seal: 22, mine: 25, cloud: 20, boots: 8 },
 };
 
 export function standing(myFloor: number, rivalFloor: number): Standing {

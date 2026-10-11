@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { doorFront, floorY, Game, POWER_RESPAWN_MS, landingPoint, mineSpotValid, MINE_ARM_MS, IMMUNITY_MS, SEAL_MS, type Level, type Vec3 } from '../src/core';
+import { BOOTS_MS, CLOUD_MS, doorFront, floorY, Game, POWER_RESPAWN_MS, landingPoint, mineSpotValid, MINE_ARM_MS, IMMUNITY_MS, SEAL_MS, type Level, type PowerId, type Vec3 } from '../src/core';
 import { levels } from '../src/levels';
 import { DUEL_COUNTDOWN_MS, type ServerMessage } from '../src/net/protocol';
 import { Lobby, type Clock, type Peer } from './rooms';
@@ -221,6 +221,21 @@ describe('duel : salles', () => {
     expect(a.inbox.filter((m) => m.t === 'boom')).toHaveLength(1);
   });
 
+  it('le nuage de confusion arrive chez l’adversaire ; les bottes sont visibles et pas consommées deux fois', () => {
+    const { lobby, a, b, advance } = duel();
+    advance(DUEL_COUNTDOWN_MS);
+    give(lobby, a, 'cloud');
+    lobby.handle(a, { t: 'power', seq: 1, power: 'cloud', p: [0, 0, 0] });
+    expect(b.last('cloud')).toEqual({ t: 'cloud', from: 'a', ms: CLOUD_MS });
+    expect(a.last('cloud')).toBeUndefined();
+    give(lobby, a, 'boots');
+    give(lobby, a, 'boots');
+    lobby.handle(a, { t: 'power', seq: 2, power: 'boots', p: [0, 0, 0] });
+    lobby.handle(a, { t: 'power', seq: 3, power: 'boots', p: [0, 0, 0] });
+    expect(b.last('state')).toMatchObject({ id: 'a', bootsMs: BOOTS_MS });
+    expect(a.last('self')).toMatchObject({ bootsMs: BOOTS_MS, powers: { boots: 1, cloud: 0 } });
+  });
+
   it('une mine ne se pose pas devant une porte (pouvoir conservé)', () => {
     const { lobby, a, advance } = duel();
     advance(DUEL_COUNTDOWN_MS);
@@ -255,7 +270,7 @@ describe('duel : salles', () => {
 });
 
 /** Raccourci de test : ajoute directement un pouvoir à la réserve d'un joueur (normalement gagné derrière une porte à pouvoir). */
-function give(lobby: Lobby, who: Peer, power: 'turbo' | 'shield' | 'seal' | 'mine') {
+function give(lobby: Lobby, who: Peer, power: PowerId) {
   const room = [...lobby.rooms.values()][0] as unknown as { fighters: Map<string, { powers: Record<string, number> }> };
   room.fighters.get(who.id)!.powers[power]++;
 }

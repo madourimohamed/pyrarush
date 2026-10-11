@@ -49,11 +49,13 @@ export type ServerMessage =
   | { t: 'floor'; id: string; floor: number }
   | { t: 'finish'; winner: string; reason: 'summit' | 'forfeit'; results: DuelResult[] }
   /** État de référence du destinataire après ses actions (ou un coup reçu). Durées restantes en ms. */
-  | { t: 'self'; seq: number; floor: number; shield: boolean; powers: PowerReserve; turboMs: number; immuneMs: number }
+  | { t: 'self'; seq: number; floor: number; shield: boolean; powers: PowerReserve; turboMs: number; bootsMs: number; immuneMs: number }
   /** Pouvoir trouvé derrière une porte vide (les emplacements restent secrets, connus du serveur seul). */
   | { t: 'gain'; power: PowerId; doorId: string }
-  /** Ce que l'on voit d'un joueur : bouclier, turbo, immunité (durées restantes en ms). */
-  | { t: 'state'; id: string; shield: boolean; turboMs: number; immuneMs: number }
+  /** Ce que l'on voit d'un joueur : bouclier, turbo, bottes, immunité (durées restantes en ms). */
+  | { t: 'state'; id: string; shield: boolean; turboMs: number; bootsMs: number; immuneMs: number }
+  /** Nuage de confusion envoyé par `from` sur le destinataire, pendant `ms`. */
+  | { t: 'cloud'; from: string; ms: number }
   | { t: 'seal'; doorId: string; owner: string; ms: number }
   | { t: 'mine'; id: number; owner: string; p: Vec3Tuple }
   | { t: 'mineGone'; id: number }

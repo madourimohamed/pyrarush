@@ -35,6 +35,8 @@ export class CharacterBody {
   jumped = false;
   /** Multiplicateur de vitesse au sol (Turbo du duel) ; le saut ne change pas. */
   speedScale = 1;
+  /** Multiplicateur de l'impulsion du saut (Bottes rebondissantes du duel). */
+  jumpScale = 1;
   private coyote = 0;
   private jumpBuffer = 0;
 
@@ -65,7 +67,7 @@ export class CharacterBody {
     this.coyote = this.grounded ? COYOTE_TIME : this.coyote - dt;
     this.jumpBuffer = intent.jumpPressed ? JUMP_BUFFER : this.jumpBuffer - dt;
     if (this.jumpBuffer > 0 && this.coyote > 0) {
-      this.vel.y = JUMP_SPEED;
+      this.vel.y = JUMP_SPEED * this.jumpScale;
       this.jumpBuffer = 0;
       this.coyote = 0;
       this.jumped = true;

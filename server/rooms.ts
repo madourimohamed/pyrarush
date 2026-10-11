@@ -1,4 +1,6 @@
 import {
+  BOOTS_MS,
+  CLOUD_MS,
   emptyReserve,
   Game,
   IMMUNITY_MS,
@@ -60,6 +62,7 @@ type RoomState = 'waiting' | 'countdown' | 'racing' | 'finished';
 interface Fighter {
   powers: PowerReserve;
   turboUntil: number;
+  bootsUntil: number;
   immuneUntil: number;
   /** Dernière position reçue (pieds), pour les mines. */
   pos: Vec3 | null;
@@ -181,7 +184,7 @@ export class Room {
     this.fighters.clear();
     for (const peer of this.peers) {
       this.game.addPlayer(peer.id);
-      this.fighters.set(peer.id, { powers: emptyReserve(), turboUntil: 0, immuneUntil: 0, pos: null, seq: 0 });
+      this.fighters.set(peer.id, { powers: emptyReserve(), turboUntil: 0, bootsUntil: 0, immuneUntil: 0, pos: null, seq: 0 });
     }
     this.state = 'countdown';
     this.startAt = this.clock.now() + DUEL_COUNTDOWN_MS;
@@ -206,6 +209,17 @@ export class Room {
         fighter.turboUntil = now + TURBO_MS;
         this.broadcastState(peer);
         return true;
+      case 'boots':
+        if (fighter.bootsUntil > now) return false;
+        fighter.bootsUntil = now + BOOTS_MS;
+        this.broadcastState(peer);
+        return true;
+      case 'cloud': {
+        const target = this.peers.find((p) => p !== peer);
+        if (!target) return false;
+        target.send({ t: 'cloud', from: peer.id, ms: CLOUD_MS });
+        return true;
+      }
       case 'shield':
         if (game.useBonus(peer.id, 'shield', now).length === 0) return false;
         this.broadcastState(peer);
@@ -322,6 +336,7 @@ export class Room {
       shield: player.shield,
       powers: { ...fighter.powers },
       turboMs: Math.max(0, fighter.turboUntil - now),
+      bootsMs: Math.max(0, fighter.bootsUntil - now),
       immuneMs: Math.max(0, fighter.immuneUntil - now),
     });
   }
@@ -331,7 +346,14 @@ export class Room {
     const player = this.game?.players.get(peer.id);
     if (!fighter || !player) return;
     const now = this.raceTime();
-    this.broadcast({ t: 'state', id: peer.id, shield: player.shield, turboMs: Math.max(0, fighter.turboUntil - now), immuneMs: Math.max(0, fighter.immuneUntil - now) });
+    this.broadcast({
+      t: 'state',
+      id: peer.id,
+      shield: player.shield,
+      turboMs: Math.max(0, fighter.turboUntil - now),
+      bootsMs: Math.max(0, fighter.bootsUntil - now),
+      immuneMs: Math.max(0, fighter.immuneUntil - now),
+    });
   }
 
   private removeMine(id: number, notify = true): void {

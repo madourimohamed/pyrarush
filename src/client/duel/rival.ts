@@ -21,6 +21,7 @@ export class Rival {
   private readonly trail: Trail;
   /** Turbo et immunité restants (s), d'après le serveur. */
   private turbo = 0;
+  private boots = 0;
   private immune = 0;
   private time = 0;
 
@@ -45,18 +46,21 @@ export class Rival {
     }
   }
 
-  /** Ce qu'on voit de l'adversaire : bouclier, turbo, immunité (durées en ms). */
-  setState(shield: boolean, turboMs: number, immuneMs: number): void {
+  /** Ce qu'on voit de l'adversaire : bouclier, turbo, bottes, immunité (durées en ms). */
+  setState(shield: boolean, turboMs: number, bootsMs: number, immuneMs: number): void {
     this.bubble.visible = shield;
     this.turbo = turboMs / 1000;
+    this.boots = bootsMs / 1000;
     this.immune = immuneMs / 1000;
   }
 
   update(dt: number, zoom: number, camera: THREE.Camera): void {
     this.turbo = Math.max(0, this.turbo - dt);
+    this.boots = Math.max(0, this.boots - dt);
     this.immune = Math.max(0, this.immune - dt);
     this.time += dt;
-    this.trail.update(dt, this.character.root.position, this.seen && this.turbo > 0, camera);
+    const airborne = Math.abs(this.velocity.y) > 1.5;
+    this.trail.update(dt, this.character.root.position, this.seen && (this.turbo > 0 || (this.boots > 0 && airborne)), camera);
     if (!this.seen) return;
     this.character.body.visible = this.immune <= 0 || this.time % 0.2 < 0.12;
     if (this.bubble.visible) this.bubble.scale.setScalar(1 + Math.sin(this.time * 5.5) * 0.04);
