@@ -19,6 +19,8 @@ const ICONS = {
   check: stroke('<circle cx="12" cy="12" r="9" fill="currentColor" stroke="none" opacity="0.9"/><path d="M8 12.5l2.8 2.8L16.5 9.5" stroke="#1a1208"/>'),
   sound: stroke('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>'),
   mute: stroke('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>'),
+  expand: stroke('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'),
+  shrink: stroke('<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>'),
   zoom: stroke('<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>'),
   pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.2" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1.2" fill="currentColor"/></svg>',
   up: stroke('<path d="M12 19V5M5.5 11.5L12 5l6.5 6.5"/>'),

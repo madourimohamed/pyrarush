@@ -11,6 +11,7 @@ import { progress, storage } from './storage';
 import { loadLevelThumbnails, renderPortrait } from './thumbnails';
 import { formatTime, Hud } from './ui/hud';
 import { applyIcons } from './ui/icons';
+import { enterFullscreen, setupFullscreen } from './ui/fullscreen';
 import { renderLevelCards, renderLevelInfo, renderRecords, showThumbnail, type MenuState } from './ui/menu';
 import { preloadComponents } from './scene/components';
 import { installDebugApi } from './debug/api';
@@ -22,6 +23,7 @@ const params = new URLSearchParams(location.search);
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 document.body.classList.toggle('touch', isTouch);
 applyIcons();
+setupFullscreen(isTouch, [$('btn-fullscreen'), $('btn-hud-fullscreen')]);
 
 // ---------- Rendu, commandes, son ----------
 const lowQuality = isTouch;
@@ -306,7 +308,11 @@ function backToMenu(): void {
 }
 
 // ---------- Boutons et raccourcis ----------
-$('btn-play').addEventListener('click', () => startGame(Number(params.get('seed')) || randomSeed()));
+$('btn-play').addEventListener('click', () => {
+  // Sur mobile, toucher « Jouer » passe en plein écran (geste utilisateur requis par les navigateurs).
+  if (isTouch) void enterFullscreen();
+  void startGame(Number(params.get('seed')) || randomSeed());
+});
 $('btn-pause').addEventListener('click', pause);
 $('btn-resume').addEventListener('click', resume);
 $('btn-restart').addEventListener('click', () => session && startGame(session.seed, playing));

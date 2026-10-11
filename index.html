@@ -6,6 +6,11 @@
     <meta name="theme-color" content="#f4a582" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PyraRush" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
     <title>PyraRush</title>
     <link rel="stylesheet" href="/src/client/style.css" />
   </head>
@@ -29,6 +34,7 @@
       <div class="hud-right">
         <div class="pill"><span data-icon="clock"></span><span id="timer">0:00.0</span></div>
         <div class="pill"><span data-icon="floors"></span><span id="floor-label">1 / 6</span></div>
+        <button id="btn-hud-fullscreen" class="pill round fullscreen-only" aria-label="Plein écran"><span data-icon="expand" class="ico-enter"></span><span data-icon="shrink" class="ico-exit"></span></button>
         <button id="btn-sound" class="pill round" aria-label="Couper ou remettre le son"><span data-icon="sound" class="ico-on"></span><span data-icon="mute" class="ico-off"></span></button>
         <button id="btn-zoom" class="pill" aria-label="Changer le zoom"><span data-icon="zoom"></span><span id="zoom-label">Proche</span></button>
         <button id="btn-pause" class="pill round" aria-label="Pause"><span data-icon="pause"></span></button>
@@ -43,6 +49,7 @@
     <!-- Accueil -->
     <div id="screen-menu" class="screen show">
       <div class="topbar">
+        <button id="btn-fullscreen" class="icon-btn glass fullscreen-only" aria-label="Plein écran"><span data-icon="expand" class="ico-enter"></span><span data-icon="shrink" class="ico-exit"></span></button>
         <button id="btn-settings" class="icon-btn glass" aria-label="Réglages"><span data-icon="gear"></span></button>
         <button id="btn-records" class="icon-btn glass" aria-label="Records"><span data-icon="chart"></span></button>
         <div class="profile glass">
@@ -191,6 +198,7 @@
       <div class="card">
         <div class="rotate-icon">📱↻</div>
         <p>Tourne ton téléphone en mode paysage pour plus de confort.</p>
+        <p class="ios-tip">Sur iPhone : touche <b>Partager</b> puis <b>Sur l'écran d'accueil</b> pour jouer en plein écran, sans la barre de Safari.</p>
         <button id="btn-rotate-ok">Continuer quand même</button>
       </div>
     </div>

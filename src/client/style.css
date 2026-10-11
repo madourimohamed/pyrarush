@@ -486,6 +486,37 @@ button:active:not(:disabled) {
   z-index: 2;
 }
 
+.fullscreen-only {
+  display: none;
+}
+
+body.can-fullscreen .fullscreen-only {
+  display: grid;
+}
+
+#btn-fullscreen .ico-exit,
+body.is-fullscreen #btn-fullscreen .ico-enter,
+body.is-fullscreen #btn-hud-fullscreen .ico-enter {
+  display: none;
+}
+
+body.is-fullscreen #btn-fullscreen .ico-exit,
+body.is-fullscreen #btn-hud-fullscreen .ico-exit {
+  display: inline-flex;
+}
+
+#btn-hud-fullscreen .ico-exit {
+  display: none;
+}
+
+.hud-right .fullscreen-only {
+  display: none;
+}
+
+body.can-fullscreen .hud-right .fullscreen-only {
+  display: inline-flex;
+}
+
 .icon-btn {
   width: 52px;
   height: 52px;
@@ -802,8 +833,10 @@ button:active:not(:disabled) {
 }
 
 /* Fiche du niveau sélectionné */
+/* Fixée à l'écran : le bouton Jouer reste toujours visible, même si le menu défile. */
 .level-info {
-  position: absolute;
+  position: fixed;
+  z-index: 3;
   right: calc(18px + var(--safe-r));
   bottom: calc(18px + var(--safe-b));
   width: min(340px, 34vw);
@@ -1089,6 +1122,16 @@ button:active:not(:disabled) {
   color: var(--ink-soft);
 }
 
+.ios-tip {
+  display: none;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+body.ios .ios-tip {
+  display: block;
+}
+
 .rotate-icon {
   font-size: 44px;
 }
@@ -1103,10 +1146,12 @@ button:active:not(:disabled) {
   }
 }
 
-@media (max-width: 760px) {
+/* Téléphone en portrait : une colonne, et une barre « Jouer » fixée en bas. */
+@media (max-width: 760px) and (orientation: portrait) {
   #screen-menu {
     flex-direction: column;
     padding-left: 16px;
+    padding-bottom: calc(120px + var(--safe-b));
     background: rgba(25, 12, 4, 0.5);
   }
   .menu {
@@ -1114,21 +1159,51 @@ button:active:not(:disabled) {
     margin-top: 64px;
   }
   .level-info {
-    position: static;
-    width: 100%;
-    margin-top: 10px;
+    left: calc(12px + var(--safe-l));
+    right: calc(12px + var(--safe-r));
+    bottom: calc(12px + var(--safe-b));
+    width: auto;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 2px 12px;
+    padding: 12px 14px;
+  }
+  .level-info .eyebrow {
+    grid-column: 1;
+  }
+  .level-info h3 {
+    grid-column: 1;
+    font-size: 18px;
+  }
+  .level-info p,
+  .level-info .checklist {
+    display: none;
+  }
+  .level-info .play-btn {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    margin: 0;
+    padding: 12px 22px;
+    font-size: 20px;
   }
   #level-list {
     grid-template-columns: repeat(2, 1fr);
     max-height: none;
+  }
+  .card-text {
+    padding-top: 34px;
   }
   .menu-actions button {
     font-size: 13px;
   }
 }
 
-/* Téléphone en paysage : accueil compact, fiche du niveau réduite. */
+/* Téléphone en paysage : accueil compact à gauche (défilant), fiche du niveau fixée à droite. */
 @media (max-height: 560px) {
+  #screen-menu {
+    padding-top: calc(10px + var(--safe-t));
+  }
   .logo {
     font-size: 40px;
   }
@@ -1152,11 +1227,18 @@ button:active:not(:disabled) {
   .level-card {
     aspect-ratio: 16 / 9;
   }
+  .level-card .level-num,
+  .badge.new {
+    display: none;
+  }
   .level-name {
     font-size: 13px;
   }
   .menu {
-    width: min(500px, 60vw);
+    width: min(500px, 58vw);
+  }
+  #level-list {
+    grid-template-columns: repeat(3, 1fr);
   }
   .menu-actions button {
     padding: 8px;
