@@ -6,6 +6,8 @@ export default defineLevel({
   tagline: 'Nouveau : les téléporteurs piégés et la porte ±3.',
   duration: '4–9 min',
   highlights: ['Grimpe sous la neige', 'Évite les téléporteurs piégés', 'Ose la porte ±3', 'Atteins le sommet gelé !'],
+  // Étoiles : sommet atteint ; moins de 5 min 30 s ; au plus 2 chutes. À ajuster après les tests.
+  goals: { time: 330, maxFalls: 2 },
   rules: {
     floors: 8,
     maxFloorsLost: 3,

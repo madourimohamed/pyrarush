@@ -6,6 +6,8 @@ export default defineLevel({
   tagline: 'Nouveau : le gant géant fait perdre 2 étages.',
   duration: '3–6 min',
   highlights: ['Explore une oasis luxuriante', 'Méfie-toi du gant géant', 'Tente la porte mystère', "Atteins le sommet de l'oasis !"],
+  // Étoiles : sommet atteint ; moins de 3 min 30 s ; au plus 1 chute. À ajuster après les tests.
+  goals: { time: 210, maxFalls: 1 },
   rules: {
     floors: 6,
     maxFloorsLost: 2,

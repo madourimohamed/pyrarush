@@ -31,6 +31,15 @@ export const progress = {
     const v = Number(storage.get(`best:${level.config.id}`));
     return Number.isFinite(v) && v > 0 ? v : null;
   },
+  /** Meilleur nombre d'étoiles obtenu (0 si jamais terminé). */
+  stars(level: Level): number {
+    return Math.max(0, Math.min(3, Number(storage.get(`stars:${level.config.id}`) ?? 0) || 0));
+  },
+  recordStars(level: Level, stars: number): boolean {
+    const improved = stars > this.stars(level);
+    if (improved) storage.set(`stars:${level.config.id}`, String(stars));
+    return improved;
+  },
   /** Enregistre un temps ; renvoie true si c'est un nouveau record (et qu'il y en avait un avant). */
   recordTime(level: Level, ms: number): { isRecord: boolean; hadPrevious: boolean } {
     const previous = this.best(level);

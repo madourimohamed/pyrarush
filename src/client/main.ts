@@ -1,5 +1,5 @@
 import '@fontsource-variable/fredoka';
-import { randomSeed, type HintMode, type Level, type PyramidConfig } from '../core';
+import { randomSeed, starsFor, type HintMode, type Level, type PyramidConfig } from '../core';
 import { levels } from '../levels';
 import { AudioEngine } from './audio/audio';
 import { ZOOM_LABELS, type ZoomLevel } from './camera';
@@ -9,10 +9,11 @@ import { hex } from './scene/themes';
 import { GameSession, type SessionResult } from './session';
 import { progress, storage } from './storage';
 import { loadLevelThumbnails, renderPortrait } from './thumbnails';
-import { formatTime, Hud } from './ui/hud';
+import { Hud } from './ui/hud';
 import { applyIcons } from './ui/icons';
 import { enterFullscreen, setupFullscreen } from './ui/fullscreen';
 import { MoveTutorial } from './ui/tutorial';
+import { renderVictory } from './ui/victory';
 import { renderLevelCards, renderLevelInfo, renderRecords, showThumbnail, type MenuState } from './ui/menu';
 import { preloadComponents } from './scene/components';
 import { installDebugApi } from './debug/api';
@@ -44,7 +45,7 @@ let unlocked = progress.unlocked(levels.length, Number(params.get('debloquer') ?
 let selected: Level = levels[Math.min(unlocked, Number(storage.get('level') ?? unlocked) || 1) - 1];
 let playing: Level = selected;
 const thumbnails = new Map<number, string>();
-const menuState = (): MenuState => ({ levels, selected, unlocked, best: (l) => progress.best(l), thumbnails });
+const menuState = (): MenuState => ({ levels, selected, unlocked, best: (l) => progress.best(l), stars: (l) => progress.stars(l), thumbnails });
 
 // ---------- Options (écran Réglages) ----------
 function bindToggle(id: string, key: string, apply: (on: boolean) => void): HTMLInputElement {
@@ -268,25 +269,31 @@ async function startGame(seed: number, level: Level = selected): Promise<void> {
 
 function onVictory(result: SessionResult): void {
   const { isRecord, hadPrevious } = progress.recordTime(playing, result.time);
-  $('v-title').textContent = `Niveau ${playing.number} terminé !`;
-  $('v-time').textContent = formatTime(result.time);
-  $('v-record').classList.toggle('show', isRecord && hadPrevious);
-  $('v-falls').textContent = String(result.falls);
-  $('v-doors').textContent = String(result.doorsTested);
-  $('v-seed').textContent = String(result.seed);
+  const stars = starsFor(playing.goals, result.time, result.falls);
+  progress.recordStars(playing, stars.stars);
 
+  // Une seule étoile (terminer) suffit pour débloquer la suite.
   const next = levels[playing.number];
   const justUnlocked = next !== undefined && next.number > unlocked;
   if (justUnlocked) {
     unlocked = next.number;
     progress.unlock(unlocked);
-    setTimeout(() => audio.play('unlock'), 600);
     refreshThumbnails();
   }
-  $('v-unlock').classList.toggle('show', justUnlocked);
-  if (next) $('v-unlock').innerHTML = `🔓 Nouveau niveau débloqué :<br /><b>Niveau ${next.number} · ${next.name}</b>`;
-  $('btn-v-next').style.display = next && next.number <= unlocked ? '' : 'none';
-  $('v-final').classList.toggle('show', !next);
+  renderVictory({
+    level: playing,
+    time: result.time,
+    falls: result.falls,
+    doorsTested: result.doorsTested,
+    seed: result.seed,
+    result: stars,
+    newRecord: isRecord && hadPrevious,
+    next,
+    nextThumbnail: next ? thumbnails.get(next.number) : undefined,
+    justUnlocked,
+    onStar: (i) => audio.play(`star${i}`),
+  });
+  if (justUnlocked) setTimeout(() => audio.play('unlock'), 1900);
   renderMenu();
   show('screen-victory');
 }

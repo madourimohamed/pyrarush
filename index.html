@@ -187,13 +187,22 @@
     <div id="screen-victory" class="screen">
       <div class="card">
         <h2 id="v-title">Sommet atteint !</h2>
+        <div class="stars" id="v-stars"><span data-icon="star"></span><span data-icon="star"></span><span data-icon="star"></span></div>
+        <ul class="goals" id="v-goals"></ul>
         <div class="big-time" id="v-time">0:00.0</div>
         <div id="v-record" class="record">Nouveau record !</div>
         <div class="stats">
           <div><span id="v-falls">0</span><small>chutes</small></div>
           <div><span id="v-doors">0</span><small>portes testées</small></div>
         </div>
-        <div id="v-unlock" class="unlock"></div>
+        <div id="v-next" class="next-world">
+          <img id="v-next-img" alt="" />
+          <div>
+            <small id="v-next-label">Prochain univers</small>
+            <b id="v-next-name"></b>
+            <span id="v-next-tagline"></span>
+          </div>
+        </div>
         <div id="v-final" class="unlock">🏆 Tu as terminé tous les niveaux !</div>
         <p class="seed">Graine <span id="v-seed"></span></p>
         <button id="btn-v-next" class="primary">Niveau suivant →</button>

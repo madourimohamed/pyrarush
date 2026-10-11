@@ -6,6 +6,8 @@ export default defineLevel({
   tagline: '8 étages. Nouveau : les téléporteurs (+2) pour revenir dans la course.',
   duration: '3–8 min',
   highlights: ['8 étages sous un ciel rose', 'Utilise les téléporteurs', "Gants géants : jusqu'à −3", 'Atteins le sommet au crépuscule !'],
+  // Étoiles : sommet atteint ; moins de 5 min 00 s ; au plus 2 chutes. À ajuster après les tests.
+  goals: { time: 300, maxFalls: 2 },
   rules: {
     floors: 8,
     maxFloorsLost: 3,

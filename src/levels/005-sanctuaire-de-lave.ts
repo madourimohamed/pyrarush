@@ -7,6 +7,8 @@ export default defineLevel({
   tagline: '10 étages. Les pièges brûlent : jusqu’à −4 étages.',
   duration: '5–10 min',
   highlights: ['10 étages brûlants', "Pièges jusqu'à −4", 'Téléporteurs +3', "Survis jusqu'au sommet !"],
+  // Étoiles : sommet atteint ; moins de 8 min 00 s ; au plus 3 chutes. À ajuster après les tests.
+  goals: { time: 480, maxFalls: 3 },
   rules: {
     floors: 10,
     maxFloorsLost: 4,

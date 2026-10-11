@@ -6,6 +6,8 @@ export default defineLevel({
   tagline: 'Passages, murs et gants de boxe : apprends les bases.',
   duration: '2–5 min',
   highlights: ['Découvre les bases', 'Explore les passages', 'Évite les gants de boxe', 'Atteins le sommet !'],
+  // Étoiles : sommet atteint ; moins de 2 min 30 s ; au plus 1 chute. À ajuster après les tests.
+  goals: { time: 150, maxFalls: 1 },
   rules: {
     floors: 6,
     // Temple compact (maquette) : 4 portes par face en bas, 2 en haut (16, 16, 12, 12, 8, 8 portes).

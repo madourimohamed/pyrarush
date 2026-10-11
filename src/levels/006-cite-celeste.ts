@@ -7,6 +7,8 @@ export default defineLevel({
   tagline: 'Le défi ultime, sous les étoiles : −5, +4, paris ±3.',
   duration: '6–12 min',
   highlights: ['Le défi ultime', "Pièges jusqu'à −5", 'Paris ±3 et téléporteurs +4', 'Atteins la cité des étoiles !'],
+  // Étoiles : sommet atteint ; moins de 9 min 00 s ; au plus 3 chutes. À ajuster après les tests.
+  goals: { time: 540, maxFalls: 3 },
   rules: {
     floors: 10,
     maxFloorsLost: 5,

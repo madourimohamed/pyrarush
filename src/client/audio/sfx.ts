@@ -66,6 +66,10 @@ export const SFX = {
   unlock: (ctx, out, t) => {
     [79, 84, 88, 91, 96].forEach((n, i) => tone(ctx, out, t + i * 0.05, midiToFreq(n), 0.5, { type: 'sine', gain: 0.1 }));
   },
+  /** Étoiles de la victoire : trois carillons de plus en plus aigus. */
+  star1: (ctx, out, t) => [84, 91].forEach((n, i) => tone(ctx, out, t + i * 0.06, midiToFreq(n), 0.5, { type: 'triangle', gain: 0.12 })),
+  star2: (ctx, out, t) => [88, 95].forEach((n, i) => tone(ctx, out, t + i * 0.06, midiToFreq(n), 0.5, { type: 'triangle', gain: 0.12 })),
+  star3: (ctx, out, t) => [91, 98, 103].forEach((n, i) => tone(ctx, out, t + i * 0.06, midiToFreq(n), 0.7, { type: 'triangle', gain: 0.13 })),
   click: (ctx, out, t) => tone(ctx, out, t, 880, 0.06, { type: 'triangle', gain: 0.08 }),
 } satisfies Record<string, Recipe>;
 

@@ -1235,6 +1235,127 @@ body.can-fullscreen .hud-right .fullscreen-only {
   color: var(--ink-soft);
 }
 
+.stars {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.stars .icon {
+  width: 52px;
+  height: 52px;
+  color: rgba(255, 255, 255, 0.18);
+  transform: scale(0.8);
+  transition: color 0.2s, transform 0.35s cubic-bezier(0.3, 1.8, 0.6, 1), filter 0.3s;
+}
+
+.stars .icon:nth-child(2) {
+  transform: scale(0.95) translateY(-8px);
+}
+
+.stars .icon.on {
+  color: var(--gold);
+  transform: scale(1.1);
+  filter: drop-shadow(0 0 12px rgba(255, 207, 90, 0.8));
+}
+
+.stars .icon:nth-child(2).on {
+  transform: scale(1.25) translateY(-8px);
+}
+
+.goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  font-size: 14.5px;
+}
+
+.goals li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.goals svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.goals .ok svg {
+  color: var(--good);
+}
+
+.goals .ko {
+  color: var(--ink-soft);
+}
+
+.goals .ko svg {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.next-world {
+  display: none;
+  grid-template-columns: 96px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--glass-border);
+  text-align: left;
+}
+
+.next-world.show {
+  display: grid;
+  animation: rise 0.5s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.next-world img {
+  width: 96px;
+  height: 64px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--sky, rgba(255, 255, 255, 0.1));
+}
+
+.next-world small {
+  display: block;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.next-world b {
+  display: block;
+  font-size: 17px;
+}
+
+.next-world span {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.level-stars {
+  display: flex;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.level-stars svg {
+  width: 14px;
+  height: 14px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.level-stars svg.on {
+  color: var(--gold);
+  filter: drop-shadow(0 0 3px rgba(255, 207, 90, 0.7));
+}
+
 .unlock {
   display: none;
   padding: 10px;

@@ -15,6 +15,8 @@ const ICONS = {
   clock: stroke('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
   floors: stroke('<path d="M12 3l9 16H3z"/><path d="M7 12h10M5.3 15.5h13.4"/>'),
   lock: stroke('<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>'),
+  star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.9 6 6.6.8-4.9 4.5 1.3 6.5L12 17.2l-5.9 3.2 1.3-6.5L2.5 9.4l6.6-.8z" fill="currentColor"/></svg>',
+  cross: stroke('<circle cx="12" cy="12" r="9" fill="currentColor" stroke="none" opacity="0.85"/><path d="M9 9l6 6M15 9l-6 6" stroke="#1a1208"/>'),
   crown: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z" fill="currentColor"/></svg>',
   check: stroke('<circle cx="12" cy="12" r="9" fill="currentColor" stroke="none" opacity="0.9"/><path d="M8 12.5l2.8 2.8L16.5 9.5" stroke="#1a1208"/>'),
   sound: stroke('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>'),

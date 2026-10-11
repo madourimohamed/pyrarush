@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defineTheme, editComponents, terraceDistance, doorTangents, holeTangents, DOOR_WIDTH, getMechanic, Game, generateLayout, walkTerrace, doorTangent, terraceMidHalf, buildColliders, landingPoint, holeTangent, HOLE_WIDTH, sideFrame, doorsPerSide } from './index';
+import { starsFor, defineTheme, editComponents, terraceDistance, doorTangents, holeTangents, DOOR_WIDTH, getMechanic, Game, generateLayout, walkTerrace, doorTangent, terraceMidHalf, buildColliders, landingPoint, holeTangent, HOLE_WIDTH, sideFrame, doorsPerSide } from './index';
 import { levelFiles, levels, levelConfigs } from '../levels';
 
 const pyramid1 = levels[0].config;
@@ -289,6 +289,23 @@ describe('trace des portes essayées', () => {
     expect(terraceDistance(pyramid1, 2, { side: 0, tangent: 0 }, { side: 0, tangent: 2 }, 1)).toBeCloseTo(2);
     expect(terraceDistance(pyramid1, 2, { side: 0, tangent: 0 }, { side: 0, tangent: 2 }, -1)).toBeCloseTo(8 * r - 2);
     expect(terraceDistance(pyramid1, 2, { side: 0, tangent: r }, { side: 1, tangent: -r }, 1)).toBeCloseTo(0);
+  });
+});
+
+describe('étoiles', () => {
+  it('1 étoile pour terminer, +1 pour le temps, +1 pour peu de chutes', () => {
+    const goals = { time: 150, maxFalls: 1 };
+    expect(starsFor(goals, 200_000, 4).stars).toBe(1);
+    expect(starsFor(goals, 120_000, 4)).toEqual({ stars: 2, fast: true, careful: false });
+    expect(starsFor(goals, 200_000, 1)).toEqual({ stars: 2, fast: false, careful: true });
+    expect(starsFor(goals, 150_000, 0).stars).toBe(3);
+  });
+
+  it('chaque niveau a des objectifs cohérents', () => {
+    for (const level of levels) {
+      expect(level.goals.time).toBeGreaterThan(30);
+      expect(level.goals.maxFalls).toBeGreaterThanOrEqual(0);
+    }
   });
 });
 

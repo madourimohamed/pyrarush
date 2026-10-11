@@ -15,8 +15,31 @@ export interface Level {
   duration: string;
   /** Points forts listés sur la fiche du niveau. */
   highlights: string[];
+  /** Objectifs des étoiles. */
+  goals: LevelGoals;
   theme: Theme;
   config: PyramidConfig;
+}
+
+/**
+ * Trois étoiles : 1 pour atteindre le sommet, 1 pour un temps inférieur à `time` (secondes),
+ * 1 pour au plus `maxFalls` chutes. Une seule étoile suffit pour débloquer le niveau suivant.
+ */
+export interface LevelGoals {
+  time: number;
+  maxFalls: number;
+}
+
+export interface StarResult {
+  stars: 1 | 2 | 3;
+  fast: boolean;
+  careful: boolean;
+}
+
+export function starsFor(goals: LevelGoals, timeMs: number, falls: number): StarResult {
+  const fast = timeMs <= goals.time * 1000;
+  const careful = falls <= goals.maxFalls;
+  return { stars: (1 + Number(fast) + Number(careful)) as 1 | 2 | 3, fast, careful };
 }
 
 /** Valeurs communes à tous les niveaux, surchargeables niveau par niveau. */
@@ -34,6 +57,7 @@ export interface LevelDefinition {
   tagline: string;
   duration: string;
   highlights: string[];
+  goals: LevelGoals;
   rules: LevelRules;
   theme: Theme;
 }
@@ -51,12 +75,13 @@ export const band = (from: number, to: number, passages: number, mechanics: Floo
 
 /** Transforme la liste ordonnée des définitions en niveaux numérotés, prêts à jouer. */
 export function buildLevels(definitions: LevelDefinition[]): Level[] {
-  return definitions.map(({ name, tagline, duration, highlights, rules, theme }, i) => ({
+  return definitions.map(({ name, tagline, duration, highlights, goals, rules, theme }, i) => ({
     number: i + 1,
     name,
     tagline,
     duration,
     highlights,
+    goals,
     theme,
     config: { ...LEVEL_DEFAULTS, ...rules, id: `level-${i + 1}`, name },
   }));

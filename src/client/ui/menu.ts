@@ -10,14 +10,18 @@ export interface MenuState {
   selected: Level;
   unlocked: number;
   best(level: Level): number | null;
+  stars(level: Level): number;
   thumbnails: Map<number, string>;
 }
 
-/** Badge d'une carte : terminé (couronne), à découvrir (Nouveau), ou verrouillé. */
+/** Trois petites étoiles, allumées selon le meilleur résultat. */
+const starRow = (count: number) => `<span class="level-stars">${[1, 2, 3].map((i) => icon('star').replace('<svg', `<svg class="${i <= count ? 'on' : ''}"`)).join('')}</span>`;
+
+/** Badge d'une carte : verrouillé, ou « Nouveau » tant qu'il n'est pas terminé (sinon ses étoiles s'affichent). */
 function badge(level: Level, state: MenuState): string {
   if (level.number > state.unlocked) return `<span class="badge lock">${icon('lock')}</span>`;
-  if (state.best(level) !== null) return `<span class="badge crown">${icon('crown')}</span>`;
-  return '<span class="badge new">Nouveau</span>';
+  if (state.stars(level) === 0) return '<span class="badge new">Nouveau</span>';
+  return '';
 }
 
 /** Cartes des niveaux : miniature 3D (ou dégradé du ciel en attendant), nom, étages, durée, badge. */
@@ -40,6 +44,7 @@ export function renderLevelCards(state: MenuState, onSelect: (level: Level) => v
       <span class="card-text">
         <span class="level-num">Niveau ${level.number}</span>
         <span class="level-name">${level.name}</span>
+        ${state.stars(level) > 0 ? starRow(state.stars(level)) : ''}
         <span class="level-meta">
           <span>${icon('floors')}${level.config.floors} étages</span>
           <span>${icon('clock')}${best ? formatTime(best) : level.duration}</span>
@@ -75,7 +80,7 @@ export function renderRecords(state: MenuState): void {
       return `<div class="record-row${locked ? ' locked' : ''}">
         <span class="record-num">${level.number}</span>
         <span class="record-name">${level.name}</span>
-        <span class="record-time">${locked ? icon('lock') : best ? `${icon('crown')}${formatTime(best)}` : '—'}</span>
+        <span class="record-time">${locked ? icon('lock') : best ? `${starRow(state.stars(level))}${formatTime(best)}` : '—'}</span>
       </div>`;
     })
     .join('');
