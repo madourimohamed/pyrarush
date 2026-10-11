@@ -1,0 +1,42 @@
+import { defineLevel, defineTheme, band } from '../core';
+
+export default defineLevel({
+  name: 'Le Crépuscule Pourpre',
+  tagline: '8 étages. Nouveau : les téléporteurs (+2) pour revenir dans la course.',
+  rules: {
+    floors: 8,
+    maxFloorsLost: 3,
+    maxFloorsGained: 2,
+    protectedTopFloors: 2,
+    bands: [
+      band(1, 2, 3, { smallTrap: 3, teleportUp: [0, 1] }, [0, 2]),
+      band(3, 4, 2, { smallTrap: 3, bigTrap: [1, 2], teleportUp: [0, 1], riskyDoor: 1 }, 2),
+      band(5, 6, 2, { smallTrap: 3, bigTrap: 2 }, [2, 3]),
+      band(7, 8, 1, { smallTrap: 3, bigTrap: 2 }, [2, 3]),
+    ],
+    limits: { teleportUp: 2, riskyDoor: 1 },
+    settings: { teleportUp: { min: 2, max: 2 }, riskyDoor: { amount: 2 } },
+  },
+  theme: defineTheme({
+    sky: { top: 0x24185a, mid: 0xc2408f, horizon: 0xff9a6b, sun: 0xffc2a0 },
+    sun: { color: 0xff9f8a, intensity: 2.7, dir: [-0.82, 0.24, 0.52] },
+    hemi: { sky: 0x8a6bd6, ground: 0xc2607a, intensity: 1.5 },
+    fog: { near: 150, far: 480 },
+    exposure: 1.0,
+    ground: { light: 0xd98a8a, dark: 0xa05a78 },
+    paving: '#d9a3a0',
+    border: 0x8a4a5e,
+    mountains: { color: 0x6a3468, shape: 'mesa' },
+    clouds: { color: 0xffb3c8, emissive: 0xff6aa0, intensity: 0.45 },
+    stone: ['#d99a8c', '#c98a84'],
+    top: '#f0c4b8',
+    trim: { color: 0xffcf7a, emissive: 0x5a2a00 },
+    door: { panel: 0x26306b, frame: 0x1a1030, glyph: [2.4, 0.9, 1.8] },
+    flame: [3.0, 0.9, 1.6],
+    particles: { color: [1.8, 0.9, 1.5], size: 0.35, count: 420, motion: 'float' },
+    pool: { color: 0x6a5ad6, emissive: 0x2a1a6a },
+    foliage: { trunk: 0x4a2a3a, leaf: 0x2f4a5a },
+    accent: ['#ff7ab0', '#8a5bff'],
+    music: { scale: [0, 3, 5, 7, 10], root: 57, tempo: 92, lead: 'square', drums: 'k...s...k.k.s...' },
+  }),
+});

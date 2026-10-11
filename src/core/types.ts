@@ -15,7 +15,6 @@ export interface FloorBand {
 export interface PyramidConfig {
   id: string;
   name: string;
-  difficulty: string;
   floors: number;
   /** Portes par face au dernier étage ; chaque étage inférieur en a une de plus par face. */
   doorsPerSideAtTop: number;

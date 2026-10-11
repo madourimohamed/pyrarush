@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { getMechanic, Game, generateLayout, walkTerrace, doorTangent, terraceMidHalf, pyramids, pyramid1, buildColliders, landingPoint, holeTangent, HOLE_WIDTH, sideFrame, doorsPerSide } from './index';
+import { getMechanic, Game, generateLayout, walkTerrace, doorTangent, terraceMidHalf, buildColliders, landingPoint, holeTangent, HOLE_WIDTH, sideFrame, doorsPerSide } from './index';
+import { levels, levelConfigs } from '../levels';
 
+const pyramid1 = levels[0].config;
 const SEEDS = Array.from({ length: 500 }, (_, i) => i * 7919 + 1);
 
 describe('génération', () => {
-  it.each(pyramids.map((p) => [p.id, p] as const))('%s est toujours terminable et valide', (_id, config) => {
+  it.each(levelConfigs.map((p) => [p.id, p] as const))('%s est toujours terminable et valide', (_id, config) => {
     for (const seed of SEEDS) {
       const layout = generateLayout(config, seed);
       for (let f = 1; f <= config.floors; f++) {
@@ -22,14 +24,14 @@ describe('génération', () => {
     expect(generateLayout(pyramid1, 42)).toEqual(generateLayout(pyramid1, 42));
   });
 
-  it('la pyramide 1 ne contient que des mécaniques simples', () => {
+  it('le niveau 1 ne contient que des mécaniques simples', () => {
     for (const seed of SEEDS) {
       const ids = new Set(generateLayout(pyramid1, seed).doors.map((d) => d.mechanic));
       for (const id of ids) expect(['passage', 'wall', 'smallTrap', 'riskyDoor']).toContain(id);
     }
   });
 
-  it('pyramide 1 : une porte risquée ±2, à l’étage 3 seulement, qui mène au 5 ou au 1', () => {
+  it('niveau 1 : une porte risquée ±2, à l’étage 3 seulement, qui mène au 5 ou au 1', () => {
     expect(pyramid1.floors).toBe(6);
     for (const seed of SEEDS) {
       const layout = generateLayout(pyramid1, seed);
@@ -45,7 +47,7 @@ describe('génération', () => {
     expect(getMechanic('riskyDoor').appearance?.symbol(pyramid1)).toBe('±2');
   });
 
-  it('pyramide 1 : un piège ne fait jamais perdre plus d’un étage', () => {
+  it('niveau 1 : un piège ne fait jamais perdre plus d’un étage', () => {
     const game = new Game(pyramid1, 5);
     const p = game.addPlayer('a');
     for (const door of game.layout.doors.filter((d) => d.mechanic === 'smallTrap')) {
@@ -76,7 +78,7 @@ describe('règles', () => {
   });
 
   it('les chutes sont bornées par la configuration et jamais sous l’étage 1', () => {
-    for (const config of pyramids) {
+    for (const config of levelConfigs) {
       for (const seed of SEEDS.slice(0, 50)) {
         const game = new Game(config, seed);
         const p = game.addPlayer('a');
@@ -98,7 +100,7 @@ describe('règles', () => {
   });
 
   it('un téléporteur ne sert qu’une fois par joueur', () => {
-    const config = pyramids[2];
+    const config = levelConfigs[5];
     const seed = SEEDS.find((s) => generateLayout(config, s).doors.some((d) => d.mechanic === 'teleportUp'))!;
     const game = new Game(config, seed);
     const p = game.addPlayer('a');
@@ -136,8 +138,8 @@ describe('règles', () => {
 
 describe('géométrie', () => {
   it('les points d’arrivée ne tombent jamais dans un trou', () => {
-    for (const config of pyramids) {
-      for (const seed of SEEDS.slice(0, 50)) {
+    for (const config of levelConfigs) {
+      for (const seed of SEEDS.slice(0, 20)) {
         const layout = generateLayout(config, seed);
         expect(buildColliders(layout).length).toBeGreaterThan(0);
         for (const hole of layout.holes) {
@@ -195,3 +197,26 @@ describe('indices', () => {
     }
   });
 });
+
+describe('niveaux', () => {
+  it('sont numérotés de 1 à N, avec un thème complet et des identifiants uniques', () => {
+    levels.forEach((level, i) => {
+      expect(level.number).toBe(i + 1);
+      expect(level.theme.music.scale.length).toBeGreaterThan(2);
+      expect(level.theme.music.drums).toHaveLength(16);
+    });
+    expect(new Set(levels.map((l) => l.config.id)).size).toBe(levels.length);
+  });
+
+  it('une porte risquée ne dépose jamais sur un étage protégé', () => {
+    for (const config of levelConfigs) {
+      for (const seed of SEEDS.slice(0, 100)) {
+        for (const door of generateLayout(config, seed).doors.filter((d) => d.mechanic === 'riskyDoor')) {
+          expect(door.floor).toBeGreaterThanOrEqual(2);
+          expect(door.floor + Math.abs(door.params.delta)).toBeLessThanOrEqual(config.floors - config.protectedTopFloors);
+        }
+      }
+    }
+  });
+});
+

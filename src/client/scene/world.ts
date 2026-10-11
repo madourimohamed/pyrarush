@@ -12,27 +12,21 @@ import {
   type Box,
   type Door,
   type Layout,
+  type Theme,
 } from '../../core';
-import { buildEnvironment, PALETTE, SUN_DIR, type Environment } from './environment';
+import { buildEnvironment, type Environment } from './environment';
+import { sunDirection } from './themes';
 import { symbolTexture, type Tweens } from './fx';
 import { BoxingGlove } from './props';
 import { applyWorldUVs, glowTexture, glyphTextures, stoneTexture, tileTexture } from './textures';
 
+/** Couleurs de gameplay : identiques dans tous les thèmes pour rester lisibles. */
 const COLORS = {
-  doorPanel: 0x16737a,
-  doorFrame: 0x2a1c14,
   gold: 0xf2c14e,
   hint: 0xffc93c,
   reveal: 0x3ce0ff,
   highlight: 0x7ff6ff,
-  paving: '#e9c48c',
-  stone: ['#e3b071', '#d9a465'],
-  top: '#f1d29c',
 };
-
-/** Couleurs « HDR » (> 1) : elles déclenchent la lueur (bloom). */
-const GLYPH_IDLE = new THREE.Color(1.6, 1.05, 0.45);
-const GLYPH_BRIGHT = new THREE.Color(3.2, 2.4, 1.1);
 
 export const HINT_COLORS = { chaud: 0xff3b1f, tiede: 0xffa21f, froid: 0x3d9bff } as const;
 
@@ -64,23 +58,29 @@ export class World {
   private readonly capstone: THREE.Mesh;
   private readonly flames: THREE.Mesh[] = [];
   private readonly glove = new BoxingGlove();
+  /** Couleurs « HDR » (> 1) des hiéroglyphes : elles déclenchent la lueur (bloom). */
+  private readonly glyphIdle: THREE.Color;
+  private readonly glyphBright: THREE.Color;
   private time = 0;
 
   constructor(
     readonly layout: Layout,
+    readonly theme: Theme,
     tweens: Tweens,
     lowQuality: boolean,
   ) {
     this.tweens = tweens;
+    this.glyphIdle = new THREE.Color(...theme.door.glyph);
+    this.glyphBright = this.glyphIdle.clone().multiplyScalar(2);
     const { config } = layout;
     this.colliders = buildColliders(layout);
     this.pyramidHalf = wallHalf(config, 1);
     this.groundHalf = terraceOuterHalf(config, 1);
     const height = config.floors * FLOOR_HEIGHT;
 
-    this.scene.add(new THREE.HemisphereLight(PALETTE.hemiSky, PALETTE.hemiGround, 1.5));
-    const sun = new THREE.DirectionalLight(PALETTE.sunLight, 3.2);
-    sun.position.copy(SUN_DIR).multiplyScalar(this.groundHalf * 2.2);
+    this.scene.add(new THREE.HemisphereLight(theme.hemi.sky, theme.hemi.ground, theme.hemi.intensity));
+    const sun = new THREE.DirectionalLight(theme.sun.color, theme.sun.intensity);
+    sun.position.copy(sunDirection(theme)).multiplyScalar(this.groundHalf * 2.2);
     sun.castShadow = true;
     sun.shadow.mapSize.setScalar(lowQuality ? 1024 : 2048);
     const s = this.groundHalf * 1.3;
@@ -89,7 +89,7 @@ export class World {
     sun.shadow.normalBias = 0.04;
     this.scene.add(sun);
 
-    this.environment = buildEnvironment(this.scene, this.groundHalf, height, layout.seed, lowQuality);
+    this.environment = buildEnvironment(this.scene, theme, this.groundHalf, height, layout.seed, lowQuality);
     this.buildPaving();
     this.buildBlocks();
     this.buildTrims();
@@ -102,7 +102,7 @@ export class World {
 
   private buildPaving(): void {
     const half = this.groundHalf;
-    const tiles = tileTexture(COLORS.paving, 3);
+    const tiles = tileTexture(this.theme.paving, 3);
     tiles.repeat.set((half * 2) / 3, (half * 2) / 3);
     const paving = new THREE.Mesh(
       new THREE.PlaneGeometry(half * 2, half * 2),
@@ -113,7 +113,7 @@ export class World {
     paving.receiveShadow = true;
     this.scene.add(paving);
 
-    const border = new THREE.MeshStandardMaterial({ color: 0xc28a52, roughness: 0.8 });
+    const border = new THREE.MeshStandardMaterial({ color: this.theme.border, roughness: 0.8 });
     const len = half * 2 + 1.2;
     for (let i = 0; i < 4; i++) {
       const wall = new THREE.Mesh(new THREE.BoxGeometry(len, 0.55, 0.6), border);
@@ -126,11 +126,11 @@ export class World {
   }
 
   private buildBlocks(): void {
-    const stone = COLORS.stone.map((c, i) => {
+    const stone = this.theme.stone.map((c, i) => {
       const map = stoneTexture(c, 11 + i);
       return new THREE.MeshStandardMaterial({ map, roughness: 0.92 });
     });
-    const top = new THREE.MeshStandardMaterial({ map: tileTexture(COLORS.top, 7), roughness: 0.9 });
+    const top = new THREE.MeshStandardMaterial({ map: tileTexture(this.theme.top, 7), roughness: 0.9 });
     for (const box of this.colliders) {
       if (box.kind !== 'block') continue;
       const size = box.max.map((v, i) => v - box.min[i]);
@@ -171,7 +171,7 @@ export class World {
     }
     const trims = new THREE.Mesh(
       mergeGeometries(parts),
-      new THREE.MeshStandardMaterial({ color: COLORS.gold, metalness: 0.5, roughness: 0.35, emissive: 0x5a3a00 }),
+      new THREE.MeshStandardMaterial({ color: this.theme.trim.color, metalness: 0.5, roughness: 0.35, emissive: this.theme.trim.emissive }),
     );
     this.scene.add(trims);
   }
@@ -192,11 +192,11 @@ export class World {
 
     const frame = new THREE.Mesh(
       new THREE.BoxGeometry(DOOR_WIDTH + 0.5, DOOR_HEIGHT + 0.3, 0.12),
-      new THREE.MeshStandardMaterial({ color: COLORS.doorFrame, roughness: 0.8 }),
+      new THREE.MeshStandardMaterial({ color: this.theme.door.frame, roughness: 0.8 }),
     );
     frame.position.set(0, 0.08, 0.0);
     group.add(frame);
-    const gold = new THREE.MeshStandardMaterial({ color: COLORS.gold, metalness: 0.55, roughness: 0.3, emissive: 0x4a3000 });
+    const gold = new THREE.MeshStandardMaterial({ color: this.theme.trim.color, metalness: 0.55, roughness: 0.3, emissive: this.theme.trim.emissive });
     const inner = new THREE.Mesh(new THREE.BoxGeometry(DOOR_WIDTH + 0.16, DOOR_HEIGHT + 0.1, 0.12), gold);
     inner.position.set(0, 0.03, 0.03);
     group.add(inner);
@@ -205,7 +205,7 @@ export class World {
     lintel.castShadow = true;
     group.add(lintel);
 
-    const baseColor = new THREE.Color(mechanic.appearance?.color ?? COLORS.doorPanel);
+    const baseColor = new THREE.Color(mechanic.appearance?.color ?? this.theme.door.panel);
     const material = new THREE.MeshStandardMaterial({ color: baseColor.clone(), roughness: 0.45, metalness: 0.15 });
     const panel = new THREE.Mesh(new THREE.BoxGeometry(DOOR_WIDTH, DOOR_HEIGHT, 0.16), material);
     panel.position.z = 0.06;
@@ -213,7 +213,7 @@ export class World {
 
     const glyph = new THREE.MeshBasicMaterial({
       map: mechanic.appearance ? symbolTexture(mechanic.appearance.symbol(config), '#ffffff') : glyphs[door.ring % glyphs.length],
-      color: mechanic.appearance ? new THREE.Color(0.35, 0.12, 0.02) : GLYPH_IDLE.clone(),
+      color: mechanic.appearance ? new THREE.Color(0.35, 0.12, 0.02) : this.glyphIdle.clone(),
       transparent: true,
       depthWrite: false,
     });
@@ -267,11 +267,12 @@ export class World {
     const bowls: THREE.BufferGeometry[] = [];
     const flameGeo = new THREE.ConeGeometry(0.28, 0.9, 7);
     flameGeo.translate(0, 0.45, 0);
-    const flameMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 1.3, 0.25) });
-    const coreMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.5, 2.8, 1.2) });
+    const flameColor = new THREE.Color(...this.theme.flame);
+    const flameMat = new THREE.MeshBasicMaterial({ color: flameColor });
+    const coreMat = new THREE.MeshBasicMaterial({ color: flameColor.clone().lerp(new THREE.Color(3.5, 3.2, 2.4), 0.6) });
     const halo = new THREE.SpriteMaterial({
       map: glowTexture(),
-      color: new THREE.Color(0.9, 0.4, 0.1),
+      color: flameColor.clone().multiplyScalar(0.28),
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
@@ -417,7 +418,7 @@ export class World {
         if (view.highlighted) m.emissive.set(COLORS.highlight).multiplyScalar(0.25 + 0.25 * pulse);
         else m.emissive.setScalar(0);
       }
-      if (!getMechanic(view.door.mechanic).appearance) view.glyph.color.copy(GLYPH_IDLE).lerp(GLYPH_BRIGHT, glyphBright);
+      if (!getMechanic(view.door.mechanic).appearance) view.glyph.color.copy(this.glyphIdle).lerp(this.glyphBright, glyphBright);
       if (view.marker.visible) {
         view.marker.position.y = DOOR_HEIGHT / 2 + 1 + Math.sin(this.time * 3 + view.door.ring) * 0.12;
         view.marker.rotation.y += dt * 2;

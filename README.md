@@ -2,7 +2,7 @@
 
 **Course en 3D au sommet d'une pyramide, jouable directement dans le navigateur, sur ordinateur comme sur smartphone.**
 
-Explore les portes de la pyramide pour découvrir les passages secrets, évite les pièges, mémorise ton chemin et atteins le sommet le plus vite possible.
+Explore les portes de la pyramide pour découvrir les passages secrets, évite les pièges, mémorise ton chemin et atteins le sommet le plus vite possible. Six niveaux à débloquer, chacun avec son décor, ses couleurs, sa musique et de nouveaux pièges.
 
 ![Menu de PyraRush](docs/screenshots/menu.png)
 
@@ -18,7 +18,8 @@ Explore les portes de la pyramide pour découvrir les passages secrets, évite l
 - [Scripts](#scripts)
 - [Paramètres d'URL](#paramètres-durl)
 - [Architecture](#architecture)
-- [Ajouter une mécanique ou une pyramide](#ajouter-une-mécanique-ou-une-pyramide)
+- [Ajouter un niveau](#ajouter-un-niveau)
+- [Ajouter une mécanique de porte](#ajouter-une-mécanique-de-porte)
 - [Tests](#tests)
 - [Choix techniques](#choix-techniques)
 - [Feuille de route](#feuille-de-route)
@@ -35,7 +36,10 @@ La pyramide est **à degrés** : chaque étage est une terrasse qui fait le tour
 | **Passage** | Tu montes d'un étage. Il s'illumine quelques secondes pour tous les joueurs. |
 | **Mur** | Rien ne se passe… mais un indice t'aide (voir ci-dessous). |
 | **Piège** | Un **gant de boxe** jaillit (« POW ! ») et t'envoie à l'étage du dessous. |
-| **Porte risquée ±2** | Dorée et reconnaissable : un pari, **+2 ou −2 étages**. Un seul essai par partie. |
+| **Porte risquée ±N** | Dorée et reconnaissable : un pari, **+N ou −N étages**. Un seul essai par partie. |
+| **Gant géant** | Gros piège : plusieurs étages perdus (niveaux avancés). |
+| **Téléporteur** | Fait monter de plusieurs étages : rare, pour revenir dans la course (niveaux avancés). |
+| **Téléporteur piégé** | Renvoie plusieurs étages plus bas (niveaux avancés). |
 
 **Les règles qui comptent :**
 
@@ -56,13 +60,22 @@ La pyramide est **à degrés** : chaque étage est une terrasse qui fait le tour
 |---|---|
 | ![Scarabée](docs/screenshots/scarabee.png) | ![Gant de boxe](docs/screenshots/gant-de-boxe.png) |
 
-### Pyramides
+### Niveaux
 
-| Pyramide | Étages | Statut | Contenu |
-|---|---|---|---|
-| 1 — Facile | 6 | **Jouable** | Passages, murs, petits pièges (−1), trous, une porte ±2 à l'étage 3 |
-| 2 — Intermédiaire | 8 | En test (`?pyramide=2`) | + gros pièges (jusqu'à −3), téléporteurs (+2) |
-| 3 — Difficile | 10 | En test (`?pyramide=3`) | + pièges jusqu'à −5, téléporteurs +3/+4, téléporteurs piégés, portes ±3 |
+Chaque niveau se débloque en terminant le précédent (progression enregistrée dans le navigateur). Chaque niveau a son **thème** (ciel, lumière, décor, pierres, portes, particules, musique, couleurs de l'interface) et apporte une nouveauté de jeu.
+
+| # | Niveau | Étages | Nouveauté | Ambiance |
+|---|---|---|---|---|
+| 1 | Le Temple des Sables | 6 | Passages, murs, gants de boxe, porte ±2 | Désert doré en fin d'après-midi, oasis |
+| 2 | L'Oasis Émeraude | 6 | Gant géant (−2) | Prairies vertes, ciel turquoise, flammes vertes |
+| 3 | Le Crépuscule Pourpre | 8 | Téléporteurs (+2) | Coucher de soleil rose et violet |
+| 4 | La Pyramide de Glace | 8 | Téléporteurs piégés, porte ±3 | Neige qui tombe, pierres de glace, sapins |
+| 5 | Le Sanctuaire de Lave | 10 | Pièges jusqu'à −4 | Volcans, lave lumineuse, braises |
+| 6 | La Cité Céleste | 10 | Le défi ultime : −5, +4, paris ±3 | Nuit étoilée, cristaux lumineux |
+
+### Son
+
+Musique et effets sonores sont **générés en direct** (Web Audio API) : aucun fichier audio. Chaque thème a sa musique (gamme, tempo, instrument, rythme). Les effets sont volontairement cartoon : ressort du gant de boxe, sifflet de chute, « wah-wah » de trombone quand on perd un pari, grésillement du scarabée, fanfare de victoire. Musique et sons se règlent séparément dans le menu ; le bouton 🔊 coupe tout en jeu.
 
 ### Caméra
 
@@ -148,7 +161,7 @@ Le dossier `dist/` est un site **100 % statique**. Il s'héberge gratuitement (G
 | Paramètre | Effet | Exemple |
 |---|---|---|
 | `seed` | Rejoue exactement la même pyramide (la graine est affichée en fin de partie) | `?seed=4242` |
-| `pyramide` | Déverrouille les pyramides avancées pour les tester | `?pyramide=3` |
+| `debloquer` | Débloque les niveaux jusqu'au numéro indiqué (pour tester) | `?debloquer=6` |
 | `indices` | Force le mode d'indice | `?indices=hotCold` (`scarab`, `hotCold`, `none`) |
 
 En développement, `window.__session()` donne accès à la partie en cours depuis la console.
@@ -157,12 +170,17 @@ En développement, `window.__session()` donne accès à la partie en cours depui
 
 ## Architecture
 
-Le projet sépare strictement **les règles du jeu** et **leur affichage**. Ainsi, le même moteur pourra servir en V2 à un joueur humain, à un robot ou à un serveur multijoueur.
+Le projet est organisé en **trois couches** :
+
+1. **`src/core/` — le socle.** Le cœur du jeu : moteur de règles, mécaniques des portes, génération des pyramides, géométrie, et la *forme* d'un niveau et d'un thème. TypeScript pur, sans 3D ni DOM : il sera réutilisé tel quel par les robots et le serveur (V2).
+2. **`src/levels/` — les niveaux.** Un fichier par niveau, qui ne contient **que des données** : règles (étages, contenu des portes, trous, limites) et thème (graphismes, couleurs, musique). On construit un niveau à partir du socle, sans toucher au moteur.
+3. **`src/client/` — l'affichage.** Rendu 3D, commandes, interface et son. Il sait jouer et afficher n'importe quel niveau.
 
 ```
 src/
-├── core/                  ← TypeScript pur : aucune dépendance 3D ni DOM
-│   ├── config/pyramids.ts   règles et équilibrage de chaque pyramide (données)
+├── core/                  ← socle : aucune dépendance 3D ni DOM
+│   ├── level.ts             forme d'un niveau, valeurs par défaut, band(), buildLevels()
+│   ├── theme.ts             forme d'un thème + thème de base, defineTheme()
 │   ├── mechanics/           un type de porte = un module
 │   │   ├── mechanic.ts        interface Mechanic
 │   │   ├── basic.ts           passage, mur (indices), petit piège
@@ -172,18 +190,23 @@ src/
 │   ├── geometry.ts          géométrie de la pyramide à degrés, boîtes de collision
 │   ├── game.ts              état de la partie : actions → événements
 │   ├── rng.ts               générateur pseudo-aléatoire (mulberry32)
-│   └── core.test.ts         tests du moteur
+│   └── core.test.ts         tests du moteur et des niveaux
+├── levels/                ← un fichier par niveau (données uniquement)
+│   ├── 01-temple-des-sables.ts … 06-cite-celeste.ts
+│   ├── shared.ts            briques de règles réutilisables entre niveaux
+│   └── index.ts             ordre de progression des niveaux
 └── client/                ← navigateur uniquement
-    ├── main.ts              écrans, options, boucle de rendu
-    ├── session.ts           relie moteur, physique, rendu et commandes
+    ├── main.ts              écrans, niveaux et progression, options, boucle de rendu
+    ├── session.ts           relie moteur, physique, rendu, son et commandes
     ├── physics.ts           contrôleur de personnage (collisions boîtes alignées)
     ├── camera.ts            caméra automatique et zoom
     ├── render.ts            renderer Three.js + lueur (bloom)
+    ├── audio/               son généré : synth.ts, sfx.ts (effets), music.ts (séquenceur), audio.ts
     ├── input/input.ts       clavier, souris, joystick tactile
     ├── ui/hud.ts            interface en jeu
     └── scene/
-        ├── world.ts           pyramide, portes, braseros
-        ├── environment.ts     ciel, dunes, oasis, mesas, nuages
+        ├── world.ts           pyramide, portes, braseros (couleurs du thème)
+        ├── environment.ts     ciel, sol, montagnes, nuages, plan d'eau, végétation, particules
         ├── props.ts           scarabée, gant de boxe
         ├── character.ts       personnage
         ├── textures.ts        textures procédurales (canvas, aucun fichier image)
@@ -206,9 +229,47 @@ Le moteur ne connaît ni Three.js ni le DOM, et le temps lui est toujours fourni
 
 ---
 
-## Ajouter une mécanique ou une pyramide
+## Ajouter un niveau
 
-### Une nouvelle porte (ex. un bouclier)
+1. Copier un fichier existant, par exemple `src/levels/06-cite-celeste.ts`, en `src/levels/07-mon-niveau.ts`.
+2. Régler les **règles** et le **thème** :
+
+   ```ts
+   import { band, defineLevel, defineTheme } from '../core';
+
+   export default defineLevel({
+     name: 'Mon niveau',
+     tagline: 'Ce que ce niveau apporte de nouveau.',
+     rules: {
+       floors: 8,                // nombre d'étages
+       maxFloorsLost: 3,         // perte maximale en un seul effet
+       maxFloorsGained: 2,       // gain maximal (téléporteurs, paris)
+       protectedTopFloors: 2,    // un bonus ne dépose jamais sur ces derniers étages
+       bands: [
+         //   étages  passages  autres portes                          trous
+         band(1, 3,   3,        { smallTrap: 3, teleportUp: [0, 1] },  [1, 2]),
+         band(4, 8,   2,        { smallTrap: 3, bigTrap: 2 },          [2, 3]),
+       ],
+       limits: { teleportUp: 2 },              // maximum sur toute la pyramide
+       settings: { teleportUp: { min: 2, max: 2 } },
+     },
+     // Le thème ne déclare que ce qui diffère du thème de base.
+     theme: defineTheme({
+       sky: { top: 0x1a3a6a, mid: 0x6aa0d6, horizon: 0xd6ecff, sun: 0xffffff },
+       stone: ['#a0a0b0', '#9090a0'],
+       door: { panel: 0x7a2a2a, frame: 0x1a0a0a, glyph: [2.5, 2.0, 0.8] },
+       particles: { color: [1.6, 1.6, 1.9], size: 0.3, count: 800, motion: 'snow' },
+       vegetation: 'pines',
+       music: { scale: [0, 2, 3, 5, 7, 8, 10], root: 60, tempo: 110, lead: 'triangle', drums: 'k...s...k.k.s...' },
+     }),
+   });
+   ```
+
+3. L'ajouter à la fin de la liste dans `src/levels/index.ts`.
+
+Le numéro, l'identifiant, le déblocage, la carte du menu et la sauvegarde du record sont automatiques. Les tests vérifient que le niveau est valide et toujours terminable. Une seule pyramide est construite à la fois (la précédente est libérée) : ajouter des niveaux ne coûte rien en performance.
+
+## Ajouter une mécanique de porte
 
 1. Créer l'objet dans `src/core/mechanics/` :
 
@@ -225,32 +286,9 @@ Le moteur ne connaît ni Three.js ni le DOM, et le temps lui est toujours fourni
    ```
 
 2. L'enregistrer dans `src/core/mechanics/registry.ts`.
-3. L'activer dans une pyramide (`src/core/config/pyramids.ts`), par exemple `mechanics: { myDoor: [0, 1] }`.
-
-### Une nouvelle pyramide
-
-Tout se règle par la configuration, sans toucher au moteur :
-
-```ts
-{
-  id: 'p4', name: 'Pyramide 4', difficulty: 'Expert',
-  floors: 12,
-  doorsPerSideAtTop: 2,
-  maxFloorsLost: 5, maxFloorsGained: 4, protectedTopFloors: 2,
-  publicRevealMs: 4000,
-  hints: 'scarab',
-  bands: [
-    { floors: [1, 4], passages: 3, mechanics: { smallTrap: 4, teleportUp: [0, 1] }, holes: [1, 2] },
-    // …
-  ],
-  limits: { teleportUp: 2 },
-  settings: { teleportUp: { min: 3, max: 4 } },
-}
-```
+3. L'utiliser dans un niveau : `band(3, 5, 2, { myDoor: [0, 1] }, 2)`.
 
 La génération vérifie automatiquement que chaque étage possède au moins un passage : **une pyramide est toujours terminable**.
-
----
 
 ## Tests
 
@@ -263,7 +301,8 @@ Les tests du moteur (`src/core/core.test.ts`) vérifient notamment :
 - que chaque pyramide est **toujours terminable** (sur 500 graines) ;
 - qu'une même graine produit toujours la même pyramide ;
 - les bornes de chute et de gain, la protection des derniers étages, l'usage unique des téléporteurs ;
-- la porte ±2 de la pyramide 1 (étage 3 uniquement, mène au 5 ou au 1) ;
+- la porte ±2 du niveau 1 (étage 3 uniquement, mène au 5 ou au 1) ;
+- que chaque niveau est numéroté, possède un thème complet et qu'aucune porte risquée ne dépose sur un étage protégé ;
 - que le scarabée part dans la bonne direction ;
 - qu'un point d'arrivée ne tombe jamais dans un trou.
 
@@ -280,6 +319,7 @@ Les tests du moteur (`src/core/core.test.ts`) vérifient notamment :
 | Interface | HTML / CSS | Pas de framework : inutile pour un HUD |
 | Police | [Fredoka](https://fonts.google.com/specimen/Fredoka) via Fontsource | Embarquée, fonctionne hors ligne |
 | Tests | [Vitest](https://vitest.dev) | Rapide, intégré à Vite |
+| Son | Web Audio API | Musique et effets générés : aucun fichier, aucun droit d'auteur |
 | Multijoueur (V2) | [Colyseus](https://colyseus.io) envisagé | Salons, codes d'invitation, synchronisation d'état |
 
 Le rendu vise de bonnes performances sur smartphone : décor fusionné en peu d’objets, textures générées par le code, ombres en résolution réduite et sans anticrénelage sur mobile. La lueur peut être désactivée dans le menu (« Effets lumineux »).
@@ -288,11 +328,11 @@ Le rendu vise de bonnes performances sur smartphone : décor fusionné en peu d�
 
 ## Feuille de route
 
-- [x] **V1** : jeu solo, pyramide facile (6 étages), indices, pièges, porte ±2, chronomètre, victoire, mobile et ordinateur
+- [x] **V1** : jeu solo, 6 niveaux à débloquer avec thèmes, indices, pièges, paris, musique et sons, mobile et ordinateur
 - [ ] **V2.1** : robots (IA soumise aux mêmes règles que les humains, plusieurs niveaux)
 - [ ] **V2.2** : multijoueur privé entre amis (salon, code d'invitation)
 - [ ] **V2.3** : parties mêlant humains et robots
-- [ ] **V3** : pyramides 2 et 3 ouvertes, nouvelles mécaniques (bouclier, passage temporaire, piège à retardement, indices par hiéroglyphes…), sons, personnalisation, classements
+- [ ] **V3** : nouveaux niveaux et mécaniques (bouclier, passage temporaire, piège à retardement, indices par hiéroglyphes…), personnalisation, classements
 
 ---
 

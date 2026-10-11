@@ -24,8 +24,11 @@
         <div class="pill" id="timer">0:00.0</div>
       </div>
       <div id="ladder"></div>
-      <button id="btn-zoom" class="pill" aria-label="Changer le zoom">🔍 <span id="zoom-label">Proche</span></button>
-      <button id="btn-pause" class="pill" aria-label="Pause">❚❚</button>
+      <div class="hud-right">
+        <button id="btn-sound" class="pill" aria-label="Couper ou remettre le son">🔊</button>
+        <button id="btn-zoom" class="pill" aria-label="Changer le zoom">🔍 <span id="zoom-label">Proche</span></button>
+        <button id="btn-pause" class="pill" aria-label="Pause">❚❚</button>
+      </div>
       <div id="toast"></div>
       <div id="prompt"><span class="key">E</span> Ouvrir la porte</div>
     </div>
@@ -35,7 +38,11 @@
         <h1 class="logo">Pyra<span>Rush</span></h1>
         <p class="tagline">Explore · Tombe · Mémorise · Atteins le sommet !</p>
         <div class="card">
-          <div id="pyramid-list"></div>
+          <div class="level-head">
+            <div id="level-title"></div>
+            <div id="level-tagline"></div>
+          </div>
+          <div id="level-list"></div>
           <div class="option-row">
             <span>Indices</span>
             <div id="opt-hints" class="segmented">
@@ -52,7 +59,11 @@
               <button data-zoom="2">Large</button>
             </div>
           </div>
-          <label class="toggle"><input type="checkbox" id="opt-effects" checked /> Effets lumineux</label>
+          <div class="toggles">
+            <label class="toggle"><input type="checkbox" id="opt-music" checked /> Musique</label>
+            <label class="toggle"><input type="checkbox" id="opt-sfx" checked /> Sons</label>
+            <label class="toggle"><input type="checkbox" id="opt-effects" checked /> Effets lumineux</label>
+          </div>
           <button id="btn-play" class="primary">Jouer</button>
           <button id="btn-howto">Comment jouer ?</button>
         </div>
@@ -69,7 +80,8 @@
           <li><b>Mur</b> : rien ne se passe… mais un indice t'aide.</li>
           <li id="rule-hints"></li>
           <li><b class="c-bad">Piège</b> : un gant de boxe jaillit et t'envoie à l'étage du dessous !</li>
-          <li>La porte dorée <b class="c-hint">±2</b> est un pari : +2 ou −2 étages. À toi de voir si tu tentes ta chance.</li>
+          <li>La porte dorée <b class="c-hint">±N</b> est un pari : tu montes ou tu descends de N étages. À toi de voir si tu tentes ta chance.</li>
+          <li>Chaque niveau terminé débloque le suivant, avec un nouveau décor et de nouveaux pièges.</li>
           <li>Attention aux <b>trous</b> dans les terrasses : saute par-dessus !</li>
           <li>Après une chute, les passages que tu as déjà trouvés restent marqués en <b class="c-hint">doré</b>, pour toi seul.</li>
           <li>Les portes ne changent jamais pendant une partie : mémorise-les !</li>
@@ -84,8 +96,8 @@
       <div class="card">
         <h2>Pause</h2>
         <button id="btn-resume" class="primary">Reprendre</button>
-        <button id="btn-restart">Recommencer cette pyramide</button>
-        <button id="btn-new">Nouvelle pyramide</button>
+        <button id="btn-restart">Recommencer (même disposition)</button>
+        <button id="btn-new">Nouvelle disposition</button>
         <button id="btn-pause-howto">Comment jouer ?</button>
         <button id="btn-menu">Menu</button>
       </div>
@@ -93,15 +105,18 @@
 
     <div id="screen-victory" class="screen">
       <div class="card">
-        <h2>Sommet atteint !</h2>
+        <h2 id="v-title">Sommet atteint !</h2>
         <div class="big-time" id="v-time">0:00.0</div>
         <div id="v-record" class="record">Nouveau record !</div>
         <div class="stats">
           <div><span id="v-falls">0</span><small>chutes</small></div>
           <div><span id="v-doors">0</span><small>portes testées</small></div>
         </div>
+        <div id="v-unlock" class="unlock"></div>
+        <div id="v-final" class="unlock">🏆 Tu as terminé tous les niveaux !</div>
         <p class="seed">Graine <span id="v-seed"></span></p>
-        <button id="btn-v-new" class="primary">Nouvelle pyramide</button>
+        <button id="btn-v-next" class="primary">Niveau suivant →</button>
+        <button id="btn-v-new">Rejouer (nouvelle disposition)</button>
         <button id="btn-v-retry">Rejouer la même pyramide</button>
         <button id="btn-v-menu">Menu</button>
       </div>

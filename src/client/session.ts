@@ -14,8 +14,10 @@ import {
   type Door,
   type GameEvent,
   type PyramidConfig,
+  type Theme,
   type Vec3,
 } from '../core';
+import type { SfxName } from './audio/sfx';
 import { FollowCamera, orbitCamera } from './camera';
 import type { Input } from './input/input';
 import { CharacterBody } from './physics';
@@ -26,6 +28,11 @@ import { HINT_COLORS, World } from './scene/world';
 import type { Hud, ToastKind } from './ui/hud';
 
 export const PLAYER_ID = 'local';
+
+/** Sortie sonore minimale dont la session a besoin (permet de jouer sans son, ex. dans les tests). */
+export interface SoundPlayer {
+  play(name: SfxName): void;
+}
 const TRAP_FX = new Set(['smallTrap', 'bigTrap', 'riskyLose']);
 const STEP = 1 / 60;
 
@@ -58,16 +65,18 @@ export class GameSession {
 
   constructor(
     config: PyramidConfig,
+    theme: Theme,
     readonly seed: number,
     private readonly input: Input,
     private readonly hud: Hud,
     lowQuality: boolean,
     aspect: number,
     private readonly onVictory: (result: SessionResult) => void,
+    private readonly sound: SoundPlayer = { play: () => {} },
   ) {
     this.game = new Game(config, seed);
     this.game.addPlayer(PLAYER_ID);
-    this.world = new World(this.game.layout, this.tweens, lowQuality);
+    this.world = new World(this.game.layout, theme, this.tweens, lowQuality);
     this.camera = new FollowCamera(aspect);
     this.body = new CharacterBody(this.world.colliders, spawnPoint(config));
     this.world.scene.add(this.character.root);
@@ -78,7 +87,7 @@ export class GameSession {
     hud.setFloor(1, 1);
     hud.setTime(0);
     hud.setPrompt(false);
-    hud.showToast('Trouve les passages secrets !', 'info', 2.5);
+    hud.showToast(config.name, 'info', 2.5);
   }
 
   private get player() {
@@ -126,6 +135,8 @@ export class GameSession {
       while (this.accumulator >= STEP && steps < 5) {
         this.body.step(STEP, intent);
         if (this.body.landedSpeed > 4) this.character.land(this.body.landedSpeed);
+        if (this.body.jumped) this.sound.play('jump');
+        if (this.body.landedSpeed > 9) this.sound.play('land');
         intent.jumpPressed = false;
         this.accumulator -= STEP;
         steps++;
@@ -206,6 +217,7 @@ export class GameSession {
           if (event.cause === 'fall') {
             this.hud.showToast(`Chute ! Étage ${event.to}`, 'bad');
             navigator.vibrate?.(60);
+            this.sound.play('fall');
           }
           break;
         case 'victory':
@@ -237,11 +249,13 @@ export class GameSession {
     }
     if (e.to === e.from) {
       this.world.shakeDoor(door.id);
+      this.sound.play('wall');
       if (e.hint?.type === 'hotCold') this.world.flashDoor(door.id, HINT_COLORS[e.hint.level]);
       else this.world.flashDoor(door.id, 0x555555, 0.5);
       if (e.hint?.type === 'scarab') {
         const tangent = doorTangent(this.config, door.floor, door.slot);
         releaseScarab(this.world.scene, this.tweens, this.config, door.floor, door.side, tangent, e.hint.dir, e.hint.near);
+        this.sound.play(e.hint.near ? 'scarabExcited' : 'scarab');
       }
       return;
     }
@@ -249,6 +263,8 @@ export class GameSession {
     const target = landingPoint(this.config, e.to, door.side, doorTangent(this.config, door.floor, door.slot));
     switch (e.fx) {
       case 'passage':
+        this.sound.play('door');
+        this.sound.play('passage');
         this.world.openDoor(door.id);
         this.playPassage(door, target, e.to);
         break;
@@ -257,11 +273,13 @@ export class GameSession {
       case 'riskyWin': {
         const color = e.fx === 'riskyWin' ? 0xffc23a : e.fx === 'teleportUp' ? 0xb04dff : 0x5a1a8a;
         this.world.flashDoor(door.id, color, 1);
+        this.sound.play(e.fx === 'riskyWin' ? 'riskyWin' : 'teleport');
         this.playTeleport(target, e.to, color);
         break;
       }
       default:
         // Pièges et pari perdu : un gant de boxe jaillit et envoie le joueur en contrebas.
+        if (e.fx === 'riskyLose') this.sound.play('riskyLose');
         this.punch(door, target, e.from - e.to > 1);
     }
   }
@@ -269,8 +287,11 @@ export class GameSession {
   private punch(door: Door, target: Vec3, big: boolean): void {
     this.lock();
     this.world.flashDoor(door.id, 0xff2a1a, 0.6);
+    this.sound.play('spring');
     this.world.punchDoor(door.id, big, () => {
       navigator.vibrate?.(big ? [80, 40, 120] : 90);
+      this.sound.play('pow');
+      this.sound.play('fall');
       this.playKnockback(target, big);
     });
   }
@@ -365,6 +386,7 @@ export class GameSession {
   }
 
   private celebrate(): void {
+    this.sound.play('victory');
     const root = this.character.root;
     const colors = [0xff6b5a, 0xffc93c, 0x3ce0ff, 0x7ddc5a, 0xb04dff];
     for (let i = 0; i < 5; i++) {

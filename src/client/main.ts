@@ -1,20 +1,19 @@
 import '@fontsource-variable/fredoka';
-import { pyramids, randomSeed, type HintMode, type PyramidConfig } from '../core';
+import { randomSeed, type HintMode, type Level, type PyramidConfig } from '../core';
+import { levels } from '../levels';
 import { Input } from './input/input';
 import { Renderer } from './render';
+import { AudioEngine } from './audio/audio';
 import { ZOOM_LABELS, type ZoomLevel } from './camera';
 import { GameSession, type SessionResult } from './session';
 import { formatTime, Hud } from './ui/hud';
+import { hex } from './scene/themes';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const params = new URLSearchParams(location.search);
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 document.body.classList.toggle('touch', isTouch);
-
-/** V1 : seule la pyramide 1 est ouverte ; les autres sont accessibles en test via ?pyramide=2|3. */
-const unlockedCount = Number(params.get('pyramide') ?? 1);
-let selected: PyramidConfig = pyramids[Math.min(pyramids.length, Math.max(1, unlockedCount)) - 1];
 
 const storage = {
   get(key: string): string | null {
@@ -32,6 +31,61 @@ const storage = {
     }
   },
 };
+
+// ---------- Niveaux et progression ----------
+/** Niveaux débloqués : on débloque le suivant en terminant le précédent. `?debloquer=6` pour tester. */
+const clampLevel = (n: number) => Math.min(levels.length, Math.max(1, Math.floor(n) || 1));
+let unlocked = clampLevel(Math.max(Number(storage.get('unlocked') ?? 1), Number(params.get('debloquer') ?? 1)));
+let selected: Level = levels[clampLevel(Number(storage.get('level') ?? unlocked)) - 1];
+if (selected.number > unlocked) selected = levels[unlocked - 1];
+
+function bestTime(level: Level): number | null {
+  const v = Number(storage.get(`best:${level.config.id}`));
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+
+/** Couleurs de l'interface accordées au thème du niveau. */
+function applyUiTheme(level: Level): void {
+  const theme = level.theme;
+  const root = document.documentElement.style;
+  root.setProperty('--accent-a', theme.accent[0]);
+  root.setProperty('--accent-b', theme.accent[1]);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', hex(theme.sky.mid));
+  document.body.style.background = hex(theme.sky.mid);
+}
+
+// ---------- Son ----------
+const audio = new AudioEngine();
+// Les navigateurs n'autorisent le son qu'après une interaction de l'utilisateur.
+for (const type of ['pointerdown', 'keydown'] as const) window.addEventListener(type, () => audio.unlock(), { capture: true });
+document.addEventListener('click', (e) => (e.target as HTMLElement).closest('button') && audio.play('click'));
+
+function bindToggle(id: string, key: string, apply: (on: boolean) => void): void {
+  const box = $<HTMLInputElement>(id);
+  box.checked = storage.get(key) !== '0';
+  apply(box.checked);
+  box.addEventListener('change', () => {
+    storage.set(key, box.checked ? '1' : '0');
+    apply(box.checked);
+    syncSoundButton();
+  });
+}
+bindToggle('opt-music', 'music', (on) => audio.setMusicOn(on));
+bindToggle('opt-sfx', 'sfx', (on) => audio.setSfxOn(on));
+function syncSoundButton(): void {
+  $('btn-sound').textContent = audio.musicOn || audio.sfxOn ? '🔊' : '🔇';
+}
+$('btn-sound').addEventListener('click', () => {
+  const on = !(audio.musicOn || audio.sfxOn);
+  for (const [id, key] of [['opt-music', 'music'], ['opt-sfx', 'sfx']]) {
+    $<HTMLInputElement>(id).checked = on;
+    storage.set(key, on ? '1' : '0');
+  }
+  audio.setMusicOn(on);
+  audio.setSfxOn(on);
+  syncSoundButton();
+});
+syncSoundButton();
 
 // ---------- Options ----------
 const HINT_RULES: Record<HintMode, string> = {
@@ -143,30 +197,61 @@ $('btn-rotate-ok').addEventListener('click', () => {
   updateRotateHint();
 });
 
-function renderPyramidList(): void {
-  const list = $('pyramid-list');
+function renderLevelList(): void {
+  const list = $('level-list');
   list.innerHTML = '';
-  pyramids.forEach((config, i) => {
-    const locked = i + 1 > unlockedCount;
+  for (const level of levels) {
+    const locked = level.number > unlocked;
+    const theme = level.theme;
     const card = document.createElement('button');
-    card.className = `pyramid-card${config === selected ? ' selected' : ''}${locked ? ' locked' : ''}`;
-    card.innerHTML = `<b>${locked ? '🔒 ' : ''}${config.difficulty}</b>${config.floors} étages`;
-    if (!locked) {
-      card.addEventListener('click', () => {
-        selected = config;
-        renderPyramidList();
-      });
-    }
+    card.className = `level-card${level === selected ? ' selected' : ''}${locked ? ' locked' : ''}`;
+    card.style.setProperty('--sky', `linear-gradient(160deg, ${hex(theme.sky.top)}, ${hex(theme.sky.mid)} 55%, ${hex(theme.sky.horizon)})`);
+    const best = bestTime(level);
+    card.innerHTML = `
+      <span class="level-num">${locked ? '🔒' : level.number}</span>
+      <span class="level-name">${locked ? `Niveau ${level.number}` : level.name}</span>
+      <span class="level-meta">${locked ? 'Termine le niveau précédent' : best ? `⏱ ${formatTime(best)}` : `${level.config.floors} étages`}</span>`;
+    card.disabled = locked;
+    card.addEventListener('click', () => selectLevel(level) && showBackground());
     list.appendChild(card);
-  });
+  }
+  $('level-title').textContent = `Niveau ${selected.number} · ${selected.name}`;
+  $('level-tagline').textContent = selected.tagline;
 }
 
-function startGame(seed: number): void {
+/** Sélectionne un niveau débloqué (couleurs de l'interface comprises). Renvoie true si la sélection a changé. */
+function selectLevel(level: Level): boolean {
+  if (level.number > unlocked) return false;
+  const changed = level !== selected;
+  selected = level;
+  storage.set('level', String(level.number));
+  applyUiTheme(level);
+  renderLevelList();
+  return changed;
+}
+
+function createSession(config: PyramidConfig, level: Level, seed: number): GameSession {
   session?.dispose();
-  const config: PyramidConfig = { ...selected, hints: hintMode };
-  session = new GameSession(config, seed, input, hud, lowQuality, window.innerWidth / window.innerHeight, onVictory);
-  session.camera.resize(window.innerWidth, window.innerHeight);
-  session.camera.zoom = zoom;
+  const theme = level.theme;
+  renderer.renderer.toneMappingExposure = theme.exposure;
+  const created = new GameSession(config, theme, seed, input, hud, lowQuality, window.innerWidth / window.innerHeight, onVictory, audio);
+  audio.setMusic(theme.music, level.number);
+  created.camera.resize(window.innerWidth, window.innerHeight);
+  created.camera.zoom = zoom;
+  return created;
+}
+
+/** La pyramide du niveau sélectionné, en arrière-plan du menu. */
+function showBackground(): void {
+  session = createSession(selected.config, selected, randomSeed());
+  session.attract = true;
+}
+
+let playing: Level = selected;
+function startGame(seed: number, level: Level = selected): void {
+  playing = level;
+  applyUiTheme(level);
+  session = createSession({ ...level.config, hints: hintMode }, level, seed);
   show(null);
 }
 
@@ -175,11 +260,25 @@ function onVictory(result: SessionResult): void {
   const previous = Number(storage.get(key) ?? Infinity);
   const isRecord = result.time < previous;
   if (isRecord) storage.set(key, String(Math.round(result.time)));
+  $('v-title').textContent = `Niveau ${playing.number} terminé !`;
   $('v-time').textContent = formatTime(result.time);
   $('v-record').classList.toggle('show', isRecord && Number.isFinite(previous));
   $('v-falls').textContent = String(result.falls);
   $('v-doors').textContent = String(result.doorsTested);
   $('v-seed').textContent = String(result.seed);
+
+  const next = levels[playing.number];
+  const justUnlocked = next !== undefined && next.number > unlocked;
+  if (justUnlocked) {
+    unlocked = next.number;
+    storage.set('unlocked', String(unlocked));
+  }
+  $('v-unlock').classList.toggle('show', justUnlocked);
+  if (justUnlocked) setTimeout(() => audio.play('unlock'), 600);
+  if (next) $('v-unlock').innerHTML = `🔓 Nouveau niveau débloqué :<br /><b>Niveau ${next.number} · ${next.name}</b>`;
+  $('btn-v-next').style.display = next && next.number <= unlocked ? '' : 'none';
+  $('v-final').classList.toggle('show', !next);
+  renderLevelList();
   show('screen-victory');
 }
 
@@ -205,25 +304,42 @@ $('btn-howto').addEventListener('click', openHowto);
 $('btn-pause-howto').addEventListener('click', openHowto);
 $('btn-howto-close').addEventListener('click', () => show(howtoReturn));
 $('btn-resume').addEventListener('click', resume);
-$('btn-restart').addEventListener('click', () => session && startGame(session.seed));
-$('btn-new').addEventListener('click', () => startGame(randomSeed()));
-$('btn-menu').addEventListener('click', () => show('screen-menu'));
-$('btn-v-new').addEventListener('click', () => startGame(randomSeed()));
-$('btn-v-retry').addEventListener('click', () => session && startGame(session.seed));
-$('btn-v-menu').addEventListener('click', () => show('screen-menu'));
+$('btn-restart').addEventListener('click', () => session && startGame(session.seed, playing));
+$('btn-new').addEventListener('click', () => startGame(randomSeed(), playing));
+/** Retour au menu : après une victoire, le niveau suivant (s'il est débloqué) est présélectionné. */
+function backToMenu(): void {
+  const next = levels[playing.number];
+  selectLevel(current === 'screen-victory' && next && next.number <= unlocked ? next : playing);
+  showBackground();
+  show('screen-menu');
+}
+$('btn-menu').addEventListener('click', backToMenu);
+$('btn-v-next').addEventListener('click', () => {
+  const next = levels[playing.number];
+  if (next) {
+    selectLevel(next);
+    startGame(randomSeed(), next);
+  }
+});
+$('btn-v-new').addEventListener('click', () => startGame(randomSeed(), playing));
+$('btn-v-retry').addEventListener('click', () => session && startGame(session.seed, playing));
+$('btn-v-menu').addEventListener('click', backToMenu);
 window.addEventListener('keydown', (e) => {
   if (e.code !== 'Escape' && e.code !== 'KeyP') return;
   if (current === 'screen-howto') show(howtoReturn);
   else if (current === 'screen-pause') resume();
   else if (current === null) pause();
 });
-document.addEventListener('visibilitychange', () => document.hidden && pause());
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) pause();
+  audio.suspend(document.hidden);
+});
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 
 // ---------- Démarrage ----------
-renderPyramidList();
-// Une pyramide en arrière-plan du menu.
-session = new GameSession(selected, randomSeed(), input, hud, lowQuality, window.innerWidth / window.innerHeight, onVictory);
+applyUiTheme(selected);
+renderLevelList();
+showBackground();
 resize();
 setZoom(zoom);
 show('screen-menu');

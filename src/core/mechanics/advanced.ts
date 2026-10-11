@@ -65,7 +65,9 @@ export const riskyDoor: Mechanic = {
   appearance: { color: 0xf0b429, symbol: (config) => `±${setting(config, 'riskyDoor', 'amount', 3)}` },
   revealPublicly: true,
   oncePerPlayer: true,
-  canPlace: (floor) => floor >= 2,
+  // Jamais à l'étage 1, et un pari gagné ne dépose jamais sur les étages protégés.
+  canPlace: (floor, config) =>
+    floor >= 2 && floor + setting(config, 'riskyDoor', 'amount', 3) <= config.floors - config.protectedTopFloors,
   generateParams: (rng, _floor, config) => {
     const amount = setting(config, 'riskyDoor', 'amount', 3);
     return { delta: rng.next() < 0.5 ? amount : -amount };
