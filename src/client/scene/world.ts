@@ -9,6 +9,9 @@ import { GUARDIANS, type TrapGuardian } from './guardians';
 import { applyWorldUVs, stoneTexture, tileTexture } from './textures';
 import { sunDirection } from './themes';
 
+/** Teinte vers laquelle glisse le soleil quand on approche du sommet. */
+const WARM_SUN = new THREE.Color(0xffa25a);
+
 export const HINT_COLORS = { chaud: 0xff3b1f, tiede: 0xffa21f, froid: 0x3d9bff } as const;
 
 /**
@@ -20,6 +23,10 @@ export class World {
   readonly scene = new THREE.Scene();
   readonly colliders: Box[];
   readonly fragile: FragileTiles;
+  private sun!: THREE.DirectionalLight;
+  /** Hauteur atteinte (0 = pied, 1 = sommet) et valeur affichée, qui la rejoint en douceur. */
+  private altitude = 0;
+  private shownAltitude = 0;
   readonly pyramidHalf: number;
   readonly groundHalf: number;
   readonly doors: DoorsView;
@@ -66,7 +73,7 @@ export class World {
   private addLights(lowQuality: boolean): void {
     const { theme } = this;
     this.scene.add(new THREE.HemisphereLight(theme.hemi.sky, theme.hemi.ground, theme.hemi.intensity));
-    const sun = new THREE.DirectionalLight(theme.sun.color, theme.sun.intensity);
+    const sun = (this.sun = new THREE.DirectionalLight(theme.sun.color, theme.sun.intensity));
     sun.position.copy(sunDirection(theme)).multiplyScalar(this.groundHalf * 2.2);
     sun.castShadow = true;
     sun.shadow.mapSize.setScalar(lowQuality ? 1024 : 2048);
@@ -199,8 +206,19 @@ export class World {
     this.guardianFor(door).strike(this.tweens, transform, big, onHit);
   }
 
+  /** Plus on monte, plus la lumière se réchauffe et s'intensifie (sensation d'ascension). */
+  setAltitude(ratio: number): void {
+    this.altitude = Math.max(0, Math.min(1, ratio));
+  }
+
   update(dt: number): void {
     this.time += dt;
+    if (Math.abs(this.shownAltitude - this.altitude) > 1e-3) {
+      this.shownAltitude += (this.altitude - this.shownAltitude) * Math.min(1, dt * 1.5);
+      const a = this.shownAltitude;
+      this.sun.color.setHex(this.theme.sun.color).lerp(WARM_SUN, a * 0.35);
+      this.sun.intensity = this.theme.sun.intensity * (1 + a * 0.18);
+    }
     this.doors.update(dt);
     this.updateComponents(dt, this.time);
   }

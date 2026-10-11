@@ -13,6 +13,7 @@ export class AudioEngine {
   private music: MusicPlayer | null = null;
   private style: MusicStyle | null = null;
   private seed = 1;
+  private intensity = 0;
   musicOn = true;
   sfxOn = true;
 
@@ -47,6 +48,12 @@ export class AudioEngine {
     if (this.ctx) this.startMusic();
   }
 
+  /** Intensité de la musique (0 à 1), par exemple selon la hauteur atteinte. */
+  setIntensity(level: number): void {
+    this.intensity = level;
+    if (this.music) this.music.intensity = level;
+  }
+
   setMusicOn(on: boolean): void {
     this.musicOn = on;
     this.applyVolumes();
@@ -67,6 +74,7 @@ export class AudioEngine {
     if (!this.ctx || !this.musicGain || !this.style) return;
     this.music?.stop();
     this.music = new MusicPlayer(this.ctx, this.musicGain, this.style, this.seed);
+    this.music.intensity = this.intensity;
     this.music.start();
   }
 

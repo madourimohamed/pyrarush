@@ -86,6 +86,11 @@ export const SFX = {
     noise(ctx, out, t, 0.6, { filter: 'lowpass', freq: 900, to: 150, gain: 0.35 });
     tone(ctx, out, t, 90, 0.5, { to: 40, gain: 0.25 });
   },
+  /** Nouvel étage atteint : accord montant lumineux. */
+  ascend: (ctx, out, t) => {
+    [67, 71, 74, 79].forEach((n, i) => tone(ctx, out, t + i * 0.07, midiToFreq(n), 0.6, { type: 'triangle', gain: 0.1 }));
+    tone(ctx, out, t + 0.3, midiToFreq(86), 0.9, { type: 'sine', gain: 0.07, vibrato: [5, 6] });
+  },
   /** Coffre : grincement du couvercle puis étincelles. */
   chest: (ctx, out, t) => {
     tone(ctx, out, t, 220, 0.3, { type: 'sawtooth', to: 140, gain: 0.06, lowpass: 900, vibrato: [30, 12] });

@@ -67,6 +67,16 @@ export class Hud {
     }
   }
 
+  /** Grande bannière au centre : nouvel étage atteint pour la première fois dans la partie. */
+  showFloorBanner(title: string, sub: string): void {
+    const banner = $('floor-banner');
+    banner.querySelector('b')!.textContent = title;
+    banner.querySelector('small')!.textContent = sub;
+    banner.classList.remove('show');
+    void banner.offsetWidth; // relance l'animation
+    banner.classList.add('show');
+  }
+
   setTime(ms: number): void {
     this.timer.textContent = formatTime(ms);
   }

@@ -36,6 +36,8 @@ export const PLAYER_ID = 'local';
 /** Sortie sonore minimale dont la session a besoin (permet de jouer sans son, ex. dans les tests). */
 export interface SoundPlayer {
   play(name: SfxName): void;
+  /** Intensité de la musique (0 à 1). */
+  setIntensity?(level: number): void;
 }
 const TRAP_FX = new Set(['smallTrap', 'bigTrap', 'riskyLose']);
 const STEP = 1 / 60;
@@ -87,6 +89,8 @@ export class GameSession {
   /** Le bouclier vient d'être consommé (pour mettre à jour le bouton du bonus). */
   onShieldEnd?: () => void;
   private attractTime = 0;
+  /** Étage le plus haut déjà atteint dans cette partie (pour la bannière de nouvel étage). */
+  private highest = 1;
   /** Passage montré par l'Œil de Râ, jusqu'à `until` (ms de jeu). */
   private eyeReveal: { doorId: string; until: number } | null = null;
   /** Bulle dorée autour du personnage tant que le Bouclier d'Anubis est actif. */
@@ -283,6 +287,8 @@ export class GameSession {
           this.world.setReveal(event.doorId, false);
           break;
         case 'floorChanged':
+          this.onAltitude(event.to);
+          if (event.to > this.highest) this.onNewFloor(event.to);
           this.hud.setFloor(event.to, this.player.bestFloor);
           this.world.setPrivateHints(this.player.knownPassages, event.to);
           if (event.cause === 'fall') {
@@ -296,6 +302,28 @@ export class GameSession {
           break;
       }
     }
+  }
+
+  /** Lumière et musique suivent la hauteur atteinte. */
+  private onAltitude(floor: number): void {
+    const ratio = (floor - 1) / this.config.floors;
+    this.world.setAltitude(ratio);
+    this.sound.setIntensity?.(ratio);
+  }
+
+  /** Premier passage à un étage dans la partie : bannière, son, vibration et gerbe dorée à l'arrivée. */
+  private onNewFloor(floor: number): void {
+    this.highest = floor;
+    if (floor > this.config.floors) return; // le sommet a sa propre célébration
+    const last = floor === this.config.floors;
+    this.hud.showFloorBanner(last ? 'Dernier étage !' : `Étage ${floor}`, last ? 'Le sommet est juste au-dessus' : `${this.config.floors - floor + 1} étages avant le sommet`);
+    this.sound.play('ascend');
+    navigator.vibrate?.([25, 40, 25]);
+    // La gerbe attend que le personnage soit arrivé (animation de passage ou de téléportation).
+    this.tweens.add(0.9, () => {}, () => {
+      const at = this.character.root.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+      burst(this.world.scene, this.tweens, at, GOLD, 24, 3.5, 2.2);
+    });
   }
 
   private onBonusUsed(bonus: BonusId, timeBonusMs = 0): void {

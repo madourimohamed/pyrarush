@@ -15,6 +15,11 @@ export class MusicPlayer {
   private nextTime = 0;
   private melody: (number | null)[] = [];
   private bass: (number | null)[] = [];
+  /**
+   * Intensité (0 à 1), qui suit la hauteur atteinte : la boucle reste la même mais s'enrichit par couches
+   * (charleston en croches, puis mélodie doublée à l'octave et basse plus active).
+   */
+  intensity = 0;
 
   constructor(
     private readonly ctx: AudioContext,
@@ -82,7 +87,14 @@ export class MusicPlayer {
     if (lead !== null) tone(ctx, out, t, midiToFreq(lead), stepDur * 1.8, { type: this.style.lead, gain: 0.07, lowpass: 2600 });
     const bass = this.bass[step];
     if (bass !== null) tone(ctx, out, t, midiToFreq(bass), stepDur * 3.5, { type: 'triangle', gain: 0.16 });
-    switch (this.style.drums[step % STEPS]) {
+    if (this.intensity >= 0.66) {
+      if (lead !== null) tone(ctx, out, t, midiToFreq(lead + 12), stepDur * 1.2, { type: 'sine', gain: 0.035 });
+      const prev = this.bass[step - (step % 8)];
+      if (bass === null && step % 4 === 2 && prev !== null && prev !== undefined) tone(ctx, out, t, midiToFreq(prev + 12), stepDur * 1.5, { type: 'triangle', gain: 0.08 });
+    }
+    const drum = this.style.drums[step % STEPS];
+    if (this.intensity >= 0.33 && drum === '.' && step % 2 === 0) noise(ctx, out, t, 0.03, { filter: 'highpass', freq: 8000, gain: 0.035 });
+    switch (drum) {
       case 'k':
         tone(ctx, out, t, 150, 0.18, { to: 45, gain: 0.32 });
         break;

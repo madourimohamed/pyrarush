@@ -241,6 +241,7 @@ async function createSession(config: PyramidConfig, level: Level, seed: number):
   renderer.renderer.toneMappingExposure = theme.exposure;
   const created = new GameSession(config, theme, seed, input, hud, lowQuality, window.innerWidth / window.innerHeight, onVictory, audio);
   audio.setMusic(theme.music, level.number);
+  audio.setIntensity(0);
   created.camera.resize(window.innerWidth, window.innerHeight);
   created.camera.zoom = zoom;
   return created;
