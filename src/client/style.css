@@ -2039,3 +2039,8 @@ body.touch #power-bar .power {
   height: 50px;
 }
 
+
+/* En duel, le message « Ouvrir la porte » passe au-dessus de la barre de pouvoirs. */
+body.duel #prompt {
+  bottom: calc(96px + var(--safe-b));
+}
