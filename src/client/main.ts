@@ -15,6 +15,7 @@ import { enterFullscreen, setupFullscreen } from './ui/fullscreen';
 import { MoveTutorial } from './ui/tutorial';
 import { renderVictory } from './ui/victory';
 import { renderBonusButton, renderChests } from './ui/bonus';
+import { DuelController } from './duel/controller';
 import { renderLevelCards, renderLevelInfo, renderRecords, showThumbnail, type MenuState } from './ui/menu';
 import { preloadComponents } from './scene/components';
 import { installDebugApi } from './debug/api';
@@ -145,7 +146,7 @@ $('controls-help').textContent = isTouch
   : 'ZQSD / WASD ou flèches : bouger · Espace : sauter · E : ouvrir · glisser la souris : caméra · molette ou C : zoom';
 
 // ---------- Écrans ----------
-const screens = ['screen-menu', 'screen-pause', 'screen-chests', 'screen-victory', 'screen-howto', 'screen-settings', 'screen-records'] as const;
+const screens = ['screen-menu', 'screen-duel', 'screen-duel-result', 'screen-pause', 'screen-chests', 'screen-victory', 'screen-howto', 'screen-settings', 'screen-records'] as const;
 type Screen = (typeof screens)[number];
 /** Écrans ouverts par-dessus un autre (menu ou pause), qui y reviennent à la fermeture. */
 const overlays: Screen[] = ['screen-howto', 'screen-settings', 'screen-records'];
@@ -155,7 +156,7 @@ let returnTo: Screen = 'screen-menu';
 function show(screen: Screen | null): void {
   current = screen;
   for (const id of screens) $(id).classList.toggle('show', id === screen);
-  const onMenu = screen === 'screen-menu' || (screen !== null && overlays.includes(screen) && returnTo === 'screen-menu');
+  const onMenu = screen === 'screen-menu' || screen === 'screen-duel' || (screen !== null && overlays.includes(screen) && returnTo === 'screen-menu');
   $('hud').style.visibility = onMenu ? 'hidden' : 'visible';
   $('touch').style.visibility = onMenu ? 'hidden' : 'visible';
   if (session) session.attract = onMenu;
@@ -255,23 +256,27 @@ async function showBackground(): Promise<void> {
   session.attract = current === 'screen-menu' || (current !== null && overlays.includes(current));
 }
 
-async function startGame(seed: number, level: Level = selected): Promise<void> {
+/** Lance une partie ; `intro` = durée de l'introduction (en duel : le compte à rebours). */
+async function startGame(seed: number, level: Level = selected, intro?: number): Promise<GameSession | null> {
   performance.mark('pyrarush:level-start');
   playing = level;
   applyUiTheme(level);
   const created = await createSession({ ...level.config, hints: hintMode }, level, seed);
-  if (!created) return;
+  if (!created) return null;
   session = created;
   hud.setLevel(level.number, level.name);
   show(null);
   created.onIntroEnd = () => tutorial.start(created);
   created.onShieldEnd = refreshBonusButton;
   refreshBonusButton();
-  created.startIntro(zoom);
+  created.startIntro(zoom, intro);
   performance.measure('pyrarush:level-ready', 'pyrarush:level-start');
+  return created;
 }
 
 function onVictory(result: SessionResult): void {
+  // En duel, c'est le serveur qui annonce le vainqueur (écran de résultat du duel, sans coffres ni étoiles).
+  if (duel.active) return;
   const { isRecord, hadPrevious } = progress.recordTime(playing, result.time);
   const stars = starsFor(playing.goals, result.time, result.falls);
   progress.recordStars(playing, stars.stars);
@@ -318,7 +323,12 @@ function refreshBonusButton(): void {
 
 function useBonus(): void {
   const bonus = progress.bonus();
-  if (!bonus || !session?.useBonus(bonus)) return;
+  if (!bonus) return;
+  if (duel.active && !duel.bonusAllowed(bonus)) {
+    hud.showToast('Bonus indisponible', 'info', 2, 'En duel, bonus à partir du niveau 2 (sauf le Sablier)');
+    return;
+  }
+  if (!session?.useBonus(bonus)) return;
   progress.setBonus(null);
   refreshBonusButton();
 }
@@ -326,7 +336,8 @@ $('btn-bonus').addEventListener('click', useBonus);
 
 function pause(): void {
   if (!session || session.paused || current !== null) return;
-  session.paused = true;
+  // En duel la course continue : le menu s'affiche mais rien n'est figé.
+  session.paused = !duel.active;
   show('screen-pause');
 }
 
@@ -344,6 +355,19 @@ function backToMenu(): void {
   show('screen-menu');
 }
 
+// ---------- Duel entre amis ----------
+const duel = new DuelController({
+  levels,
+  hud,
+  selected: () => selected,
+  playerName: () => storage.get('name') || 'Explorateur',
+  show,
+  startRace: (level, seed, seconds) => startGame(seed, level, seconds),
+  backToMenu,
+  play: (name) => audio.play(name),
+});
+$('btn-duel').addEventListener('click', () => duel.open());
+
 // ---------- Boutons et raccourcis ----------
 $('btn-play').addEventListener('click', () => {
   // Sur mobile, toucher « Jouer » passe en plein écran (geste utilisateur requis par les navigateurs).
@@ -354,7 +378,7 @@ $('btn-pause').addEventListener('click', pause);
 $('btn-resume').addEventListener('click', resume);
 $('btn-restart').addEventListener('click', () => session && startGame(session.seed, playing));
 $('btn-new').addEventListener('click', () => startGame(randomSeed(), playing));
-$('btn-menu').addEventListener('click', backToMenu);
+$('btn-menu').addEventListener('click', () => (duel.active ? duel.quit() : backToMenu()));
 $('btn-v-next').addEventListener('click', () => {
   const next = levels[playing.number];
   if (!next) return;
@@ -413,7 +437,7 @@ let frozen = false;
 if (import.meta.env.DEV || params.has('debug')) {
   installDebugApi({
     session: () => session,
-    startLevel: (n, seed) => startGame(seed, levels[Math.min(levels.length, Math.max(1, n)) - 1]),
+    startLevel: async (n, seed) => void (await startGame(seed, levels[Math.min(levels.length, Math.max(1, n)) - 1])),
     setFrozen: (f) => (frozen = f),
     stats,
   });
@@ -427,6 +451,9 @@ void showBackground().then(() => performance.measure('pyrarush:menu-ready', 'pyr
 resize();
 setZoom(zoom);
 show('screen-menu');
+// Lien d'invitation à un duel : ?salle=CODE ouvre directement la salle.
+const invite = params.get('salle');
+if (invite) duel.open(invite);
 
 let last = performance.now();
 renderer.renderer.setAnimationLoop((now) => {

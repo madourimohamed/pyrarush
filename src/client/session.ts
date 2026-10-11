@@ -21,6 +21,8 @@ import {
   type Vec3,
 } from '../core';
 import type { SfxName } from './audio/sfx';
+import { Rival } from './duel/rival';
+import type { Vec3Tuple } from '../net/protocol';
 import { FollowCamera, menuCamera, type ZoomLevel } from './camera';
 import type { Input } from './input/input';
 import { CharacterBody } from './physics';
@@ -39,6 +41,19 @@ export interface SoundPlayer {
   /** Intensité de la musique (0 à 1). */
   setIntensity?(level: number): void;
 }
+/**
+ * Liaison réseau d'un duel (absente en solo) : la session applique ses actions localement, tout de suite,
+ * et les transmet au serveur qui les rejoue sur sa partie.
+ */
+export interface DuelLink {
+  interact(doorId: string, p: Vec3): void;
+  floor(floor: number): void;
+  bonus(bonus: BonusId): void;
+  pos(p: Vec3, ry: number): void;
+}
+/** Fréquence d'envoi de la position en duel. */
+const POS_INTERVAL = 1 / 15;
+
 const TRAP_FX = new Set(['smallTrap', 'bigTrap', 'riskyLose']);
 const STEP = 1 / 60;
 const GOLD = 0xffd34a;
@@ -91,6 +106,12 @@ export class GameSession {
   private attractTime = 0;
   /** Étage le plus haut déjà atteint dans cette partie (pour la bannière de nouvel étage). */
   private highest = 1;
+  /** Duel : liaison au serveur, adversaire affiché, minuterie d'envoi de la position. */
+  net: DuelLink | null = null;
+  private rival: Rival | null = null;
+  private posTimer = 0;
+  /** En duel, l'introduction sert de compte à rebours : on ne peut pas la passer. */
+  introSkippable = true;
   /** Passage montré par l'Œil de Râ, jusqu'à `until` (ms de jeu). */
   private eyeReveal: { doorId: string; until: number } | null = null;
   /** Bulle dorée autour du personnage tant que le Bouclier d'Anubis est actif. */
@@ -145,6 +166,7 @@ export class GameSession {
   useBonus(bonus: BonusId): boolean {
     if (this.attract || this.paused || this.intro > 0 || this.locked || this.finished) return false;
     const events = this.game.useBonus(PLAYER_ID, bonus, this.clock);
+    if (events.length) this.net?.bonus(bonus);
     this.handle(events);
     return events.length > 0;
   }
@@ -167,7 +189,7 @@ export class GameSession {
     dt = Math.min(dt, 0.1);
     const frame = this.input.consume();
     if (this.intro > 0) {
-      this.playIntro(dt, frame.jump || frame.interact || Math.hypot(frame.moveX, frame.moveY) > 0.3);
+      this.playIntro(dt, this.introSkippable && (frame.jump || frame.interact || Math.hypot(frame.moveX, frame.moveY) > 0.3));
       return;
     }
     this.camera.addUserInput(frame.camDX, frame.camDY, frame.camActive);
@@ -201,12 +223,17 @@ export class GameSession {
       this.world.fragile.update(dt, this.body, (name) => this.sound.play(name));
 
       if (this.body.grounded && !this.finished) {
-        this.handle(this.game.reportFloor(PLAYER_ID, floorAtY(this.config, this.body.pos.y), this.clock));
+        const floor = floorAtY(this.config, this.body.pos.y);
+        const events = this.game.reportFloor(PLAYER_ID, floor, this.clock);
+        if (events.length) this.net?.floor(floor);
+        this.handle(events);
       }
       this.updateNearestDoor();
       if (frame.interact && this.nearestDoor && this.body.grounded) {
         const door = this.nearestDoor;
-        this.handle(this.game.interact(PLAYER_ID, door.id, this.clock, this.body.pos));
+        const events = this.game.interact(PLAYER_ID, door.id, this.clock, this.body.pos);
+        if (events.length) this.net?.interact(door.id, this.body.pos);
+        this.handle(events);
       }
     }
 
@@ -233,6 +260,51 @@ export class GameSession {
     );
     // De loin, une flèche au-dessus du personnage aide à le repérer.
     this.character.setMarker(this.camera.zoomSmooth);
+    this.updateDuel(dt);
+  }
+
+  // ---------- Duel ----------
+
+  /** Duel : chaque joueur part d'un côté du point de départ (x en mètres), pour ne pas apparaître l'un dans l'autre. */
+  shiftStart(x: number): void {
+    const p = spawnPoint(this.config);
+    this.body.teleport({ ...p, x: p.x + x });
+    this.syncCharacter();
+  }
+
+  /** Affiche l'adversaire (duel). */
+  addRival(name: string): void {
+    this.rival = new Rival(name);
+    this.world.scene.add(this.rival.character.root);
+  }
+
+  rivalMoved(p: Vec3Tuple, ry: number): void {
+    this.rival?.moveTo(p, ry);
+  }
+
+  /** L'adversaire a trouvé un passage : on le voit aussi, quelques secondes (entraide indirecte). */
+  rivalReveal(doorId: string, ms: number, name: string): void {
+    if (!this.game.doorsById.has(doorId) || ms <= 0) return;
+    this.game.reveals.set(doorId, this.clock + ms);
+    this.world.setReveal(doorId, true);
+    const door = this.game.doorsById.get(doorId)!;
+    if (door.floor === this.player.floor) this.hud.showToast(`${name} a trouvé un passage !`, 'info', 2.2, 'Vite, il brille encore à ton étage');
+  }
+
+  /** Fin du duel décidée par le serveur : la partie s'arrête pour tout le monde. */
+  endDuel(): void {
+    this.finished = true;
+    this.lock();
+  }
+
+  private updateDuel(dt: number): void {
+    this.rival?.update(dt, this.camera.zoomSmooth);
+    if (!this.net) return;
+    this.posTimer -= dt;
+    if (this.posTimer > 0) return;
+    this.posTimer = POS_INTERVAL;
+    const root = this.character.root;
+    this.net.pos(root.position, root.rotation.y);
   }
 
   private syncCharacter(): void {
@@ -581,6 +653,7 @@ export class GameSession {
     this.world.update(dt);
     this.character.animate(dt, 0, 0, 0, true);
     this.camera.update(dt, this.character.root.position, this.world.pyramidHalf, this.config.floors * FLOOR_HEIGHT, 0);
+    this.updateDuel(dt);
   }
 
   /**

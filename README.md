@@ -152,7 +152,10 @@ Le dossier `dist/` est un site **100 % statique**. Il s'héberge gratuitement (G
 | `npm test` | Tests du moteur de règles (Vitest) |
 | `npm run typecheck` | Vérification des types TypeScript |
 | `npm run build` | Vérification des types, puis build de production dans `dist/` |
-| `npm run preview` | Sert le build de production en local |
+| `npm run preview` | Sert le build de production en local (solo seulement) |
+| `npm run build:server` | Compile le serveur de duel dans `dist-server/` |
+| `npm run server` | Lance le serveur de duel : jeu + salles WebSocket (`PORT`, défaut 8787) |
+| `npm start` | Build du jeu + du serveur, puis lancement |
 
 ---
 

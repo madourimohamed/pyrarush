@@ -1,0 +1,71 @@
+import * as THREE from 'three';
+import type { Vec3Tuple } from '../../net/protocol';
+import { Character } from '../scene/character';
+
+/** Écharpe de l'adversaire (le joueur local garde la bleue). */
+export const RIVAL_COLOR = 0xd8402e;
+
+/**
+ * L'adversaire d'un duel : un explorateur d'une autre couleur, avec son nom au-dessus de la tête.
+ * Les positions reçues (~15 par seconde) sont lissées ; l'animation de course est déduite du mouvement.
+ */
+export class Rival {
+  readonly character = new Character(RIVAL_COLOR);
+  private readonly target = new THREE.Vector3();
+  private readonly velocity = new THREE.Vector3();
+  private heading = 0;
+  private seen = false;
+
+  constructor(name: string) {
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTexture(name), transparent: true, depthTest: false }));
+    label.renderOrder = 9;
+    label.scale.set(2.4, 0.6, 1);
+    label.position.y = 2.35;
+    this.character.root.add(label);
+    this.character.root.visible = false;
+  }
+
+  moveTo(p: Vec3Tuple, ry: number): void {
+    this.target.set(p[0], p[1], p[2]);
+    this.heading = ry;
+    if (!this.seen) {
+      this.seen = true;
+      this.character.root.position.copy(this.target);
+      this.character.root.visible = true;
+    }
+  }
+
+  update(dt: number, zoom: number): void {
+    if (!this.seen) return;
+    const root = this.character.root;
+    const before = root.position.clone();
+    // Téléportation (piège, passage) : on saute directement à la nouvelle position.
+    if (root.position.distanceTo(this.target) > 6) root.position.copy(this.target);
+    else root.position.lerp(this.target, 1 - Math.exp(-12 * dt));
+    this.velocity.copy(root.position).sub(before).divideScalar(Math.max(dt, 1e-3));
+    const moving = Math.hypot(this.velocity.x, this.velocity.z) > 0.5;
+    if (!moving) this.character.faceTowards(Math.sin(this.heading), Math.cos(this.heading));
+    this.character.animate(dt, this.velocity.x, this.velocity.z, this.velocity.y, Math.abs(this.velocity.y) < 1.5);
+    this.character.setMarker(zoom);
+  }
+}
+
+function nameTexture(name: string): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 64;
+  const ctx = c.getContext('2d')!;
+  ctx.font = '600 30px "Fredoka Variable", system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const width = Math.min(248, ctx.measureText(name).width + 28);
+  ctx.fillStyle = 'rgba(30, 14, 8, 0.7)';
+  ctx.beginPath();
+  ctx.roundRect(128 - width / 2, 10, width, 44, 22);
+  ctx.fill();
+  ctx.fillStyle = '#ffb8a8';
+  ctx.fillText(name, 128, 33);
+  const texture = new THREE.CanvasTexture(c);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}

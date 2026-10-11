@@ -6,7 +6,7 @@ Jeu 3D de course sur pyramide, jouable dans le navigateur (mobile + desktop).
 - La direction artistique, les budgets de performance et la **fiche technique des modèles 3D** sont dans [ART_DIRECTION.md](ART_DIRECTION.md). La relire avant tout travail graphique. Les maquettes de `design/` sont une référence d'ambiance (niveau console), pas une cible au détail près.
 - Tout asset externe : licence vérifiée, fichier `LICENSE.txt` dans son dossier `public/models/<pack>/`, ligne dans [CREDITS.md](CREDITS.md).
 - Toute décision de design ou technique validée avec l'utilisateur doit être ajoutée au « Journal des décisions » à la fin de GAME_DESIGN.md.
-- Ne pas implémenter de fonctionnalités d'une version ultérieure (robots, serveur, salons) avant que la version courante soit validée.
+- Ne pas implémenter de fonctionnalités d'une version ultérieure avant que la version courante soit validée. V1 validée le 2026-10-11 ; la V2 a commencé par le **duel entre amis** (salle à code). Robots : pas avant validation du duel.
 
 ## Commandes
 
@@ -15,6 +15,8 @@ Node 22 est requis. Dans ce WSL, `npm` pointe vers le npm Windows : utiliser le 
 - `npm run dev` : serveur de développement (http://localhost:5173, accessible aussi depuis le réseau local pour tester sur téléphone)
 - `npm test` : tests du moteur de règles (Vitest)
 - `npm run build` : vérification des types + build statique dans `dist/`
+- `npm run build:server` puis `npm run server` : serveur de duel (`server/`) qui sert aussi `dist/` ; `PORT` (défaut 8787). `npm start` fait tout (builds + serveur). En dev, Vite relaie `/ws` vers le port 8787.
+- Tests entre amis : le tunnel Cloudflare doit pointer vers ce serveur (et non `vite preview`, qui ne gère pas les WebSockets).
 
 - `npm run capture -- --label <nom>` : captures des vues de référence + mesures (`tools/capture-reference.mjs`, serveur lancé au préalable, ex. `npm run preview`). Sortie dans `docs/reference/niveau-<n>/<nom>/`.
 
@@ -38,7 +40,9 @@ Trois couches : **socle** (`src/core`), **niveaux** (`src/levels`), **affichage*
   - `game.ts` : état de la partie ; les actions (`interact`, `reportFloor`, `update`) renvoient des événements.
 - `src/levels/` : un fichier par niveau `NNN-nom.ts`, **découvert automatiquement** (`import.meta.glob`) et trié par numéro. Familles de thèmes dans `themes.ts`, briques de règles dans `shared.ts`. Ajouter un niveau = créer un fichier, rien d'autre.
 - Objectif d'échelle : **~100 niveaux et ~100 thèmes**. Règles : pas de duplication (familles de thèmes + `defineTheme(surcharges, base)`, valeurs par défaut, briques partagées), pas de code spécifique à un niveau hors de son fichier, coût d'exécution indépendant du nombre de niveaux (une seule pyramide en mémoire, miniatures seulement pour les niveaux débloqués, décor instancié).
-- `src/client/` : navigateur uniquement (Three.js + HTML/CSS).
+- `src/net/protocol.ts` : messages du duel (WebSocket JSON), partagés par le navigateur et le serveur.
+- `server/` : Node uniquement. `rooms.ts` (salles, codes, compte à rebours, revanche, forfait ; rejoue les actions sur le même moteur, fait foi pour la victoire ; testé avec une horloge manuelle), `index.ts` (HTTP statique + WebSocket `/ws`).
+- `src/client/` : navigateur uniquement (Three.js + HTML/CSS). `duel/` : connexion, contrôleur du duel (écrans de salle et de résultat), adversaire affiché (`rival.ts`).
   - `session.ts` relie moteur, physique, rendu et commandes ; il réagit aux événements du moteur.
   - `physics.ts` : contrôleur de personnage maison contre des boîtes alignées sur les axes (pas de moteur physique).
   - `camera.ts` : caméra automatique autour de la pyramide.

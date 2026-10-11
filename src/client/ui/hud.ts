@@ -77,6 +77,23 @@ export class Hud {
     banner.classList.add('show');
   }
 
+  /** Duel : étage de l'adversaire sur l'échelle (null = pas d'adversaire). */
+  setRivalFloor(floor: number | null): void {
+    for (const rung of Array.from(this.ladder.children) as HTMLElement[]) {
+      const f = rung.classList.contains('summit') ? this.floors + 1 : Number(rung.dataset.floor);
+      rung.classList.toggle('rival', f === floor);
+    }
+  }
+
+  /** Grand chiffre du compte à rebours (« 3 », « 2 », « 1 », « Go ! »). */
+  showCountdown(text: string): void {
+    const el = $('countdown');
+    el.textContent = text;
+    el.classList.remove('tick');
+    void el.offsetWidth;
+    el.classList.add('tick');
+  }
+
   setTime(ms: number): void {
     this.timer.textContent = formatTime(ms);
   }

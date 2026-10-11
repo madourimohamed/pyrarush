@@ -40,6 +40,7 @@
         <button id="btn-pause" class="pill round" aria-label="Pause"><span data-icon="pause"></span></button>
       </div>
       <div id="floor-banner"><b></b><small></small></div>
+      <div id="countdown" aria-live="assertive"></div>
       <div id="toast">
         <span class="toast-icon"></span>
         <div><b class="toast-title"></b><small class="toast-sub"></small></div>
@@ -104,6 +105,7 @@
         <p id="info-tagline"></p>
         <ul id="info-highlights" class="checklist"></ul>
         <button id="btn-play" class="play-btn"><span data-icon="play"></span>Jouer</button>
+        <button id="btn-duel" class="duel-btn"><span data-icon="users"></span>Défier un ami</button>
       </div>
     </div>
 
@@ -183,6 +185,45 @@
         <button id="btn-pause-howto">Comment jouer ?</button>
         <button id="btn-pause-settings">Réglages</button>
         <button id="btn-menu">Menu</button>
+      </div>
+    </div>
+
+    <!-- Duel : salle (créer, rejoindre, attendre) -->
+    <div id="screen-duel" class="screen">
+      <div class="card duel-card">
+        <div class="eyebrow">Duel entre amis</div>
+        <h2>Course à deux</h2>
+        <div id="duel-home">
+          <p class="duel-lead">Le premier au sommet gagne. Même pyramide pour vous deux !</p>
+          <button id="btn-duel-create" class="primary">Créer une salle · <span id="duel-level-name"></span></button>
+          <div class="duel-join">
+            <input id="duel-code" type="text" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+            <button id="btn-duel-join">Rejoindre</button>
+          </div>
+        </div>
+        <div id="duel-wait">
+          <p class="duel-lead">Donne ce code à ton ami :</p>
+          <div id="duel-room-code" class="room-code">····</div>
+          <div class="duel-share">
+            <button id="btn-duel-copy">Copier le lien</button>
+            <button id="btn-duel-share">Partager</button>
+          </div>
+          <ul id="duel-players" class="duel-players"></ul>
+        </div>
+        <p id="duel-status" class="duel-status" aria-live="polite"></p>
+        <button id="btn-duel-close">Retour</button>
+      </div>
+    </div>
+
+    <!-- Duel : résultat -->
+    <div id="screen-duel-result" class="screen">
+      <div class="card">
+        <h2 id="dr-title">Victoire !</h2>
+        <p id="dr-sub" class="duel-lead"></p>
+        <ul id="dr-results" class="duel-results"></ul>
+        <p id="dr-status" class="duel-status" aria-live="polite"></p>
+        <button id="btn-dr-rematch" class="primary">Revanche</button>
+        <button id="btn-dr-quit">Quitter le duel</button>
       </div>
     </div>
 
