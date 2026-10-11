@@ -8,11 +8,14 @@ import { glyphTextures } from './textures';
 const COLORS = { hint: 0xffc93c, reveal: 0x3ce0ff, highlight: 0x7ff6ff };
 /** Symbole des portes mystère : cyan lumineux (HDR). */
 const MYSTERY_GLYPH = new THREE.Color(0.5, 2.2, 2.8);
-/** Trace privée des portes essayées : mur scellé (pierre), piège fissuré (rouge sombre). */
-const TRIED_LOOK = {
+/** Trace privée des portes essayées : mur scellé (pierre), piège fissuré (rouge sombre), coffre vidé (duel, violet). */
+type Traced = Exclude<TriedOutcome, 'up'>;
+const TRIED_LOOK: Record<Traced, { panel: THREE.Color; glyph: THREE.Color }> = {
   wall: { panel: new THREE.Color(0x8c7a62), glyph: new THREE.Color(0.55, 0.5, 0.42) },
   trap: { panel: new THREE.Color(0x4a1712), glyph: new THREE.Color(1.6, 0.25, 0.12) },
+  power: { panel: new THREE.Color(0x3a2350), glyph: new THREE.Color(1.3, 0.7, 1.9) },
 };
+const isTraced = (t: TriedOutcome | null | undefined): t is Traced => !!t && t !== 'up';
 
 interface DoorState {
   slot: DoorSlot;
@@ -47,7 +50,7 @@ export class DoorsView {
   private readonly emissive: THREE.InstancedBufferAttribute;
   private readonly cellAttr: THREE.InstancedBufferAttribute;
   /** Cases de l'atlas des symboles de trace (scellé, fissure). */
-  private readonly traceCells: Record<'wall' | 'trap', number>;
+  private readonly traceCells: Record<Traced, number>;
   private readonly markerGeo = new THREE.OctahedronGeometry(0.3);
   private readonly markerMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 1.8, 0.4) });
   private readonly beamGeo = new THREE.CylinderGeometry(0.6, 0.9, 18, 14, 1, true);
@@ -66,8 +69,8 @@ export class DoorsView {
     // Atlas des symboles : 4 hiéroglyphes + les symboles des portes reconnaissables (±2, ±3…).
     const glyphs = glyphTextures().map((t) => t.image as HTMLCanvasElement);
     const symbols = [...new Set(slots.map((s) => getMechanic(s.door.mechanic).appearance?.symbol(layout.config)).filter((x): x is string => !!x))];
-    const cells = [...glyphs, ...symbols.map((sym) => symbolTexture(sym).image as HTMLCanvasElement), sealCanvas(), crackCanvas()];
-    this.traceCells = { wall: cells.length - 2, trap: cells.length - 1 };
+    const cells = [...glyphs, ...symbols.map((sym) => symbolTexture(sym).image as HTMLCanvasElement), sealCanvas(), crackCanvas(), chestCanvas()];
+    this.traceCells = { wall: cells.length - 3, trap: cells.length - 2, power: cells.length - 1 };
     const atlas = document.createElement('canvas');
     atlas.width = 128 * cells.length;
     atlas.height = 128;
@@ -211,13 +214,13 @@ export class DoorsView {
         glow.set(COLORS.hint).multiplyScalar(0.5 + (s.highlighted ? 0.4 * pulse : 0));
         glyphBoost = 1;
       } else {
-        const look = s.tried === 'wall' || s.tried === 'trap' ? TRIED_LOOK[s.tried] : null;
+        const look = isTraced(s.tried) ? TRIED_LOOK[s.tried] : null;
         panel.copy(look ? look.panel : s.baseColor);
         if (s.highlighted) glow.set(COLORS.highlight).multiplyScalar(0.25 + 0.25 * pulse);
       }
       if (s.mystery && !s.tried) glyphBoost = Math.max(glyphBoost, 0.35 + 0.35 * pulse);
-      const traced = !s.flashColor && !s.revealed && !s.privateHint && (s.tried === 'wall' || s.tried === 'trap');
-      glyph.copy(traced ? TRIED_LOOK[s.tried as 'wall' | 'trap'].glyph : s.glyphIdle).multiplyScalar(1 + glyphBoost);
+      const traced = !s.flashColor && !s.revealed && !s.privateHint && isTraced(s.tried);
+      glyph.copy(traced ? TRIED_LOOK[s.tried as Traced].glyph : s.glyphIdle).multiplyScalar(1 + glyphBoost);
       this.panels.setColorAt(s.index, panel);
       this.emissive.setXYZ(s.index, glow.r, glow.g, glow.b);
       this.emblems.setColorAt(s.index, glyph);
@@ -295,6 +298,25 @@ function crackCanvas(): HTMLCanvasElement {
   g.moveTo(76, 66);
   g.lineTo(98, 58);
   g.stroke();
+  return c;
+}
+
+/** Symbole « coffre vidé » : coffre ouvert (porte à pouvoir déjà ouverte, duel). */
+function chestCanvas(): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  g.strokeStyle = g.fillStyle = '#ffffff';
+  g.lineWidth = 8;
+  g.lineJoin = 'round';
+  g.strokeRect(26, 62, 76, 44);
+  g.beginPath();
+  g.moveTo(26, 62);
+  g.lineTo(34, 30);
+  g.lineTo(110, 22);
+  g.lineTo(102, 62);
+  g.stroke();
+  g.fillRect(58, 74, 12, 16);
   return c;
 }
 

@@ -3,6 +3,7 @@ export * from './rng';
 export * from './layout';
 export * from './geometry';
 export * from './game';
+export * from './duel';
 export * from './level';
 export * from './theme';
 export { getMechanic, registerMechanic } from './mechanics/registry';

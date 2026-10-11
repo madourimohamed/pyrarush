@@ -408,7 +408,7 @@ export class GameSession {
   }
 
   /** Le bouclier a annulé une chute : après une chute physique, on remonte le joueur sur sa terrasse. */
-  private onShielded(cause: 'door' | 'fall', floor: number): void {
+  private onShielded(cause: 'door' | 'fall' | 'attack', floor: number): void {
     this.sound.play('shield');
     navigator.vibrate?.(40);
     this.hud.showToast("Bouclier d'Anubis !", 'good', 2, cause === 'door' ? 'Le piège est annulé' : 'Ta chute est annulée');

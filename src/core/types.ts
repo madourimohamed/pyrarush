@@ -52,8 +52,10 @@ export interface PlayerState {
   usedDoors: Set<string>;
   /** Portes déjà essayées par ce joueur et ce qu'il y a découvert : base de la trace privée des portes. */
   tried: Map<string, TriedOutcome>;
-  /** Bouclier d'Anubis actif : la prochaine chute (piège ou trou) est annulée. */
+  /** Bouclier d'Anubis actif : la prochaine chute (piège, trou ou attaque) est annulée. */
   shield: boolean;
+  /** Dernière bonne porte franchie (duel : le Sceau magique la bloque derrière soi). */
+  lastPassage?: { doorId: string; at: number };
   falls: number;
   doorsTested: number;
   finishedAt?: number;
@@ -120,7 +122,7 @@ export const BONUS_EYE_MS = 5000;
 export const BONUS_HOURGLASS_MS = 10000;
 
 /** Ce qu'un joueur a découvert derrière une porte : un passage (monte), un mur, ou un piège (descend ou repousse). */
-export type TriedOutcome = 'up' | 'wall' | 'trap';
+export type TriedOutcome = 'up' | 'wall' | 'trap' | 'power';
 
 /** Étage spécial : atteindre floors + 1 signifie être au sommet. */
 export const summitFloor = (config: PyramidConfig) => config.floors + 1;
@@ -141,10 +143,17 @@ export type GameEvent =
     }
   | { type: 'publicReveal'; doorId: string; until: number }
   | { type: 'revealEnd'; doorId: string }
-  | { type: 'floorChanged'; playerId: string; from: number; to: number; cause: 'door' | 'fall' }
+  | { type: 'floorChanged'; playerId: string; from: number; to: number; cause: 'door' | 'fall' | 'attack' }
   | { type: 'victory'; playerId: string; time: number }
   | { type: 'bonusUsed'; playerId: string; bonus: BonusId; timeBonusMs?: number }
   /** Passage montré à un seul joueur (Œil de Râ). */
   | { type: 'privateReveal'; playerId: string; doorId: string; until: number }
   /** Le bouclier a annulé une chute : par une porte (piège) ou physique (trou, bord) ; le joueur reste à `floor`. */
-  | { type: 'shielded'; playerId: string; cause: 'door' | 'fall'; floor: number };
+  | { type: 'shielded'; playerId: string; cause: 'door' | 'fall' | 'attack'; floor: number }
+  /** Duel : attaque subie (mine) ; `to` = étage après le coup (au plus un de moins). */
+  | { type: 'knocked'; playerId: string; from: number; to: number }
+  /** Duel : porte scellée par un joueur (bloquée pour les autres jusqu'à `until`). */
+  | { type: 'sealed'; doorId: string; owner: string; until: number }
+  | { type: 'unsealed'; doorId: string }
+  /** Duel : un joueur a tenté d'ouvrir une porte scellée par l'adversaire (rien ne se passe). */
+  | { type: 'doorSealed'; playerId: string; doorId: string };

@@ -32,6 +32,8 @@ export interface Mechanic {
   rememberAsPassage?: boolean;
   /** Après usage, se comporte comme un mur pour ce joueur. */
   oncePerPlayer?: boolean;
+  /** Facultative : placée seulement sur les portes encore libres (murs) après les autres mécaniques, sans jamais déborder. */
+  fillsWalls?: boolean;
   /** Étages où la mécanique peut être placée (par défaut : tous). */
   canPlace?(floor: number, config: PyramidConfig): boolean;
   /** Paramètres tirés une fois à la génération, puis fixes pendant toute la partie. */

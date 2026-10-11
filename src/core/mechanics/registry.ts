@@ -1,6 +1,7 @@
 import type { Mechanic } from './mechanic';
 import { passage, wall, smallTrap } from './basic';
 import { bigTrap, teleportUp, teleportDown, riskyDoor } from './advanced';
+import { powerDoor } from './duel';
 
 const mechanics = new Map<string, Mechanic>();
 
@@ -14,6 +15,6 @@ export function getMechanic(id: string): Mechanic {
   return mechanic;
 }
 
-for (const m of [passage, wall, smallTrap, bigTrap, teleportUp, teleportDown, riskyDoor]) {
+for (const m of [passage, wall, smallTrap, bigTrap, teleportUp, teleportDown, riskyDoor, powerDoor]) {
   registerMechanic(m);
 }

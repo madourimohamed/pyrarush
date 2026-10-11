@@ -2,6 +2,7 @@ import { generateLayout } from './layout';
 import { doorFront, INTERACT_RANGE, type Vec3 } from './geometry';
 import { getMechanic } from './mechanics/registry';
 import { wall } from './mechanics/basic';
+import { SEAL_COOLDOWN_MS, SEAL_MS, SEAL_WINDOW_MS } from './duel';
 import { summitFloor, BONUS_EYE_MS, BONUS_HOURGLASS_MS, type BonusId, type Door, type GameEvent, type Layout, type PlayerState, type PyramidConfig } from './types';
 
 /**
@@ -17,6 +18,11 @@ export class Game {
   readonly doorsById = new Map<string, Door>();
   /** Révélations publiques en cours : doorId → fin. */
   readonly reveals = new Map<string, number>();
+  /**
+   * Duel : portes scellées. `until` = fin du blocage ; `rest` = fin de la période pendant laquelle
+   * la porte ne peut pas être rescellée (l'adversaire a toujours une fenêtre pour passer).
+   */
+  readonly seals = new Map<string, { owner: string; until: number; rest: number; active: boolean }>();
   winner?: string;
 
   constructor(config: PyramidConfig, seed: number) {
@@ -50,6 +56,8 @@ export class Game {
     const door = this.doorsById.get(doorId);
     if (!player || !door || player.finishedAt !== undefined) return [];
     if (door.floor !== player.floor) return [];
+    const seal = this.seals.get(door.id);
+    if (seal?.active && seal.owner !== playerId && now < seal.until) return [{ type: 'doorSealed', playerId, doorId }];
     if (position) {
       const front = doorFront(this.config, door);
       if (Math.hypot(front.x - position.x, front.z - position.z) > INTERACT_RANGE + 0.5) return [];
@@ -67,8 +75,11 @@ export class Game {
     }
     player.doorsTested++;
     if (mechanic.oncePerPlayer) player.usedDoors.add(door.id);
-    if (mechanic.rememberAsPassage && to > from) player.knownPassages.add(door.id);
-    player.tried.set(door.id, to > from ? 'up' : to < from || outcome.fx !== 'wall' ? 'trap' : 'wall');
+    if (mechanic.rememberAsPassage && to > from) {
+      player.knownPassages.add(door.id);
+      player.lastPassage = { doorId: door.id, at: now };
+    }
+    player.tried.set(door.id, to > from ? 'up' : outcome.fx === 'power' ? 'power' : to < from || outcome.fx !== 'wall' ? 'trap' : 'wall');
 
     const events: GameEvent[] = [
       {
@@ -138,7 +149,50 @@ export class Game {
         events.push({ type: 'revealEnd', doorId });
       }
     }
+    for (const [doorId, seal] of this.seals) {
+      if (seal.active && now >= seal.until) {
+        seal.active = false;
+        events.push({ type: 'unsealed', doorId });
+      }
+      if (!seal.active && now >= seal.rest) this.seals.delete(doorId);
+    }
     return events;
+  }
+
+  /**
+   * Duel, Sceau magique : bloque derrière soi la dernière bonne porte franchie (dans les SEAL_WINDOW_MS qui suivent).
+   * Refusé (rien renvoyé) si trop tard, si la porte est déjà scellée ou au repos, ou si le joueur a déjà un sceau actif.
+   */
+  sealDoor(playerId: string, now: number): GameEvent[] {
+    const player = this.players.get(playerId);
+    const last = player?.lastPassage;
+    if (!player || player.finishedAt !== undefined || !last || now - last.at > SEAL_WINDOW_MS) return [];
+    if (this.seals.has(last.doorId)) return [];
+    if ([...this.seals.values()].some((s) => s.active && s.owner === playerId)) return [];
+    return this.applySeal(last.doorId, playerId, now + SEAL_MS);
+  }
+
+  /** Pose un sceau décidé ailleurs (le navigateur recopie ceux annoncés par le serveur). */
+  applySeal(doorId: string, owner: string, until: number): GameEvent[] {
+    if (!this.doorsById.has(doorId)) return [];
+    this.seals.set(doorId, { owner, until, rest: until + SEAL_COOLDOWN_MS, active: true });
+    return [{ type: 'sealed', doorId, owner, until }];
+  }
+
+  /**
+   * Duel : un joueur est touché par une attaque (mine). Le bouclier l'absorbe ; sinon le joueur est projeté
+   * et perd au plus un étage (au premier étage, il est seulement repoussé).
+   */
+  knockDown(playerId: string, now: number): GameEvent[] {
+    const player = this.players.get(playerId);
+    if (!player || player.finishedAt !== undefined) return [];
+    if (player.shield) {
+      player.shield = false;
+      return [{ type: 'shielded', playerId, cause: 'attack', floor: player.floor }];
+    }
+    const from = player.floor;
+    const to = Math.max(1, from - 1);
+    return [{ type: 'knocked', playerId, from, to }, ...this.moveTo(player, to, 'attack', now)];
   }
 
   /** Borne une variation d'étage selon la configuration de la pyramide. */
@@ -153,7 +207,7 @@ export class Game {
     return from;
   }
 
-  private moveTo(player: PlayerState, to: number, cause: 'door' | 'fall', now: number): GameEvent[] {
+  private moveTo(player: PlayerState, to: number, cause: 'door' | 'fall' | 'attack', now: number): GameEvent[] {
     const from = player.floor;
     if (to === from) return [];
     player.floor = to;
