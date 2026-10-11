@@ -1,0 +1,397 @@
+import * as THREE from 'three';
+import {
+  Game,
+  doorCenter,
+  doorFront,
+  doorTangent,
+  floorAtY,
+  landingPoint,
+  sideFrame,
+  spawnPoint,
+  summitFloor,
+  INTERACT_RANGE,
+  FLOOR_HEIGHT,
+  type Door,
+  type GameEvent,
+  type PyramidConfig,
+  type Vec3,
+} from '../core';
+import { FollowCamera, orbitCamera } from './camera';
+import type { Input } from './input/input';
+import { CharacterBody } from './physics';
+import { Character } from './scene/character';
+import { burst, easeInOut, Tweens } from './scene/fx';
+import { releaseScarab } from './scene/props';
+import { HINT_COLORS, World } from './scene/world';
+import type { Hud, ToastKind } from './ui/hud';
+
+export const PLAYER_ID = 'local';
+const TRAP_FX = new Set(['smallTrap', 'bigTrap', 'riskyLose']);
+const STEP = 1 / 60;
+
+export interface SessionResult {
+  config: PyramidConfig;
+  seed: number;
+  time: number;
+  falls: number;
+  doorsTested: number;
+}
+
+/** Une partie en cours côté navigateur : relie le moteur de règles, la physique, le rendu et les commandes. */
+export class GameSession {
+  readonly game: Game;
+  readonly world: World;
+  readonly camera: FollowCamera;
+  private readonly tweens = new Tweens();
+  private readonly body: CharacterBody;
+  private readonly character = new Character(0xff6b5a);
+  private clock = 0;
+  private accumulator = 0;
+  private locked = false;
+  private finished = false;
+  private nearestDoor: Door | null = null;
+  private extraCamDistance = 0;
+  paused = false;
+  /** Écran d'accueil : la caméra tourne autour de la pyramide, le jeu ne démarre pas. */
+  attract = false;
+  private attractTime = 0;
+
+  constructor(
+    config: PyramidConfig,
+    readonly seed: number,
+    private readonly input: Input,
+    private readonly hud: Hud,
+    lowQuality: boolean,
+    aspect: number,
+    private readonly onVictory: (result: SessionResult) => void,
+  ) {
+    this.game = new Game(config, seed);
+    this.game.addPlayer(PLAYER_ID);
+    this.world = new World(this.game.layout, this.tweens, lowQuality);
+    this.camera = new FollowCamera(aspect);
+    this.body = new CharacterBody(this.world.colliders, spawnPoint(config));
+    this.world.scene.add(this.character.root);
+    this.character.faceTowards(0, -1);
+    this.syncCharacter();
+
+    hud.setup(config.floors);
+    hud.setFloor(1, 1);
+    hud.setTime(0);
+    hud.setPrompt(false);
+    hud.showToast('Trouve les passages secrets !', 'info', 2.5);
+  }
+
+  private get player() {
+    return this.game.players.get(PLAYER_ID)!;
+  }
+
+  private get config() {
+    return this.game.config;
+  }
+
+  frame(dt: number): void {
+    if (this.attract) {
+      dt = Math.min(dt, 0.1);
+      this.attractTime += dt;
+      this.input.consume();
+      this.tweens.update(dt);
+      this.world.update(dt);
+      const height = this.config.floors * FLOOR_HEIGHT;
+      orbitCamera(this.camera.camera, this.attractTime, this.world.groundHalf * 1.75, height * 0.9 + 7, height * 0.4);
+      return;
+    }
+    if (this.paused) {
+      this.input.consume();
+      return;
+    }
+    dt = Math.min(dt, 0.1);
+    const frame = this.input.consume();
+    this.camera.addUserInput(frame.camDX, frame.camDY, frame.camActive);
+
+    if (!this.finished) this.clock += dt * 1000;
+    this.hud.setTime(this.finished ? (this.player.finishedAt ?? this.clock) : this.clock);
+
+    if (!this.locked) {
+      // Les commandes sont relatives à la caméra : « avant » = vers la pyramide.
+      const yaw = this.camera.viewYaw;
+      const fx = -Math.sin(yaw);
+      const fz = -Math.cos(yaw);
+      const intent = {
+        x: fx * frame.moveY + Math.cos(yaw) * frame.moveX,
+        z: fz * frame.moveY - Math.sin(yaw) * frame.moveX,
+        jumpPressed: frame.jump,
+      };
+      this.accumulator += dt;
+      let steps = 0;
+      while (this.accumulator >= STEP && steps < 5) {
+        this.body.step(STEP, intent);
+        if (this.body.landedSpeed > 4) this.character.land(this.body.landedSpeed);
+        intent.jumpPressed = false;
+        this.accumulator -= STEP;
+        steps++;
+      }
+      if (this.body.pos.y < -10) this.body.teleport(spawnPoint(this.config));
+
+      if (this.body.grounded && !this.finished) {
+        this.handle(this.game.reportFloor(PLAYER_ID, floorAtY(this.config, this.body.pos.y), this.clock));
+      }
+      this.updateNearestDoor();
+      if (frame.interact && this.nearestDoor && this.body.grounded) {
+        const door = this.nearestDoor;
+        this.handle(this.game.interact(PLAYER_ID, door.id, this.clock, this.body.pos));
+      }
+    }
+
+    this.handle(this.game.update(this.clock));
+    this.tweens.update(dt);
+    this.world.update(dt);
+    this.syncCharacter();
+    if (!this.locked) {
+      this.character.animate(dt, this.body.vel.x, this.body.vel.z, this.body.vel.y, this.body.grounded);
+    }
+    this.extraCamDistance += ((this.finished ? 5 : 0) - this.extraCamDistance) * (1 - Math.exp(-2 * dt));
+    this.camera.update(
+      dt,
+      this.character.root.position,
+      this.world.pyramidHalf,
+      this.config.floors * FLOOR_HEIGHT,
+      this.extraCamDistance,
+    );
+    // De loin, une flèche au-dessus du personnage aide à le repérer.
+    this.character.setMarker(this.camera.zoomSmooth);
+  }
+
+  private syncCharacter(): void {
+    if (this.locked) return;
+    const p = this.body.pos;
+    this.character.root.position.set(p.x, p.y, p.z);
+  }
+
+  private updateNearestDoor(): void {
+    let best: Door | null = null;
+    if (this.body.grounded && !this.finished) {
+      let bestDist = INTERACT_RANGE;
+      const floor = this.player.floor;
+      for (const door of this.game.layout.doorsByFloor[floor] ?? []) {
+        const f = doorFront(this.config, door);
+        const d = Math.hypot(f.x - this.body.pos.x, f.z - this.body.pos.z);
+        if (d < bestDist && Math.abs(f.y - this.body.pos.y) < 0.5) {
+          bestDist = d;
+          best = door;
+        }
+      }
+    }
+    if (best !== this.nearestDoor) {
+      this.nearestDoor = best;
+      this.world.setHighlight(best?.id ?? null);
+      this.hud.setPrompt(best !== null);
+    }
+  }
+
+  private handle(events: GameEvent[]): void {
+    for (const event of events) {
+      switch (event.type) {
+        case 'doorResult':
+          this.onDoorResult(event);
+          break;
+        case 'publicReveal':
+          this.world.setReveal(event.doorId, true);
+          break;
+        case 'revealEnd':
+          this.world.setReveal(event.doorId, false);
+          break;
+        case 'floorChanged':
+          this.hud.setFloor(event.to, this.player.bestFloor);
+          this.world.setPrivateHints(this.player.knownPassages, event.to);
+          if (event.cause === 'fall') {
+            this.hud.showToast(`Chute ! Étage ${event.to}`, 'bad');
+            navigator.vibrate?.(60);
+          }
+          break;
+        case 'victory':
+          this.finished = true;
+          break;
+      }
+    }
+  }
+
+  private onDoorResult(e: Extract<GameEvent, { type: 'doorResult' }>): void {
+    const door = this.game.doorsById.get(e.doorId)!;
+    const kind: ToastKind =
+      e.to > e.from ? 'good' : e.to < e.from ? 'bad' : e.hint?.type === 'hotCold' ? e.hint.level : e.hint ? 'scarab' : 'info';
+    const change = e.to - e.from;
+    const floors = (n: number) => `${n} étage${Math.abs(n) > 1 ? 's' : ''}`;
+    const suffix = e.fx === 'passage' || change === 0 ? '' : change > 0 ? ` +${floors(change)}` : ` −${floors(-change)}`;
+    this.hud.showToast(e.message + suffix, TRAP_FX.has(e.fx) ? 'bad' : kind);
+    this.hud.setPrompt(false);
+    this.nearestDoor = null;
+    this.world.setHighlight(null);
+
+    if (e.to === e.from && TRAP_FX.has(e.fx)) {
+      // Déjà tout en bas : le gant frappe quand même et repousse le joueur en arrière (perte de temps).
+      const c = doorFront(this.config, door);
+      const f = sideFrame(door.side);
+      const target = { x: c.x + f.outX * 4, y: c.y, z: c.z + f.outZ * 4 };
+      this.punch(door, target, false);
+      return;
+    }
+    if (e.to === e.from) {
+      this.world.shakeDoor(door.id);
+      if (e.hint?.type === 'hotCold') this.world.flashDoor(door.id, HINT_COLORS[e.hint.level]);
+      else this.world.flashDoor(door.id, 0x555555, 0.5);
+      if (e.hint?.type === 'scarab') {
+        const tangent = doorTangent(this.config, door.floor, door.slot);
+        releaseScarab(this.world.scene, this.tweens, this.config, door.floor, door.side, tangent, e.hint.dir, e.hint.near);
+      }
+      return;
+    }
+
+    const target = landingPoint(this.config, e.to, door.side, doorTangent(this.config, door.floor, door.slot));
+    switch (e.fx) {
+      case 'passage':
+        this.world.openDoor(door.id);
+        this.playPassage(door, target, e.to);
+        break;
+      case 'teleportUp':
+      case 'teleportDown':
+      case 'riskyWin': {
+        const color = e.fx === 'riskyWin' ? 0xffc23a : e.fx === 'teleportUp' ? 0xb04dff : 0x5a1a8a;
+        this.world.flashDoor(door.id, color, 1);
+        this.playTeleport(target, e.to, color);
+        break;
+      }
+      default:
+        // Pièges et pari perdu : un gant de boxe jaillit et envoie le joueur en contrebas.
+        this.punch(door, target, e.from - e.to > 1);
+    }
+  }
+
+  private punch(door: Door, target: Vec3, big: boolean): void {
+    this.lock();
+    this.world.flashDoor(door.id, 0xff2a1a, 0.6);
+    this.world.punchDoor(door.id, big, () => {
+      navigator.vibrate?.(big ? [80, 40, 120] : 90);
+      this.playKnockback(target, big);
+    });
+  }
+
+  /** Le personnage entre dans la porte et ressort sur la terrasse supérieure. */
+  private playPassage(door: Door, target: Vec3, to: number): void {
+    this.lock();
+    const root = this.character.root;
+    const start = root.position.clone();
+    const c = doorCenter(this.config, door);
+    const inside = new THREE.Vector3(c.x, start.y, c.z);
+    this.character.faceTowards(c.x - start.x, c.z - start.z);
+    this.character.body.rotation.set(0, 0, 0);
+    this.tweens.add(
+      0.35,
+      (t) => {
+        root.position.lerpVectors(start, inside, easeInOut(t));
+        root.scale.setScalar(1 - t * 0.6);
+      },
+      () => {
+        root.position.set(target.x, target.y, target.z);
+        this.character.faceTowards(-target.x, -target.z);
+        this.character.root.rotation.y = Math.atan2(-target.x, -target.z);
+        burst(this.world.scene, this.tweens, root.position.clone().add(new THREE.Vector3(0, 0.5, 0)), 0x3ce0ff, 12);
+        this.tweens.add(
+          0.25,
+          (t) => root.scale.setScalar(0.4 + 0.6 * t + Math.sin(t * Math.PI) * 0.25),
+          () => this.unlock(target, to),
+        );
+      },
+    );
+  }
+
+  private playTeleport(target: Vec3, to: number, color: number): void {
+    this.lock();
+    const root = this.character.root;
+    this.tweens.add(
+      0.4,
+      (t) => {
+        root.scale.setScalar(1 - t);
+        root.rotation.y += 0.5;
+      },
+      () => {
+        root.position.set(target.x, target.y, target.z);
+        burst(this.world.scene, this.tweens, root.position.clone().add(new THREE.Vector3(0, 0.6, 0)), color, 16, 3.5, 2);
+        this.tweens.add(
+          0.3,
+          (t) => root.scale.setScalar(t),
+          () => this.unlock(target, to),
+        );
+      },
+    );
+  }
+
+  /** Éjection en arc vers une terrasse inférieure, en roulé-boulé. */
+  private playKnockback(target: Vec3, big: boolean): void {
+    this.lock();
+    const root = this.character.root;
+    const start = root.position.clone();
+    const end = new THREE.Vector3(target.x, target.y, target.z);
+    const peak = Math.max(start.y, end.y) + (big ? 3.5 : 2);
+    const duration = big ? 1.15 : 0.75;
+    this.tweens.add(
+      duration,
+      (t) => {
+        root.position.x = start.x + (end.x - start.x) * t;
+        root.position.z = start.z + (end.z - start.z) * t;
+        const a = 1 - t;
+        root.position.y = a * a * start.y + 2 * a * t * peak + t * t * end.y;
+        this.character.body.rotation.x = -t * Math.PI * (big ? 4 : 2);
+      },
+      () => {
+        this.character.body.rotation.set(0, 0, 0);
+        this.character.land(14);
+        burst(this.world.scene, this.tweens, end.clone().add(new THREE.Vector3(0, 0.2, 0)), 0xd9b77a, 10, 3, 1);
+        this.unlock(target, this.player.floor);
+      },
+    );
+  }
+
+  private lock(): void {
+    this.locked = true;
+    this.body.vel = { x: 0, y: 0, z: 0 };
+  }
+
+  private unlock(at: Vec3, floor: number): void {
+    this.character.root.scale.setScalar(1);
+    this.body.teleport(at);
+    this.locked = false;
+    this.accumulator = 0;
+    if (floor === summitFloor(this.config) && this.player.finishedAt !== undefined) this.celebrate();
+  }
+
+  private celebrate(): void {
+    const root = this.character.root;
+    const colors = [0xff6b5a, 0xffc93c, 0x3ce0ff, 0x7ddc5a, 0xb04dff];
+    for (let i = 0; i < 5; i++) {
+      setTimeout(() => {
+        burst(this.world.scene, this.tweens, root.position.clone().add(new THREE.Vector3(0, 2.5, 0)), colors[i], 18, 4, 3);
+      }, i * 250);
+    }
+    this.lock();
+    const base = root.position.y;
+    this.tweens.add(1.6, (t) => {
+      root.position.y = base + Math.abs(Math.sin(t * Math.PI * 3)) * 1.2;
+      root.rotation.y += 0.15;
+    });
+    const p = this.player;
+    setTimeout(() => {
+      this.onVictory({
+        config: this.config,
+        seed: this.seed,
+        time: p.finishedAt ?? this.clock,
+        falls: p.falls,
+        doorsTested: p.doorsTested,
+      });
+    }, 1700);
+  }
+
+  dispose(): void {
+    this.tweens.clear();
+    this.world.dispose();
+  }
+}

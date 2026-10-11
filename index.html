@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#f4a582" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>PyraRush</title>
+    <link rel="stylesheet" href="/src/client/style.css" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+
+    <div id="touch">
+      <div id="joy-base"><div id="joy-knob"></div></div>
+      <button id="btn-act" class="touch-btn">AGIR</button>
+      <button id="btn-jump" class="touch-btn">SAUT</button>
+    </div>
+
+    <div id="hud">
+      <div class="hud-top">
+        <div class="pill" id="floor-label">Étage 1 / 5</div>
+        <div class="pill" id="timer">0:00.0</div>
+      </div>
+      <div id="ladder"></div>
+      <button id="btn-zoom" class="pill" aria-label="Changer le zoom">🔍 <span id="zoom-label">Proche</span></button>
+      <button id="btn-pause" class="pill" aria-label="Pause">❚❚</button>
+      <div id="toast"></div>
+      <div id="prompt"><span class="key">E</span> Ouvrir la porte</div>
+    </div>
+
+    <div id="screen-menu" class="screen show">
+      <div class="menu">
+        <h1 class="logo">Pyra<span>Rush</span></h1>
+        <p class="tagline">Explore · Tombe · Mémorise · Atteins le sommet !</p>
+        <div class="card">
+          <div id="pyramid-list"></div>
+          <div class="option-row">
+            <span>Indices</span>
+            <div id="opt-hints" class="segmented">
+              <button data-mode="scarab">Scarabée</button>
+              <button data-mode="hotCold">Chaud/froid</button>
+              <button data-mode="none">Aucun</button>
+            </div>
+          </div>
+          <div class="option-row">
+            <span>Caméra</span>
+            <div id="opt-zoom" class="segmented">
+              <button data-zoom="0">Proche</button>
+              <button data-zoom="1">Moyen</button>
+              <button data-zoom="2">Large</button>
+            </div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="opt-effects" checked /> Effets lumineux</label>
+          <button id="btn-play" class="primary">Jouer</button>
+          <button id="btn-howto">Comment jouer ?</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="screen-howto" class="screen">
+      <div class="card howto">
+        <h2>Comment jouer ?</h2>
+        <p class="goal">Atteins le <b class="c-hint">sommet</b> de la pyramide le plus vite possible.</p>
+        <ul class="rules">
+          <li>Approche-toi d'une porte et ouvre-la pour découvrir ce qu'elle cache.</li>
+          <li><b class="c-good">Passage</b> : tu montes d'un étage.</li>
+          <li><b>Mur</b> : rien ne se passe… mais un indice t'aide.</li>
+          <li id="rule-hints"></li>
+          <li><b class="c-bad">Piège</b> : un gant de boxe jaillit et t'envoie à l'étage du dessous !</li>
+          <li>La porte dorée <b class="c-hint">±2</b> est un pari : +2 ou −2 étages. À toi de voir si tu tentes ta chance.</li>
+          <li>Attention aux <b>trous</b> dans les terrasses : saute par-dessus !</li>
+          <li>Après une chute, les passages que tu as déjà trouvés restent marqués en <b class="c-hint">doré</b>, pour toi seul.</li>
+          <li>Les portes ne changent jamais pendant une partie : mémorise-les !</li>
+          <li>Le bouton <b>🔍</b> change le zoom : proche, moyen, ou large pour voir toute la pyramide.</li>
+        </ul>
+        <p class="controls" id="controls-help"></p>
+        <button id="btn-howto-close" class="primary">Compris !</button>
+      </div>
+    </div>
+
+    <div id="screen-pause" class="screen">
+      <div class="card">
+        <h2>Pause</h2>
+        <button id="btn-resume" class="primary">Reprendre</button>
+        <button id="btn-restart">Recommencer cette pyramide</button>
+        <button id="btn-new">Nouvelle pyramide</button>
+        <button id="btn-pause-howto">Comment jouer ?</button>
+        <button id="btn-menu">Menu</button>
+      </div>
+    </div>
+
+    <div id="screen-victory" class="screen">
+      <div class="card">
+        <h2>Sommet atteint !</h2>
+        <div class="big-time" id="v-time">0:00.0</div>
+        <div id="v-record" class="record">Nouveau record !</div>
+        <div class="stats">
+          <div><span id="v-falls">0</span><small>chutes</small></div>
+          <div><span id="v-doors">0</span><small>portes testées</small></div>
+        </div>
+        <p class="seed">Graine <span id="v-seed"></span></p>
+        <button id="btn-v-new" class="primary">Nouvelle pyramide</button>
+        <button id="btn-v-retry">Rejouer la même pyramide</button>
+        <button id="btn-v-menu">Menu</button>
+      </div>
+    </div>
+
+    <div id="rotate-hint" class="screen">
+      <div class="card">
+        <div class="rotate-icon">📱↻</div>
+        <p>Tourne ton téléphone en mode paysage pour plus de confort.</p>
+        <button id="btn-rotate-ok">Continuer quand même</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/client/main.ts"></script>
+  </body>
+</html>

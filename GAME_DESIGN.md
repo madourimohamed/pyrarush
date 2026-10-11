@@ -1,0 +1,576 @@
+# Projet : PyraRush — Jeu multijoueur 3D sur navigateur
+
+> Nom initial du cahier des charges : « Pyramid Rush ». Nom retenu : **PyraRush**.
+
+> Document de référence du concept (cahier des charges initial).
+> À relire avant toute évolution du jeu. Les décisions validées ultérieurement
+> sont consignées dans la section « Journal des décisions » en fin de document.
+
+## 1. Présentation du concept
+
+Je souhaite développer un jeu vidéo multijoueur en 3D, accessible directement depuis un navigateur web, aussi bien sur smartphone que sur ordinateur.
+
+Le concept est simple : plusieurs joueurs se retrouvent autour d'une pyramide composée de plusieurs étages. Tous commencent au premier étage et doivent atteindre le sommet avant les autres.
+
+Pour monter, les joueurs doivent explorer les différentes cases présentes sur les faces de la pyramide afin de découvrir les passages secrets.
+
+Certaines cases permettent de monter, d'autres sont des murs sans effet, et d'autres déclenchent des pièges qui font perdre un ou plusieurs étages.
+
+Le jeu mélange :
+- Exploration
+- Mémoire
+- Hasard
+- Plateforme 3D
+- Compétition multijoueur
+- Observation et opportunisme
+
+**Objectif principal : être le premier joueur à atteindre le sommet de la pyramide.**
+
+Le jeu doit être facile à comprendre, amusant, rapide à prendre en main et visuellement très simple.
+
+## 2. Structure des pyramides
+
+Le jeu propose plusieurs pyramides avec des difficultés progressives.
+
+| Pyramide | Nombre d'étages | Difficulté |
+|---|---|---|
+| Pyramide 1 | 5 | Facile |
+| Pyramide 2 | 8 | Moyenne |
+| Pyramide 3 | 10 | Difficile |
+
+Chaque pyramide est construite à partir de blocs géométriques simples.
+
+Chaque étage est composé de plusieurs cases de dimensions équivalentes.
+
+Les joueurs commencent au premier étage et progressent vers le sommet.
+
+Les étages supérieurs peuvent devenir progressivement plus difficiles, avec davantage de pièges et d'obstacles.
+
+La pyramide doit être visible en 3D, avec une caméra permettant de suivre le personnage.
+
+## 3. Fonctionnement des cases
+
+Les joueurs doivent se déplacer physiquement jusqu'à une case et interagir avec elle pour découvrir son effet.
+
+Il existe quatre types de cases :
+
+### A. Bonne case — Passage supérieur
+
+- Le joueur interagit avec la bonne case.
+- Un passage lui permet d'accéder à l'étage supérieur.
+- La case s'illumine temporairement.
+- Tous les autres joueurs peuvent voir cette indication.
+- Après quelques secondes, l'indication disparaît.
+
+Cette mécanique permet aux joueurs situés derrière de profiter des découvertes des autres.
+
+### B. Mur
+
+- Le joueur interagit avec la case.
+- Rien ne se passe.
+- Le joueur doit chercher un autre passage.
+
+### C. Petit piège
+
+- Le joueur déclenche un piège.
+- Il est envoyé à l'étage inférieur.
+- Une animation simple illustre la chute.
+
+### D. Gros piège
+
+- Un mécanisme peut surgir de la case et repousser le joueur.
+- Le joueur peut perdre plusieurs étages.
+- Le piège doit être visuellement compréhensible, avec une animation courte et amusante.
+
+## 4. Génération et mémoire des cases
+
+**Règle fondamentale : les cases restent fixes pendant toute la partie.**
+
+Au début de chaque partie, le jeu génère une disposition de bonnes cases, de murs et de pièges.
+
+Une fois la partie commencée :
+- La disposition ne change plus.
+- Une case qui permet de monter continuera de le permettre.
+- Les pièges restent aux mêmes emplacements.
+- Les joueurs peuvent mémoriser les passages.
+
+Une nouvelle partie peut générer une nouvelle disposition.
+
+Le serveur doit conserver la disposition réelle des cases et vérifier les interactions afin d'éviter la triche.
+
+## 5. Mécanique d'entraide indirecte
+
+Lorsqu'un joueur découvre une bonne case :
+
+1. Il monte à l'étage supérieur.
+2. La bonne case devient visuellement identifiable.
+3. Cette indication est visible par tous les joueurs pendant quelques secondes.
+4. Les autres joueurs peuvent profiter de cette information.
+5. L'indication disparaît automatiquement.
+
+Cela crée une compétition intéressante : un joueur peut découvrir un passage, mais ses concurrents peuvent immédiatement l'utiliser.
+
+La durée exacte de visibilité sera ajustée pendant les tests.
+
+## 6. Système d'indices privés après une chute
+
+C'est une mécanique essentielle du jeu.
+
+Lorsqu'un joueur atteint un étage supérieur, puis tombe à un étage inférieur, il ne doit pas être obligé de recommencer toute son exploration.
+
+Exemple :
+
+- Le joueur atteint l'étage 6.
+- Il déclenche un piège.
+- Il retombe à l'étage 2.
+- Les bonnes cases des étages déjà franchis lui sont indiquées visuellement.
+- Ces indications sont privées : lui seul peut les voir.
+- Il peut retrouver plus rapidement son chemin jusqu'à son précédent niveau.
+
+**Principe : une chute fait perdre de la progression physique, mais pas les connaissances acquises.**
+
+Les autres joueurs ne voient pas les indices privés.
+
+Les indications ne doivent révéler que les passages que le joueur a effectivement découverts ou empruntés.
+
+## 7. Déplacement des personnages
+
+Le jeu utilise de petits personnages 3D très simples.
+
+Les joueurs contrôlent directement leur personnage.
+
+Actions nécessaires :
+
+- Avancer
+- Reculer
+- Aller à gauche
+- Aller à droite
+- Sauter
+- Interagir avec une case
+- Orienter la caméra
+
+Les joueurs doivent pouvoir se déplacer sur les plateformes de la pyramide.
+
+Certains espaces peuvent contenir des trous qu'il faut franchir en sautant.
+
+Une chute accidentelle peut entraîner une perte d'étage.
+
+Le déplacement doit être fluide, simple et adapté aux écrans tactiles.
+
+## 8. Commandes sur mobile
+
+Le jeu doit fonctionner sur navigateur mobile, sans installation.
+
+Interface proposée :
+
+**À gauche de l'écran :**
+- Joystick virtuel pour les déplacements.
+
+**À droite de l'écran :**
+- Bouton SAUT.
+- Bouton INTERAGIR.
+
+**Caméra :**
+- Glissement du doigt sur une zone libre pour orienter la caméra.
+
+Les boutons doivent être suffisamment grands et espacés pour être confortables sur smartphone.
+
+Le mode paysage peut être privilégié si cela améliore la visibilité et la maniabilité.
+
+## 9. Commandes sur ordinateur
+
+Proposition :
+
+| Action | Commande |
+|---|---|
+| Avancer | Z / W |
+| Reculer | S |
+| Gauche | Q / A |
+| Droite | D |
+| Sauter | Espace |
+| Interagir | E |
+| Caméra | Souris |
+
+Les commandes pourront être adaptées en fonction du moteur retenu.
+
+## 10. Multijoueur
+
+Plusieurs joueurs participent simultanément à une même partie.
+
+Tous voient les déplacements des autres personnages en temps réel.
+
+Le serveur gère :
+- La création des parties.
+- L'arrivée des joueurs.
+- Leurs positions et leurs étages.
+- La disposition des cases.
+- Les interactions avec les cases.
+- Les pièges.
+- Les indications publiques temporaires.
+- Les indications privées.
+- La victoire.
+
+Le nombre maximal de joueurs par partie reste à déterminer en fonction des performances et des tests de gameplay.
+
+L'objectif est de créer une expérience compétitive, avec des situations amusantes lorsque plusieurs joueurs découvrent ou suivent le même passage.
+
+## 11. Victoire
+
+Le premier joueur à atteindre le sommet remporte la partie.
+
+Une animation simple célèbre sa victoire.
+
+Un écran de résultat peut afficher :
+- Le gagnant.
+- Le classement.
+- Le temps de la partie.
+- Le nombre de chutes.
+- Le nombre de cases testées.
+
+Le comportement des autres joueurs après la première victoire reste à définir : fin immédiate ou possibilité de terminer la course.
+
+## 12. Direction artistique
+
+**Je veux des graphismes 3D minimalistes, pas un jeu réaliste.**
+
+Références visuelles :
+- Low-poly.
+- Blocs géométriques simples.
+- Personnages stylisés et colorés.
+- Couleurs agréables.
+- Ombres légères.
+- Animations courtes.
+- Interface épurée.
+
+La pyramide doit ressembler à une construction simple en cubes ou en blocs de pierre.
+
+Pas besoin de textures détaillées, de monuments complexes, de décors égyptiens chargés ou d'effets visuels spectaculaires.
+
+Les personnages peuvent être constitués de formes géométriques élémentaires.
+
+Priorités :
+1. Lisibilité des cases.
+2. Fluidité des déplacements.
+3. Visibilité des autres joueurs.
+4. Compréhension immédiate des pièges.
+5. Bonnes performances sur smartphone.
+
+## 13. Plateformes cibles
+
+Priorité au navigateur web.
+
+Le jeu doit fonctionner sur :
+- Chrome Android.
+- Safari iPhone.
+- Navigateurs desktop modernes.
+
+Il doit être responsive et utilisable sur écran tactile.
+
+Une application mobile native pourra éventuellement être envisagée plus tard, mais elle ne fait pas partie des exigences initiales.
+
+## 14. Liberté technique
+
+Tu as **carte blanche sur les choix techniques**.
+
+Choisis librement :
+- Le moteur ou framework 3D.
+- Le langage.
+- Le framework frontend.
+- Le backend.
+- La technologie multijoueur.
+- La gestion des collisions et de la physique.
+- La structure du projet.
+- Les bibliothèques nécessaires.
+
+Je privilégie une solution :
+- Simple à développer.
+- Facile à maintenir.
+- Performante sur mobile.
+- Peu coûteuse à héberger.
+- Adaptée au multijoueur temps réel.
+- Facile à faire évoluer.
+
+Ne choisis pas une architecture complexe si une solution plus légère suffit.
+
+## 15. Première version à développer (MVP)
+
+Je souhaite commencer par un prototype jouable, plutôt que développer immédiatement toutes les fonctionnalités.
+
+### MVP — Première étape
+
+- Une pyramide 3D de 5 étages.
+- Un personnage contrôlable.
+- Une caméra 3D.
+- Les déplacements.
+- Le saut.
+- Les collisions.
+- Les trous.
+- Les cases interactives.
+- Les quatre types de résultats.
+- La progression entre les étages.
+- Les chutes.
+- La mémorisation des bonnes cases.
+- Les indices privés après une chute.
+- Un écran de victoire.
+
+### Deuxième étape — Multijoueur
+
+- Plusieurs joueurs simultanés.
+- Synchronisation des positions.
+- Interactions validées côté serveur.
+- Cases découvertes temporairement visibles par tous.
+- Indices privés par joueur.
+- Détection du gagnant.
+- Classement.
+
+### Troisième étape — Enrichissement
+
+- Pyramides de 8 et 10 étages.
+- Difficultés progressives.
+- Amélioration des animations.
+- Sons.
+- Personnalisation des personnages.
+- Interface d'accueil et sélection des pyramides.
+
+## 16. Points encore ouverts
+
+Certaines décisions doivent être proposées, mais pas considérées comme des règles déjà validées :
+
+- Nombre de joueurs par partie.
+- Nombre de cases par étage.
+- Possibilité de faire le tour complet de la pyramide.
+- Nombre de passages corrects par étage.
+- Durée d'affichage public d'une bonne case.
+- Comportement des joueurs après la première victoire.
+- Durée maximale d'une partie.
+- Gestion des joueurs inactifs.
+- Positionnement et comportement exacts de la caméra.
+- Répartition des trous et des pièges.
+
+Propose des solutions simples et cohérentes pour ces points, en expliquant tes choix.
+
+## 17. Ce que j'attends de toi
+
+Je veux que tu agisses comme un développeur de jeux vidéo expérimenté, capable de prendre des décisions techniques et de gameplay.
+
+Commence par :
+
+1. Analyser la faisabilité du jeu sur navigateur mobile.
+2. Choisir la stack technique la plus appropriée et justifier brièvement ce choix.
+3. Définir une architecture simple.
+4. Proposer une première version jouable avec des graphismes 3D minimalistes.
+5. Implémenter progressivement le prototype.
+
+**Priorité absolue : obtenir rapidement une véritable expérience jouable, fluide et amusante, et non une simple maquette visuelle.**
+
+Évite le surdéveloppement, les systèmes inutiles et les graphismes trop sophistiqués.
+
+Le cœur du jeu doit rester : **monter, explorer, découvrir, tomber, mémoriser et recommencer jusqu'à atteindre le sommet avant les autres.**
+
+## 18. Modes de jeu et évolution du projet
+
+Le jeu doit évoluer progressivement. Il ne faut surtout pas chercher à développer toutes les fonctionnalités dès le départ.
+
+### V1 — Mode solo (priorité absolue)
+
+La première version doit être un jeu entièrement jouable par un seul joueur humain, sans adversaire et sans connexion à un serveur multijoueur.
+
+Fonctionnalités :
+
+- Une pyramide 3D de 5 étages.
+- Un personnage contrôlable.
+- Déplacements, saut et interaction avec les cases.
+- Pièges, murs et passages vers les étages supérieurs.
+- Mémorisation des passages découverts.
+- Indices privés après une chute.
+- Chronomètre pour mesurer le temps nécessaire pour atteindre le sommet.
+- Écran de victoire.
+- Possibilité de recommencer avec une nouvelle disposition aléatoire des cases.
+
+Objectif : valider le plaisir de jeu, les commandes et les mécaniques avant d'investir dans le multijoueur.
+
+La V1 doit fonctionner intégralement dans le navigateur, sur mobile et sur ordinateur.
+
+### V2 — Modes solo avec robots et multijoueur
+
+La deuxième version introduira plusieurs modes.
+
+#### Mode A — Solo avec robots (IA)
+
+Le joueur humain affronte des personnages contrôlés par l'ordinateur.
+
+Les robots doivent :
+
+- Explorer les étages.
+- Choisir des cases.
+- Découvrir les passages.
+- Déclencher des pièges.
+- Tomber et remonter.
+- Mémoriser les passages découverts.
+- Profiter des passages révélés par d'autres joueurs.
+
+Plusieurs niveaux de difficulté pourront être proposés en ajustant leur vitesse de déplacement, leur mémoire et leur comportement d'exploration.
+
+Les robots doivent respecter les mêmes règles que les joueurs humains. Ils ne doivent pas connaître automatiquement les bonnes cases.
+
+#### Mode B — Multijoueur entre amis
+
+Les joueurs peuvent créer une partie privée et inviter leurs amis à l'aide d'un code ou d'un lien.
+
+Fonctionnalités :
+
+- Création d'un salon.
+- Invitation des amis.
+- Choix de la pyramide.
+- Affichage des participants.
+- Lancement de la partie.
+- Synchronisation des joueurs en temps réel.
+- Classement final.
+
+#### Mode C — Multijoueur avec robots
+
+Le créateur d'une partie peut ajouter des robots pour compléter les places disponibles.
+
+Exemple : une partie de 10 participants peut comprendre 4 joueurs humains et 6 robots.
+
+Les robots et les humains participent à la même course et interagissent avec les mêmes cases.
+
+### Préparation technique dès la V1
+
+Même si la première version est exclusivement solo, l'architecture doit permettre d'ajouter ultérieurement les robots et le multijoueur.
+
+Il faut notamment séparer :
+
+- La logique des règles du jeu.
+- La représentation graphique 3D.
+- Le contrôle du personnage.
+- La gestion des cases et des pièges.
+- La gestion de l'état d'une partie.
+
+La logique de jeu doit pouvoir être réutilisée en V2 par un joueur humain, un robot ou un serveur multijoueur.
+
+**Important : ne pas développer de serveur multijoueur, de système de salons ou d'IA de robots dans la V1. Il faut uniquement éviter les choix techniques qui rendraient leur ajout difficile.**
+
+### Ordre de développement recommandé
+
+1. V1 : jeu solo, un personnage, une pyramide de 5 étages.
+2. V2.1 : ajout des robots et du mode course solo contre l'ordinateur.
+3. V2.2 : multijoueur privé entre amis.
+4. V2.3 : possibilité de mélanger humains et robots.
+5. V3 éventuelle : matchmaking public, classements, personnalisation et autres pyramides.
+
+L'objectif reste de construire un jeu simple, amusant et performant, en validant chaque étape avant de passer à la suivante.
+
+## 19. Progression par niveaux et catalogue de mécaniques
+
+### Vocabulaire
+
+- **Niveau** : une pyramide complète (Niveau 1, Niveau 2…). On débloque le niveau suivant en terminant le précédent.
+- **Étage** : une terrasse de la pyramide. On « monte d'un étage » ou on « tombe de N étages ».
+
+### Principe
+
+Chaque niveau **reprend les mécaniques des niveaux précédents et en ajoute une ou deux nouvelles**. Le jeu ne se limite pas à 3 ou 4 règles : il apprend progressivement au joueur un vocabulaire de plus en plus riche (comme les mondes d'un Mario).
+
+Chaque niveau est **une configuration de données** (nombre d'étages, portes par face, répartition des pièges, chute maximale, mécaniques activées). Chaque mécanique est **un module indépendant** branché sur le moteur de règles. Ajouter une règle revient à ajouter un module et à l'activer dans un niveau, sans réécrire le cœur du jeu.
+
+### Pyramides validées
+
+| Pyramide | Étages | Perte max par piège | Mécaniques | Objectif |
+|---|---|---|---|---|
+| 1 — Facile | 6 | **1 étage** (pièges) | Bonnes portes, murs, petits pièges, quelques trous, une porte risquée ±2 à l'étage 3 | Apprendre les commandes, explorer, comprendre le jeu. Aucun piège excessivement punitif. |
+| 2 — Intermédiaire | 8 | **3 étages** | + gros pièges, + **téléporteurs ascendants** (plusieurs étages) | Davantage de surprises et de risques. |
+| 3 — Difficile | 10 | **5 étages** | + téléporteurs +3/+4 (surtout sur les étages bas), combinaison de pièges et de bonus, portes à double effet | Davantage de retournements de situation. |
+
+### Catalogue extensible de mécaniques (idées à explorer, pas toutes à implémenter)
+
+| Mécanique | Effet | Visible avant usage ? |
+|---|---|---|
+| Passage classique | +1 étage | Non |
+| Mur | Rien, indice chaud/froid optionnel | Non |
+| Petit piège | −1 étage | Non |
+| Gros piège | −N étages selon la pyramide et l'étage | Non |
+| Téléporteur ascendant | +N étages (rattrapage, rare) | Non |
+| Téléporteur descendant | Renvoie vers un étage inférieur | Non |
+| Porte risquée (double effet) | +3 **ou** −3, résultat fixé pour la partie | **Oui** : c'est un pari assumé |
+| Case surprise | Événement aléatoire | À définir |
+| Bouclier | Protège temporairement contre une chute | À définir |
+| Passage temporaire | Raccourci ouvert quelques secondes | À définir |
+| Piège à retardement | Effet déclenché après un court délai | À définir |
+
+### Principes d'équilibrage
+
+1. Les premières pyramides sont faciles à comprendre.
+2. Les pyramides avancées introduisent progressivement de nouvelles mécaniques.
+3. Un joueur en retard peut revenir grâce à des bonus ou des téléporteurs, mais ceux-ci restent **rares** pour ne pas rendre l'exploration inutile.
+4. Le joueur en tête n'est pas systématiquement pénalisé.
+5. Les pièges restent surprenants sans devenir injustes.
+6. Chaque pyramide possède sa propre configuration de règles, facilement modifiable.
+7. **Règle d'or : le joueur doit toujours sentir que ses décisions comptent davantage que la chance.** Concrètement :
+   - les paris (porte risquée) sont **visibles** avant d'être pris : c'est un choix, pas une punition cachée ;
+   - le résultat de chaque case est **fixé pour la partie** : ce qu'on apprend (soi-même ou en observant les autres) reste vrai ;
+   - les murs peuvent donner un indice chaud/froid, ce qui transforme l'essai au hasard en déduction.
+
+### Configuration d'une pyramide
+
+Chaque pyramide est un objet de configuration (pas de conditions codées en dur) qui définit :
+- son nombre d'étages ;
+- les mécaniques autorisées et leur nombre par étage (par tranches d'étages) ;
+- le nombre maximal d'étages perdus et gagnés ;
+- les règles spécifiques selon l'étage (nombre de passages, trous, pièges) ;
+- l'activation de l'indice chaud/froid.
+
+La génération garantit qu'une pyramide est **toujours terminable** (au moins un passage par étage, vérifié automatiquement par des tests).
+
+### Niveaux suivants (proposés, à tester)
+
+| Niveau | Étages | Chute max | Nouveautés proposées |
+|---|---|---|---|
+| 4 | 12 | 5 | **Rochers roulants** qui dévalent la pyramide (à esquiver en sautant) ; **paliers de sécurité** (étages sous lesquels on ne peut plus retomber). |
+| 5 | 12 | 6 | **Levier** : les portes d'un étage restent fermées tant que quelqu'un n'a pas actionné le levier caché sur la terrasse ; **dalles fragiles** qui s'effondrent après passage. |
+| 6 | 15 | 7 | **Brouillard** (pas d'indice chaud/froid sur certains étages) ; **amulette** à ramasser qui annule le prochain piège ; **porte-mirage** qui s'illumine publiquement comme une bonne porte mais qui est un piège. |
+
+### Règles détaillées des mécaniques
+
+- **Force des pièges** : chaque piège a une force fixe, déterminée à la génération (la disposition ne change pas pendant la partie). La force augmente avec la hauteur de l'étage, plafonnée par la chute max du niveau. On ne descend jamais sous l'étage 1, ni sous un palier de sécurité atteint.
+- **Téléporteur** :
+  - placé uniquement dans la moitié basse de la pyramide ;
+  - effet : +3 ou +4 étages (valeur fixe par téléporteur) ;
+  - ne peut jamais déposer le joueur sur le dernier étage, ni sur l'avant-dernier : le sommet se mérite ;
+  - **utilisable une seule fois par joueur et par partie** (après usage, il se comporte comme un mur pour ce joueur) ;
+  - comme une bonne porte, il s'illumine publiquement quelques secondes lorsqu'il est découvert.
+  - Rôle : mécanique de rattrapage pour un joueur tombé très bas.
+- **Mécaniques réservées au multijoueur (V2, idées)** : échange de place avec un adversaire, bousculade, levier qui ouvre les portes pour tout le monde.
+
+### Rejouabilité
+
+- 1 à 3 étoiles par niveau selon le temps réalisé.
+- Graine (seed) affichée en fin de partie pour rejouer exactement la même pyramide.
+
+---
+
+## Journal des décisions
+
+_Les décisions de design et techniques validées seront ajoutées ici (date + décision + raison)._
+
+- **2026-10-11** — Progression en niveaux : Niveau 1 = 5 étages (chute max 1), Niveau 2 = 8 étages (chute max 3), Niveau 3 = 10 étages (chute max 5 + téléporteur +3/+4 sur les étages bas). Chaque niveau ajoute de nouvelles mécaniques pour enrichir le jeu au-delà de quelques règles. _Raison : apprendre progressivement les règles et garder le jeu frais._
+- **2026-10-11** — Architecture « données + modules » : un niveau est une configuration, une mécanique est un module de règles indépendant. _Raison : pouvoir ajouter des règles sans toucher au cœur du moteur._
+- **2026-10-11** — Distinction des termes « niveau » (pyramide) et « étage » (terrasse).
+- **2026-10-11** — Pyramide 2 : les téléporteurs ascendants apparaissent dès la pyramide 2 (+2), la pyramide 3 les porte à +3/+4. Les portes à double effet (+3/−3) sont réservées aux pyramides avancées.
+- **2026-10-11** — Validé : pyramide à degrés avec terrasses en anneau, et caméra automatique (sous réserve d'un bon ressenti sur mobile).
+- **2026-10-11** — Indice chaud/froid : à expérimenter, activable/désactivable facilement (menu + configuration de la pyramide) pour comparer.
+- **2026-10-11** — Règle d'or : les décisions du joueur doivent compter plus que la chance.
+- **2026-10-11** — V1 : seule la pyramide 1 (5 étages) est jouable. Le moteur et les configurations des pyramides 2 et 3 existent pour valider l'architecture (accessibles en test via `?pyramide=2` ou `?pyramide=3`).
+- **2026-10-11** — Réglages initiaux de la pyramide 1 (à ajuster en jouant, dans `src/core/config/pyramids.ts`) : 24, 20, 16, 12 puis 8 portes par étage ; 3 passages à l'étage 1 puis 2 par étage ; 2 à 3 petits pièges par étage ; aucun trou à l'étage 1, puis 1 à 2 trous par terrasse ; révélation publique de 4 s ; un trou ne se trouve jamais devant une porte.
+- **2026-10-11** — Indices privés : les passages connus restent dorés (avec un losange flottant) sur les étages que le joueur doit encore franchir ou refranchir.
+- **2026-10-11** — Stack V1 : TypeScript + Vite + Three.js, interface en HTML/CSS. **Pas de moteur physique** : le monde est entièrement fait de blocs alignés sur les axes, et un contrôleur de collision maison (boîtes alignées) suffit. Il est plus léger que Rapier, déterministe et réutilisable par les robots et le serveur. _Raison : simplicité et performances mobiles._
+- **2026-10-11** — Nom du jeu : **PyraRush**.
+- **2026-10-11** — Retour du premier test (web) : jeu « pas mal du tout », pyramide 1 terminée en moins de 2 minutes avec chaud/froid → trop court. Ajustement : 2 passages à l'étage 1, et un seul passage aux étages 4 et 5.
+- **2026-10-11** — Indices : système configurable par pyramide (`hints`). Nouveau mode par défaut **scarabée** : un mur libère un scarabée doré qui détale vers le passage le plus proche (direction, pas la porte exacte) et s'agite s'il est à 2 portes ou moins. Chaud/froid et « aucun » restent sélectionnables dans le menu (`?indices=scarab|hotCold|none`). Idée pour les pyramides avancées : indices par hiéroglyphes (déduction).
+- **2026-10-11** — Pièges : un **gant de boxe** jaillit de la porte (« POW ! ») et projette le joueur à l'étage inférieur. À l'étage 1, il repousse le joueur en arrière (perte de temps), pour que le piège ait toujours un effet visible.
+- **2026-10-11** — Pyramide 1 : **porte risquée ±2**, dorée et marquée « ±2 », une aux étages 2 et 3 : +2 ou −2 étages, résultat fixé pour la partie, un seul essai par joueur. À l'étage 2, la perte est limitée à 1 étage (on ne descend jamais sous l'étage 1). Les pièges restent à −1 ; seule la porte risquée, visible et choisie, va jusqu'à ±2.
+- **2026-10-11** — Direction artistique : « fin d'après-midi dorée » stylisée. Ciel en dégradé avec soleil, nuages, mesas, dunes basses-poly, oasis et palmiers, pierres taillées texturées (textures procédurales), liserés dorés sur les bords de terrasse, portes turquoise à hiéroglyphes lumineux, braseros, poussière dorée, lueur (bloom, désactivable dans le menu), écran d'accueil avec caméra en orbite, interface en verre dépoli (police Fredoka).
+- **2026-10-11** — Pyramide 1 passe à **6 étages** (28, 24, 20, 16, 12, 8 portes). La porte risquée ±2 est placée **uniquement à l'étage 3** : +2 mène à l'étage 5 (jamais au dernier étage directement), −2 ramène à l'étage 1. Un bonus ne peut jamais déposer le joueur sur le dernier étage (`protectedTopFloors: 1`). Passages : 2 par étage jusqu'au 4, puis 1 aux étages 5 et 6.
+- **2026-10-11** — Bouton **« Comment jouer ? »** (menu et pause) qui ouvre un écran de règles ; le menu ne contient plus que les choix et « Jouer ».
+- **2026-10-11** — **Zoom au choix** : Proche (le personnage), Moyen, Large (toute la pyramide visible). Réglable dans le menu, avec le bouton 🔍 en jeu, la molette ou la touche C ; choix mémorisé. De loin, une flèche flotte au-dessus du personnage pour le repérer.
+
