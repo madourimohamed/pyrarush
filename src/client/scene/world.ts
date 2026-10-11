@@ -96,21 +96,35 @@ export class World {
     this.scene.add(border);
   }
 
+  /**
+   * Blocs de la pyramide fusionnés par matériau (parois de deux teintes + dessus des terrasses) :
+   * 3 appels de dessin au lieu de 6 par bloc (et autant pour les ombres). Les faces du dessous, jamais vues, sont omises.
+   */
   private buildBlocks(): void {
     const stone = this.theme.stone.map((c, i) => new THREE.MeshStandardMaterial({ map: stoneTexture(c, 11 + i), roughness: 0.92 }));
     const top = new THREE.MeshStandardMaterial({ map: tileTexture(this.theme.top, 7), roughness: 0.9 });
+    const sides: THREE.BufferGeometry[][] = [[], []];
+    const tops: THREE.BufferGeometry[] = [];
     for (const box of this.colliders) {
       if (box.kind !== 'block') continue;
       const size = box.max.map((v, i) => v - box.min[i]);
       const center = new THREE.Vector3((box.min[0] + box.max[0]) / 2, (box.min[1] + box.max[1]) / 2, (box.min[2] + box.max[2]) / 2);
       const geometry = new THREE.BoxGeometry(size[0], size[1], size[2]);
       applyWorldUVs(geometry, center, [3, 1.5], 3);
-      const side = stone[box.floor! % 2];
-      const mesh = new THREE.Mesh(geometry, [side, side, top, side, side, side]);
-      mesh.position.copy(center);
+      geometry.translate(center.x, center.y, center.z);
+      // Groupes de BoxGeometry : 0 +x, 1 −x, 2 +y (dessus), 3 −y (dessous), 4 +z, 5 −z.
+      sides[box.floor! % 2].push(faces(geometry, [0, 1, 4, 5]));
+      tops.push(faces(geometry, [2]));
+    }
+    const add = (parts: THREE.BufferGeometry[], material: THREE.Material) => {
+      if (!parts.length) return;
+      const mesh = new THREE.Mesh(mergeGeometries(parts), material);
       mesh.castShadow = mesh.receiveShadow = true;
       this.scene.add(mesh);
-    }
+    };
+    add(sides[0], stone[0]);
+    add(sides[1], stone[1]);
+    add(tops, top);
   }
 
   /** Liseré sur le bord extérieur de chaque terrasse : beau, et lisible pour ne pas tomber. */
@@ -194,3 +208,18 @@ export class World {
     });
   }
 }
+
+/** Extrait certaines faces (groupes) d'une géométrie indexée, en conservant tous ses attributs. */
+function faces(geometry: THREE.BufferGeometry, groups: number[]): THREE.BufferGeometry {
+  const index = geometry.getIndex()!;
+  const indices: number[] = [];
+  for (const g of groups) {
+    const { start, count } = geometry.groups[g];
+    for (let i = start; i < start + count; i++) indices.push(index.getX(i));
+  }
+  const part = new THREE.BufferGeometry();
+  for (const [name, attribute] of Object.entries(geometry.attributes)) part.setAttribute(name, attribute);
+  part.setIndex(indices);
+  return part;
+}
+
