@@ -1,5 +1,5 @@
-import type { BonusId, Level } from '../../core';
-import { duelBonusAllowed, normalizeRoomCode, ROOM_CODE_LENGTH, type DuelResult, type RoomPlayer, type ServerMessage } from '../../net/protocol';
+import type { Level } from '../../core';
+import { normalizeRoomCode, ROOM_CODE_LENGTH, type DuelResult, type RoomPlayer, type ServerMessage } from '../../net/protocol';
 import type { SfxName } from '../audio/sfx';
 import type { GameSession } from '../session';
 import { formatTime } from '../ui/hud';
@@ -33,9 +33,10 @@ export class DuelController {
   private me = '';
   private code = '';
   private players: RoomPlayer[] = [];
-  private level: Level | null = null;
   private session: GameSession | null = null;
   private timers: number[] = [];
+  /** Numéro de la dernière action envoyée (voir protocol.ts : recalage sur l'état du serveur). */
+  private seq = 0;
   /** Une course (compte à rebours compris) est en cours ou vient de finir : on est « en duel ». */
   active = false;
 
@@ -65,11 +66,6 @@ export class DuelController {
     $<HTMLInputElement>('duel-code').value = code ?? '';
     this.host.show('screen-duel');
     if (code) void this.join(code);
-  }
-
-  /** Un bonus est-il utilisable dans ce duel ? (règle partagée avec le serveur) */
-  bonusAllowed(bonus: BonusId): boolean {
-    return !!this.level && duelBonusAllowed(this.level.number, bonus);
   }
 
   /** Quitter le duel (bouton, menu pause) : la salle est quittée, retour à l'accueil. */
@@ -110,7 +106,6 @@ export class DuelController {
         this.me = m.you;
         this.code = m.code;
         this.players = m.players;
-        this.level = this.host.levels[m.level - 1] ?? null;
         this.renderRoom();
         break;
       case 'start':
@@ -150,7 +145,6 @@ export class DuelController {
   private async start(seed: number, levelNumber: number, inMs: number): Promise<void> {
     const level = this.host.levels[levelNumber - 1];
     if (!level) return;
-    this.level = level;
     this.active = true;
     document.body.classList.add('duel');
     this.clearTimers();
@@ -162,9 +156,8 @@ export class DuelController {
     session.shiftStart(START_OFFSETS[Math.max(0, this.players.findIndex((p) => p.id === this.me))] ?? 0);
     session.addRival(this.rival?.name ?? 'Ton ami');
     session.net = {
-      interact: (doorId, p) => this.connection.send({ t: 'interact', doorId, p: [p.x, p.y, p.z] }),
-      floor: (floor) => this.connection.send({ t: 'floor', floor }),
-      bonus: (bonus) => this.connection.send({ t: 'bonus', bonus }),
+      interact: (doorId, p) => this.connection.send({ t: 'interact', seq: ++this.seq, doorId, p: [p.x, p.y, p.z] }),
+      floor: (floor) => this.connection.send({ t: 'floor', seq: ++this.seq, floor }),
       pos: (p, ry) => this.connection.send({ t: 'pos', p: [round(p.x), round(p.y), round(p.z)], ry: round(ry) }),
     };
     this.host.hud.setRivalFloor(1);
@@ -228,7 +221,6 @@ export class DuelController {
     this.active = false;
     this.code = '';
     this.players = [];
-    this.level = null;
     this.session = null;
     document.body.classList.remove('duel');
     this.host.hud.setRivalFloor(null);

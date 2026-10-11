@@ -324,10 +324,8 @@ function refreshBonusButton(): void {
 function useBonus(): void {
   const bonus = progress.bonus();
   if (!bonus) return;
-  if (duel.active && !duel.bonusAllowed(bonus)) {
-    hud.showToast('Bonus indisponible', 'info', 2, 'En duel, bonus à partir du niveau 2 (sauf le Sablier)');
-    return;
-  }
+  // En duel, les bonus solo sont remplacés par les pouvoirs du duel.
+  if (duel.active) return;
   if (!session?.useBonus(bonus)) return;
   progress.setBonus(null);
   refreshBonusButton();

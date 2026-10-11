@@ -48,7 +48,6 @@ export interface SoundPlayer {
 export interface DuelLink {
   interact(doorId: string, p: Vec3): void;
   floor(floor: number): void;
-  bonus(bonus: BonusId): void;
   pos(p: Vec3, ry: number): void;
 }
 /** Fréquence d'envoi de la position en duel. */
@@ -166,7 +165,6 @@ export class GameSession {
   useBonus(bonus: BonusId): boolean {
     if (this.attract || this.paused || this.intro > 0 || this.locked || this.finished) return false;
     const events = this.game.useBonus(PLAYER_ID, bonus, this.clock);
-    if (events.length) this.net?.bonus(bonus);
     this.handle(events);
     return events.length > 0;
   }
