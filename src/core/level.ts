@@ -11,6 +11,10 @@ export interface Level {
   name: string;
   /** Ce que le niveau apporte de nouveau, affiché dans le menu. */
   tagline: string;
+  /** Durée indicative d'une partie, affichée sur la carte du niveau (ex. « 2–5 min »). */
+  duration: string;
+  /** Points forts listés sur la fiche du niveau. */
+  highlights: string[];
   theme: Theme;
   config: PyramidConfig;
 }
@@ -28,6 +32,8 @@ export type LevelRules = Omit<PyramidConfig, 'id' | 'name' | keyof Defaults> & P
 export interface LevelDefinition {
   name: string;
   tagline: string;
+  duration: string;
+  highlights: string[];
   rules: LevelRules;
   theme: Theme;
 }
@@ -45,10 +51,12 @@ export const band = (from: number, to: number, passages: number, mechanics: Floo
 
 /** Transforme la liste ordonnée des définitions en niveaux numérotés, prêts à jouer. */
 export function buildLevels(definitions: LevelDefinition[]): Level[] {
-  return definitions.map(({ name, tagline, rules, theme }, i) => ({
+  return definitions.map(({ name, tagline, duration, highlights, rules, theme }, i) => ({
     number: i + 1,
     name,
     tagline,
+    duration,
+    highlights,
     theme,
     config: { ...LEVEL_DEFAULTS, ...rules, id: `level-${i + 1}`, name },
   }));

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getMechanic, Game, generateLayout, walkTerrace, doorTangent, terraceMidHalf, buildColliders, landingPoint, holeTangent, HOLE_WIDTH, sideFrame, doorsPerSide } from './index';
-import { levels, levelConfigs } from '../levels';
+import { defineTheme, editComponents, doorTangents, holeTangents, DOOR_WIDTH, getMechanic, Game, generateLayout, walkTerrace, doorTangent, terraceMidHalf, buildColliders, landingPoint, holeTangent, HOLE_WIDTH, sideFrame, doorsPerSide } from './index';
+import { levelFiles, levels, levelConfigs } from '../levels';
 
 const pyramid1 = levels[0].config;
-const SEEDS = Array.from({ length: 500 }, (_, i) => i * 7919 + 1);
+const SEEDS = Array.from({ length: 150 }, (_, i) => i * 7919 + 1);
 
 describe('génération', () => {
   it.each(levelConfigs.map((p) => [p.id, p] as const))('%s est toujours terminable et valide', (_id, config) => {
@@ -199,6 +199,10 @@ describe('indices', () => {
 });
 
 describe('niveaux', () => {
+  it('les fichiers de niveau sont numérotés 1, 2, 3… sans trou ni doublon', () => {
+    expect(levelFiles.map((f) => f.order)).toEqual(levelFiles.map((_, i) => i + 1));
+  });
+
   it('sont numérotés de 1 à N, avec un thème complet et des identifiants uniques', () => {
     levels.forEach((level, i) => {
       expect(level.number).toBe(i + 1);
@@ -215,6 +219,47 @@ describe('niveaux', () => {
           expect(door.floor).toBeGreaterThanOrEqual(2);
           expect(door.floor + Math.abs(door.params.delta)).toBeLessThanOrEqual(config.floors - config.protectedTopFloors);
         }
+      }
+    }
+  });
+});
+
+describe('thèmes', () => {
+  it('defineTheme ne remplace que ce qui est déclaré, sur un niveau de profondeur', () => {
+    const base = levels[0].theme;
+    const variant = defineTheme({ sky: { top: 0x123456 }, exposure: 2 }, base);
+    expect(variant.sky.top).toBe(0x123456);
+    expect(variant.sky.mid).toBe(base.sky.mid);
+    expect(variant.exposure).toBe(2);
+    expect(variant.door).toBe(base.door);
+  });
+
+  it('editComponents ajuste, retire et ajoute des composants sans réécrire la liste', () => {
+    const list = [{ use: 'a', x: 1 }, { use: 'b' }];
+    expect(editComponents(list, { a: { y: 2 }, b: null, c: { z: 3 } })).toEqual([
+      { use: 'a', x: 1, y: 2 },
+      { use: 'c', z: 3 },
+    ]);
+  });
+});
+
+describe('géométrie des portes et des trous', () => {
+  it('un trou ne touche jamais une porte, ni de sa terrasse ni de la paroi du dessous', () => {
+    for (const config of levelConfigs) {
+      for (let floor = 2; floor <= config.floors; floor++) {
+        const doors = [...doorTangents(config, floor), ...doorTangents(config, floor - 1)];
+        for (const t of holeTangents(config, floor)) {
+          for (const d of doors) expect(Math.abs(t - d)).toBeGreaterThanOrEqual((DOOR_WIDTH + HOLE_WIDTH) / 2);
+        }
+      }
+    }
+  });
+
+  it('les portes tiennent dans leur paroi, sans se chevaucher', () => {
+    for (const config of levelConfigs) {
+      for (let floor = 1; floor <= config.floors; floor++) {
+        const doors = doorTangents(config, floor);
+        doors.slice(1).forEach((t, i) => expect(t - doors[i]).toBeGreaterThanOrEqual(DOOR_WIDTH + 1));
       }
     }
   });

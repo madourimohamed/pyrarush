@@ -1,4 +1,5 @@
 import { Rng } from './rng';
+import { doorsPerSide, holeTangents } from './geometry';
 import { getMechanic } from './mechanics/registry';
 import type { CountSpec, Door, FloorBand, Hole, Layout, PyramidConfig } from './types';
 
@@ -8,9 +9,6 @@ export function bandFor(config: PyramidConfig, floor: number): FloorBand {
   return band;
 }
 
-export function doorsPerSide(config: PyramidConfig, floor: number): number {
-  return config.doorsPerSideAtTop + (config.floors - floor);
-}
 
 function resolveCount(rng: Rng, spec: CountSpec): number {
   return typeof spec === 'number' ? spec : rng.int(spec[0], spec[1]);
@@ -62,8 +60,9 @@ export function generateLayout(config: PyramidConfig, seed: number): Layout {
 
     if (floor >= 2) {
       const candidates: Hole[] = [];
+      const spots = holeTangents(config, floor).length;
       for (let side = 0; side < 4; side++) {
-        for (let slot = 0; slot < perSide; slot++) candidates.push({ floor, side, slot });
+        for (let slot = 0; slot < spots; slot++) candidates.push({ floor, side, slot });
       }
       const count = Math.min(resolveCount(rng, band.holes), candidates.length);
       layout.holes.push(...rng.shuffle(candidates).slice(0, count));

@@ -1,66 +1,48 @@
 import '@fontsource-variable/fredoka';
 import { randomSeed, type HintMode, type Level, type PyramidConfig } from '../core';
 import { levels } from '../levels';
-import { Input } from './input/input';
-import { Renderer } from './render';
 import { AudioEngine } from './audio/audio';
 import { ZOOM_LABELS, type ZoomLevel } from './camera';
-import { GameSession, type SessionResult } from './session';
-import { formatTime, Hud } from './ui/hud';
+import { Input } from './input/input';
+import { Renderer } from './render';
 import { hex } from './scene/themes';
+import { GameSession, type SessionResult } from './session';
+import { progress, storage } from './storage';
+import { loadLevelThumbnails, renderPortrait } from './thumbnails';
+import { formatTime, Hud } from './ui/hud';
+import { applyIcons } from './ui/icons';
+import { renderLevelCards, renderLevelInfo, renderRecords, showThumbnail, type MenuState } from './ui/menu';
+import { preloadComponents } from './scene/components';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const params = new URLSearchParams(location.search);
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 document.body.classList.toggle('touch', isTouch);
+applyIcons();
 
-const storage = {
-  get(key: string): string | null {
-    try {
-      return localStorage.getItem(key);
-    } catch {
-      return null;
-    }
-  },
-  set(key: string, value: string): void {
-    try {
-      localStorage.setItem(key, value);
-    } catch {
-      /* stockage indisponible : on continue sans */
-    }
-  },
-};
-
-// ---------- Niveaux et progression ----------
-/** Niveaux débloqués : on débloque le suivant en terminant le précédent. `?debloquer=6` pour tester. */
-const clampLevel = (n: number) => Math.min(levels.length, Math.max(1, Math.floor(n) || 1));
-let unlocked = clampLevel(Math.max(Number(storage.get('unlocked') ?? 1), Number(params.get('debloquer') ?? 1)));
-let selected: Level = levels[clampLevel(Number(storage.get('level') ?? unlocked)) - 1];
-if (selected.number > unlocked) selected = levels[unlocked - 1];
-
-function bestTime(level: Level): number | null {
-  const v = Number(storage.get(`best:${level.config.id}`));
-  return Number.isFinite(v) && v > 0 ? v : null;
-}
-
-/** Couleurs de l'interface accordées au thème du niveau. */
-function applyUiTheme(level: Level): void {
-  const theme = level.theme;
-  const root = document.documentElement.style;
-  root.setProperty('--accent-a', theme.accent[0]);
-  root.setProperty('--accent-b', theme.accent[1]);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', hex(theme.sky.mid));
-  document.body.style.background = hex(theme.sky.mid);
-}
-
-// ---------- Son ----------
+// ---------- Rendu, commandes, son ----------
+const lowQuality = isTouch;
+const renderer = new Renderer($<HTMLCanvasElement>('game'), lowQuality);
+const input = new Input($('touch'), $('joy-base'), $('joy-knob'), $('btn-jump'), $('btn-act'));
+const hud = new Hud();
 const audio = new AudioEngine();
+let session: GameSession | null = null;
+
 // Les navigateurs n'autorisent le son qu'après une interaction de l'utilisateur.
 for (const type of ['pointerdown', 'keydown'] as const) window.addEventListener(type, () => audio.unlock(), { capture: true });
 document.addEventListener('click', (e) => (e.target as HTMLElement).closest('button') && audio.play('click'));
 
-function bindToggle(id: string, key: string, apply: (on: boolean) => void): void {
+// ---------- Progression ----------
+/** `?debloquer=6` débloque les niveaux jusqu'au 6 (pour tester). */
+let unlocked = progress.unlocked(levels.length, Number(params.get('debloquer') ?? 1));
+let selected: Level = levels[Math.min(unlocked, Number(storage.get('level') ?? unlocked) || 1) - 1];
+let playing: Level = selected;
+const thumbnails = new Map<number, string>();
+const menuState = (): MenuState => ({ levels, selected, unlocked, best: (l) => progress.best(l), thumbnails });
+
+// ---------- Options (écran Réglages) ----------
+function bindToggle(id: string, key: string, apply: (on: boolean) => void): HTMLInputElement {
   const box = $<HTMLInputElement>(id);
   box.checked = storage.get(key) !== '0';
   apply(box.checked);
@@ -69,15 +51,36 @@ function bindToggle(id: string, key: string, apply: (on: boolean) => void): void
     apply(box.checked);
     syncSoundButton();
   });
+  return box;
 }
+
+/** Contrôle segmenté (boutons data-<attr>) lié à une valeur. */
+function bindSegmented(containerId: string, attr: string, current: () => string, onPick: (value: string) => void): () => void {
+  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>(`#${containerId} button`));
+  const render = () => buttons.forEach((b) => b.classList.toggle('selected', b.dataset[attr] === current()));
+  buttons.forEach((b) =>
+    b.addEventListener('click', () => {
+      onPick(b.dataset[attr]!);
+      render();
+    }),
+  );
+  render();
+  return render;
+}
+
 bindToggle('opt-music', 'music', (on) => audio.setMusicOn(on));
 bindToggle('opt-sfx', 'sfx', (on) => audio.setSfxOn(on));
+bindToggle('opt-effects', 'effects', (on) => (renderer.effects = on));
+
 function syncSoundButton(): void {
-  $('btn-sound').textContent = audio.musicOn || audio.sfxOn ? '🔊' : '🔇';
+  $('btn-sound').classList.toggle('muted', !(audio.musicOn || audio.sfxOn));
 }
 $('btn-sound').addEventListener('click', () => {
   const on = !(audio.musicOn || audio.sfxOn);
-  for (const [id, key] of [['opt-music', 'music'], ['opt-sfx', 'sfx']]) {
+  for (const [id, key] of [
+    ['opt-music', 'music'],
+    ['opt-sfx', 'sfx'],
+  ]) {
     $<HTMLInputElement>(id).checked = on;
     storage.set(key, on ? '1' : '0');
   }
@@ -87,48 +90,30 @@ $('btn-sound').addEventListener('click', () => {
 });
 syncSoundButton();
 
-// ---------- Options ----------
 const HINT_RULES: Record<HintMode, string> = {
   scarab: 'Un mur libère un <b class="c-hint">scarabée</b> : il file vers le passage le plus proche. S’il s’agite, c’est tout près !',
   hotCold: 'Un mur t’indique si un passage est <b class="c-chaud">chaud</b>, <b class="c-tiede">tiède</b> ou <b class="c-froid">froid</b>.',
   none: 'Aucun indice : à toi de deviner et de mémoriser !',
 };
-const hintParam = params.get('indices') ?? (params.get('chaudfroid') === '1' ? 'hotCold' : null);
-let hintMode: HintMode = (hintParam ?? storage.get('hints') ?? 'scarab') as HintMode;
+let hintMode = (params.get('indices') ?? storage.get('hints') ?? 'scarab') as HintMode;
 if (!(hintMode in HINT_RULES)) hintMode = 'scarab';
-function renderHintOptions(): void {
-  for (const btn of Array.from(document.querySelectorAll<HTMLButtonElement>('#opt-hints button'))) {
-    btn.classList.toggle('selected', btn.dataset.mode === hintMode);
-  }
-  $('rule-hints').innerHTML = HINT_RULES[hintMode];
-}
-for (const btn of Array.from(document.querySelectorAll<HTMLButtonElement>('#opt-hints button'))) {
-  btn.addEventListener('click', () => {
-    hintMode = btn.dataset.mode as HintMode;
-    storage.set('hints', hintMode);
-    renderHintOptions();
-  });
-}
-renderHintOptions();
+const renderHintRule = () => ($('rule-hints').innerHTML = HINT_RULES[hintMode]);
+bindSegmented('opt-hints', 'mode', () => hintMode, (v) => {
+  hintMode = v as HintMode;
+  storage.set('hints', hintMode);
+  renderHintRule();
+});
+renderHintRule();
 
-$('controls-help').textContent = isTouch
-  ? 'Joystick à gauche · SAUT et AGIR à droite · glisse pour tourner la caméra · 🔍 pour zoomer'
-  : 'ZQSD / WASD ou flèches : bouger · Espace : sauter · E : ouvrir · glisser la souris : caméra · molette ou C : zoom';
-
-// ---------- Zoom ----------
 let zoom = Math.min(2, Math.max(0, Number(storage.get('zoom') ?? 0))) as ZoomLevel;
+const renderZoomOptions = bindSegmented('opt-zoom', 'zoom', () => String(zoom), (v) => setZoom(Number(v)));
 function setZoom(level: number, announce = false): void {
   zoom = Math.min(2, Math.max(0, level)) as ZoomLevel;
   storage.set('zoom', String(zoom));
   if (session) session.camera.zoom = zoom;
-  for (const btn of Array.from(document.querySelectorAll<HTMLButtonElement>('#opt-zoom button'))) {
-    btn.classList.toggle('selected', Number(btn.dataset.zoom) === zoom);
-  }
   $('zoom-label').textContent = ZOOM_LABELS[zoom];
-  if (announce) hud.showToast(`Caméra : ${ZOOM_LABELS[zoom].toLowerCase()}`, 'info', 1);
-}
-for (const btn of Array.from(document.querySelectorAll<HTMLButtonElement>('#opt-zoom button'))) {
-  btn.addEventListener('click', () => setZoom(Number(btn.dataset.zoom)));
+  renderZoomOptions();
+  if (announce) hud.showToast('Caméra', 'info', 1, ZOOM_LABELS[zoom]);
 }
 $('btn-zoom').addEventListener('click', () => setZoom((zoom + 1) % 3, true));
 $('touch').addEventListener(
@@ -139,53 +124,43 @@ $('touch').addEventListener(
   },
   { passive: false },
 );
-window.addEventListener('keydown', (e) => {
-  if (current !== null) return;
-  if (e.code === 'KeyC') setZoom((zoom + 1) % 3, true);
-  if (e.code === 'Equal' || e.code === 'NumpadAdd') setZoom(zoom - 1, true);
-  if (e.code === 'Minus' || e.code === 'NumpadSubtract') setZoom(zoom + 1, true);
+
+const nameInput = $<HTMLInputElement>('opt-name');
+nameInput.value = storage.get('name') ?? '';
+nameInput.addEventListener('input', () => {
+  storage.set('name', nameInput.value.trim());
+  renderProfile();
 });
 
-// ---------- Rendu ----------
-const lowQuality = isTouch;
-const renderer = new Renderer($<HTMLCanvasElement>('game'), lowQuality);
-const effectsBox = $<HTMLInputElement>('opt-effects');
-effectsBox.checked = storage.get('effects') !== '0';
-renderer.effects = effectsBox.checked;
-effectsBox.addEventListener('change', () => {
-  renderer.effects = effectsBox.checked;
-  storage.set('effects', effectsBox.checked ? '1' : '0');
-});
-
-const input = new Input($('touch'), $('joy-base'), $('joy-knob'), $('btn-jump'), $('btn-act'));
-const hud = new Hud();
-let session: GameSession | null = null;
-
-function resize(): void {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  renderer.setSize(w, h);
-  session?.camera.resize(w, h);
-  updateRotateHint();
-}
-window.addEventListener('resize', resize);
+$('controls-help').textContent = isTouch
+  ? 'Joystick à gauche · boutons sauter et ouvrir à droite · glisse pour tourner la caméra · loupe pour zoomer'
+  : 'ZQSD / WASD ou flèches : bouger · Espace : sauter · E : ouvrir · glisser la souris : caméra · molette ou C : zoom';
 
 // ---------- Écrans ----------
-const screens = ['screen-menu', 'screen-pause', 'screen-victory', 'screen-howto'] as const;
+const screens = ['screen-menu', 'screen-pause', 'screen-victory', 'screen-howto', 'screen-settings', 'screen-records'] as const;
 type Screen = (typeof screens)[number];
+/** Écrans ouverts par-dessus un autre (menu ou pause), qui y reviennent à la fermeture. */
+const overlays: Screen[] = ['screen-howto', 'screen-settings', 'screen-records'];
 let current: Screen | null = null;
-/** Écran à rouvrir en fermant « Comment jouer ? » (menu ou pause). */
-let howtoReturn: Screen = 'screen-menu';
+let returnTo: Screen = 'screen-menu';
+
 function show(screen: Screen | null): void {
   current = screen;
   for (const id of screens) $(id).classList.toggle('show', id === screen);
-  const onMenu = screen === 'screen-menu' || (screen === 'screen-howto' && howtoReturn === 'screen-menu');
+  const onMenu = screen === 'screen-menu' || (screen !== null && overlays.includes(screen) && returnTo === 'screen-menu');
   $('hud').style.visibility = onMenu ? 'hidden' : 'visible';
   $('touch').style.visibility = onMenu ? 'hidden' : 'visible';
   if (session) session.attract = onMenu;
   input.enabled = screen === null;
   if (screen) input.reset();
 }
+
+function openOverlay(screen: Screen): void {
+  if (current && !overlays.includes(current)) returnTo = current;
+  if (screen === 'screen-records') renderRecords(menuState());
+  show(screen);
+}
+const closeOverlay = () => show(returnTo);
 
 let rotateDismissed = false;
 function updateRotateHint(): void {
@@ -197,42 +172,64 @@ $('btn-rotate-ok').addEventListener('click', () => {
   updateRotateHint();
 });
 
-function renderLevelList(): void {
-  const list = $('level-list');
-  list.innerHTML = '';
-  for (const level of levels) {
-    const locked = level.number > unlocked;
-    const theme = level.theme;
-    const card = document.createElement('button');
-    card.className = `level-card${level === selected ? ' selected' : ''}${locked ? ' locked' : ''}`;
-    card.style.setProperty('--sky', `linear-gradient(160deg, ${hex(theme.sky.top)}, ${hex(theme.sky.mid)} 55%, ${hex(theme.sky.horizon)})`);
-    const best = bestTime(level);
-    card.innerHTML = `
-      <span class="level-num">${locked ? '🔒' : level.number}</span>
-      <span class="level-name">${locked ? `Niveau ${level.number}` : level.name}</span>
-      <span class="level-meta">${locked ? 'Termine le niveau précédent' : best ? `⏱ ${formatTime(best)}` : `${level.config.floors} étages`}</span>`;
-    card.disabled = locked;
-    card.addEventListener('click', () => selectLevel(level) && showBackground());
-    list.appendChild(card);
-  }
-  $('level-title').textContent = `Niveau ${selected.number} · ${selected.name}`;
-  $('level-tagline').textContent = selected.tagline;
+// ---------- Accueil ----------
+/** Couleurs de l'interface accordées au thème du niveau. */
+function applyUiTheme(level: Level): void {
+  const { theme } = level;
+  const root = document.documentElement.style;
+  root.setProperty('--accent-a', theme.accent[0]);
+  root.setProperty('--accent-b', theme.accent[1]);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', hex(theme.sky.mid));
+  document.body.style.background = hex(theme.sky.mid);
 }
 
-/** Sélectionne un niveau débloqué (couleurs de l'interface comprises). Renvoie true si la sélection a changé. */
+function renderMenu(): void {
+  renderLevelCards(menuState(), (level) => selectLevel(level) && showBackground());
+  renderLevelInfo(selected);
+  renderProfile();
+}
+
+/**
+ * Miniatures des niveaux débloqués et du suivant uniquement (les autres restent verrouillés et grisés) :
+ * le coût ne dépend pas du nombre total de niveaux.
+ */
+function refreshThumbnails(): void {
+  const visible = levels.filter((l) => l.number <= unlocked + 1 && !thumbnails.has(l.number));
+  void loadLevelThumbnails(visible, (level, url) => {
+    thumbnails.set(level.number, url);
+    showThumbnail(level, url);
+  });
+}
+
+function renderProfile(): void {
+  $('profile-name').textContent = storage.get('name') || 'Explorateur';
+  $('profile-level').textContent = String(unlocked);
+  $('unlock-count').textContent = `${unlocked} / ${levels.length}`;
+}
+
+/** Sélectionne un niveau débloqué. Renvoie true si la sélection a changé. */
 function selectLevel(level: Level): boolean {
   if (level.number > unlocked) return false;
   const changed = level !== selected;
   selected = level;
   storage.set('level', String(level.number));
   applyUiTheme(level);
-  renderLevelList();
+  renderMenu();
   return changed;
 }
 
-function createSession(config: PyramidConfig, level: Level, seed: number): GameSession {
+// ---------- Parties ----------
+/**
+ * Crée la partie d'un niveau, après avoir chargé ses modèles 3D (une seule fois par modèle).
+ * Si une autre demande arrive pendant le chargement, seule la plus récente est construite.
+ */
+let sessionRequest = 0;
+async function createSession(config: PyramidConfig, level: Level, seed: number): Promise<GameSession | null> {
+  const request = ++sessionRequest;
+  await preloadComponents(level.theme.components);
+  if (request !== sessionRequest) return null;
   session?.dispose();
-  const theme = level.theme;
+  const { theme } = level;
   renderer.renderer.toneMappingExposure = theme.exposure;
   const created = new GameSession(config, theme, seed, input, hud, lowQuality, window.innerWidth / window.innerHeight, onVictory, audio);
   audio.setMusic(theme.music, level.number);
@@ -241,28 +238,29 @@ function createSession(config: PyramidConfig, level: Level, seed: number): GameS
   return created;
 }
 
-/** La pyramide du niveau sélectionné, en arrière-plan du menu. */
-function showBackground(): void {
-  session = createSession(selected.config, selected, randomSeed());
-  session.attract = true;
+/** La pyramide du niveau sélectionné, en arrière-plan de l'accueil. */
+async function showBackground(): Promise<void> {
+  const created = await createSession(selected.config, selected, randomSeed());
+  if (!created) return;
+  session = created;
+  session.attract = current === 'screen-menu' || (current !== null && overlays.includes(current));
 }
 
-let playing: Level = selected;
-function startGame(seed: number, level: Level = selected): void {
+async function startGame(seed: number, level: Level = selected): Promise<void> {
   playing = level;
   applyUiTheme(level);
-  session = createSession({ ...level.config, hints: hintMode }, level, seed);
+  const created = await createSession({ ...level.config, hints: hintMode }, level, seed);
+  if (!created) return;
+  session = created;
+  hud.setLevel(level.number, level.name);
   show(null);
 }
 
 function onVictory(result: SessionResult): void {
-  const key = `best:${result.config.id}`;
-  const previous = Number(storage.get(key) ?? Infinity);
-  const isRecord = result.time < previous;
-  if (isRecord) storage.set(key, String(Math.round(result.time)));
+  const { isRecord, hadPrevious } = progress.recordTime(playing, result.time);
   $('v-title').textContent = `Niveau ${playing.number} terminé !`;
   $('v-time').textContent = formatTime(result.time);
-  $('v-record').classList.toggle('show', isRecord && Number.isFinite(previous));
+  $('v-record').classList.toggle('show', isRecord && hadPrevious);
   $('v-falls').textContent = String(result.falls);
   $('v-doors').textContent = String(result.doorsTested);
   $('v-seed').textContent = String(result.seed);
@@ -271,14 +269,15 @@ function onVictory(result: SessionResult): void {
   const justUnlocked = next !== undefined && next.number > unlocked;
   if (justUnlocked) {
     unlocked = next.number;
-    storage.set('unlocked', String(unlocked));
+    progress.unlock(unlocked);
+    setTimeout(() => audio.play('unlock'), 600);
+    refreshThumbnails();
   }
   $('v-unlock').classList.toggle('show', justUnlocked);
-  if (justUnlocked) setTimeout(() => audio.play('unlock'), 600);
   if (next) $('v-unlock').innerHTML = `🔓 Nouveau niveau débloqué :<br /><b>Niveau ${next.number} · ${next.name}</b>`;
   $('btn-v-next').style.display = next && next.number <= unlocked ? '' : 'none';
   $('v-final').classList.toggle('show', !next);
-  renderLevelList();
+  renderMenu();
   show('screen-victory');
 }
 
@@ -294,39 +293,52 @@ function resume(): void {
   show(null);
 }
 
-$('btn-play').addEventListener('click', () => startGame(Number(params.get('seed')) || randomSeed()));
-$('btn-pause').addEventListener('click', pause);
-function openHowto(): void {
-  howtoReturn = current === 'screen-pause' ? 'screen-pause' : 'screen-menu';
-  show('screen-howto');
-}
-$('btn-howto').addEventListener('click', openHowto);
-$('btn-pause-howto').addEventListener('click', openHowto);
-$('btn-howto-close').addEventListener('click', () => show(howtoReturn));
-$('btn-resume').addEventListener('click', resume);
-$('btn-restart').addEventListener('click', () => session && startGame(session.seed, playing));
-$('btn-new').addEventListener('click', () => startGame(randomSeed(), playing));
-/** Retour au menu : après une victoire, le niveau suivant (s'il est débloqué) est présélectionné. */
+/** Retour à l'accueil : après une victoire, le niveau suivant (s'il est débloqué) est présélectionné. */
 function backToMenu(): void {
   const next = levels[playing.number];
   selectLevel(current === 'screen-victory' && next && next.number <= unlocked ? next : playing);
   showBackground();
   show('screen-menu');
 }
+
+// ---------- Boutons et raccourcis ----------
+$('btn-play').addEventListener('click', () => startGame(Number(params.get('seed')) || randomSeed()));
+$('btn-pause').addEventListener('click', pause);
+$('btn-resume').addEventListener('click', resume);
+$('btn-restart').addEventListener('click', () => session && startGame(session.seed, playing));
+$('btn-new').addEventListener('click', () => startGame(randomSeed(), playing));
 $('btn-menu').addEventListener('click', backToMenu);
 $('btn-v-next').addEventListener('click', () => {
   const next = levels[playing.number];
-  if (next) {
-    selectLevel(next);
-    startGame(randomSeed(), next);
-  }
+  if (!next) return;
+  selectLevel(next);
+  startGame(randomSeed(), next);
 });
 $('btn-v-new').addEventListener('click', () => startGame(randomSeed(), playing));
 $('btn-v-retry').addEventListener('click', () => session && startGame(session.seed, playing));
 $('btn-v-menu').addEventListener('click', backToMenu);
+for (const [id, screen] of [
+  ['btn-howto', 'screen-howto'],
+  ['btn-pause-howto', 'screen-howto'],
+  ['btn-settings', 'screen-settings'],
+  ['btn-pause-settings', 'screen-settings'],
+  ['btn-records', 'screen-records'],
+  ['btn-records-2', 'screen-records'],
+] as const) {
+  $(id).addEventListener('click', () => openOverlay(screen));
+}
+$('btn-howto-close').addEventListener('click', closeOverlay);
+document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeOverlay));
+
 window.addEventListener('keydown', (e) => {
+  if (current === null && !(e.target instanceof HTMLInputElement)) {
+    if (e.code === 'KeyC') setZoom((zoom + 1) % 3, true);
+    if (e.code === 'Equal' || e.code === 'NumpadAdd') setZoom(zoom - 1, true);
+    if (e.code === 'Minus' || e.code === 'NumpadSubtract') setZoom(zoom + 1, true);
+  }
   if (e.code !== 'Escape' && e.code !== 'KeyP') return;
-  if (current === 'screen-howto') show(howtoReturn);
+  if (e.code === 'KeyP' && e.target instanceof HTMLInputElement) return;
+  if (current !== null && overlays.includes(current)) closeOverlay();
   else if (current === 'screen-pause') resume();
   else if (current === null) pause();
 });
@@ -336,9 +348,16 @@ document.addEventListener('visibilitychange', () => {
 });
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 
+function resize(): void {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  session?.camera.resize(window.innerWidth, window.innerHeight);
+  updateRotateHint();
+}
+window.addEventListener('resize', resize);
+
 // ---------- Démarrage ----------
 applyUiTheme(selected);
-renderLevelList();
+renderMenu();
 showBackground();
 resize();
 setZoom(zoom);
@@ -353,6 +372,14 @@ renderer.renderer.setAnimationLoop((now) => {
     renderer.render(session.world.scene, session.camera.camera);
   }
 });
+
+// Miniatures et portrait : après le premier affichage, pour ne pas retarder l'arrivée sur l'accueil.
+setTimeout(() => {
+  const portrait = renderPortrait();
+  $<HTMLImageElement>('profile-avatar').src = portrait;
+  $<HTMLImageElement>('promo-avatar').src = portrait;
+  refreshThumbnails();
+}, 400);
 
 // Accès de débogage (développement uniquement) : window.__session()
 if (import.meta.env.DEV) (window as unknown as { __session: () => GameSession | null }).__session = () => session;

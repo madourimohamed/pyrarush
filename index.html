@@ -12,64 +12,126 @@
   <body>
     <canvas id="game"></canvas>
 
+    <!-- Commandes tactiles -->
     <div id="touch">
       <div id="joy-base"><div id="joy-knob"></div></div>
-      <button id="btn-act" class="touch-btn">AGIR</button>
-      <button id="btn-jump" class="touch-btn">SAUT</button>
+      <button id="btn-act" class="touch-btn" aria-label="Ouvrir la porte"><span data-icon="hand"></span></button>
+      <button id="btn-jump" class="touch-btn" aria-label="Sauter"><span data-icon="up"></span></button>
     </div>
 
+    <!-- Interface en jeu -->
     <div id="hud">
-      <div class="hud-top">
-        <div class="pill" id="floor-label">Étage 1 / 5</div>
-        <div class="pill" id="timer">0:00.0</div>
+      <div class="level-chip glass">
+        <span data-icon="pyramid" class="chip-icon"></span>
+        <div><b id="hud-level">Niveau 1</b><small id="hud-level-name"></small></div>
       </div>
       <div id="ladder"></div>
       <div class="hud-right">
-        <button id="btn-sound" class="pill" aria-label="Couper ou remettre le son">🔊</button>
-        <button id="btn-zoom" class="pill" aria-label="Changer le zoom">🔍 <span id="zoom-label">Proche</span></button>
-        <button id="btn-pause" class="pill" aria-label="Pause">❚❚</button>
+        <div class="pill"><span data-icon="clock"></span><span id="timer">0:00.0</span></div>
+        <div class="pill"><span data-icon="floors"></span><span id="floor-label">1 / 6</span></div>
+        <button id="btn-sound" class="pill round" aria-label="Couper ou remettre le son"><span data-icon="sound" class="ico-on"></span><span data-icon="mute" class="ico-off"></span></button>
+        <button id="btn-zoom" class="pill" aria-label="Changer le zoom"><span data-icon="zoom"></span><span id="zoom-label">Proche</span></button>
+        <button id="btn-pause" class="pill round" aria-label="Pause"><span data-icon="pause"></span></button>
       </div>
-      <div id="toast"></div>
+      <div id="toast">
+        <span class="toast-icon"></span>
+        <div><b class="toast-title"></b><small class="toast-sub"></small></div>
+      </div>
       <div id="prompt"><span class="key">E</span> Ouvrir la porte</div>
     </div>
 
+    <!-- Accueil -->
     <div id="screen-menu" class="screen show">
-      <div class="menu">
-        <h1 class="logo">Pyra<span>Rush</span></h1>
-        <p class="tagline">Explore · Tombe · Mémorise · Atteins le sommet !</p>
-        <div class="card">
-          <div class="level-head">
-            <div id="level-title"></div>
-            <div id="level-tagline"></div>
-          </div>
-          <div id="level-list"></div>
-          <div class="option-row">
-            <span>Indices</span>
-            <div id="opt-hints" class="segmented">
-              <button data-mode="scarab">Scarabée</button>
-              <button data-mode="hotCold">Chaud/froid</button>
-              <button data-mode="none">Aucun</button>
-            </div>
-          </div>
-          <div class="option-row">
-            <span>Caméra</span>
-            <div id="opt-zoom" class="segmented">
-              <button data-zoom="0">Proche</button>
-              <button data-zoom="1">Moyen</button>
-              <button data-zoom="2">Large</button>
-            </div>
-          </div>
-          <div class="toggles">
-            <label class="toggle"><input type="checkbox" id="opt-music" checked /> Musique</label>
-            <label class="toggle"><input type="checkbox" id="opt-sfx" checked /> Sons</label>
-            <label class="toggle"><input type="checkbox" id="opt-effects" checked /> Effets lumineux</label>
-          </div>
-          <button id="btn-play" class="primary">Jouer</button>
-          <button id="btn-howto">Comment jouer ?</button>
+      <div class="topbar">
+        <button id="btn-settings" class="icon-btn glass" aria-label="Réglages"><span data-icon="gear"></span></button>
+        <button id="btn-records" class="icon-btn glass" aria-label="Records"><span data-icon="chart"></span></button>
+        <div class="profile glass">
+          <img id="profile-avatar" alt="" />
+          <div><b id="profile-name">Explorateur</b><small><span data-icon="crown"></span> Niveau <span id="profile-level">1</span></small></div>
         </div>
+      </div>
+
+      <div class="menu">
+        <h1 class="logo">Pyr<span data-icon="pyramid" class="logo-pyramid"></span><span class="logo-rush">Rush</span></h1>
+        <p class="tagline">Explore · Tombe · Mémorise · Atteins le sommet !</p>
+        <div class="card campaign">
+          <div class="eyebrow">Campagne</div>
+          <h2>Choisis ta pyramide</h2>
+          <p class="lead">Des défis uniques, des pièges surprenants et des secrets à découvrir. Sauras-tu atteindre le sommet ?</p>
+          <div id="level-list"></div>
+          <div class="unlock-all">
+            <img id="promo-avatar" alt="" />
+            <div class="unlock-text">
+              <h4><span data-icon="crown"></span> Débloque toutes les pyramides</h4>
+              <ul class="checklist">
+                <li><span data-icon="check"></span>Termine une pyramide pour ouvrir la suivante</li>
+                <li><span data-icon="check"></span>Nouveaux pièges et mécaniques à chaque niveau</li>
+                <li><span data-icon="check"></span>Un décor et une musique uniques</li>
+                <li><span data-icon="check"></span>Bientôt : joue en ligne avec tes amis</li>
+              </ul>
+            </div>
+            <div class="unlock-count"><b id="unlock-count">1 / 6</b><small>pyramides</small></div>
+          </div>
+          <div class="menu-actions">
+            <button id="btn-howto"><span data-icon="gamepad"></span>Comment jouer ?</button>
+            <button id="btn-records-2"><span data-icon="trophy"></span>Records</button>
+            <button disabled title="Disponible avec le multijoueur"><span data-icon="users"></span>Entre amis <small>bientôt</small></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="level-info card">
+        <div class="eyebrow" id="info-number">Niveau 1</div>
+        <h3 id="info-name"></h3>
+        <p id="info-tagline"></p>
+        <ul id="info-highlights" class="checklist"></ul>
+        <button id="btn-play" class="play-btn"><span data-icon="play"></span>Jouer</button>
       </div>
     </div>
 
+    <!-- Réglages -->
+    <div id="screen-settings" class="screen">
+      <div class="card">
+        <h2>Réglages</h2>
+        <label class="field">
+          <span>Ton nom</span>
+          <input id="opt-name" type="text" maxlength="16" placeholder="Explorateur" autocomplete="off" />
+        </label>
+        <div class="option-row">
+          <span>Indices</span>
+          <div id="opt-hints" class="segmented">
+            <button data-mode="scarab">Scarabée</button>
+            <button data-mode="hotCold">Chaud/froid</button>
+            <button data-mode="none">Aucun</button>
+          </div>
+        </div>
+        <div class="option-row">
+          <span>Caméra</span>
+          <div id="opt-zoom" class="segmented">
+            <button data-zoom="0">Proche</button>
+            <button data-zoom="1">Moyen</button>
+            <button data-zoom="2">Large</button>
+          </div>
+        </div>
+        <div class="toggles">
+          <label class="toggle"><input type="checkbox" id="opt-music" checked /> Musique</label>
+          <label class="toggle"><input type="checkbox" id="opt-sfx" checked /> Sons</label>
+          <label class="toggle"><input type="checkbox" id="opt-effects" checked /> Effets lumineux</label>
+        </div>
+        <button class="primary" data-close>Fermer</button>
+      </div>
+    </div>
+
+    <!-- Records -->
+    <div id="screen-records" class="screen">
+      <div class="card">
+        <h2>Records</h2>
+        <div id="records-list"></div>
+        <button class="primary" data-close>Fermer</button>
+      </div>
+    </div>
+
+    <!-- Comment jouer -->
     <div id="screen-howto" class="screen">
       <div class="card howto">
         <h2>Comment jouer ?</h2>
@@ -80,18 +142,19 @@
           <li><b>Mur</b> : rien ne se passe… mais un indice t'aide.</li>
           <li id="rule-hints"></li>
           <li><b class="c-bad">Piège</b> : un gant de boxe jaillit et t'envoie à l'étage du dessous !</li>
-          <li>La porte dorée <b class="c-hint">±N</b> est un pari : tu montes ou tu descends de N étages. À toi de voir si tu tentes ta chance.</li>
-          <li>Chaque niveau terminé débloque le suivant, avec un nouveau décor et de nouveaux pièges.</li>
+          <li>La <b class="c-mystery">porte mystère</b> (symbole ±N lumineux) est un pari : tu montes ou tu descends de N étages.</li>
           <li>Attention aux <b>trous</b> dans les terrasses : saute par-dessus !</li>
           <li>Après une chute, les passages que tu as déjà trouvés restent marqués en <b class="c-hint">doré</b>, pour toi seul.</li>
           <li>Les portes ne changent jamais pendant une partie : mémorise-les !</li>
-          <li>Le bouton <b>🔍</b> change le zoom : proche, moyen, ou large pour voir toute la pyramide.</li>
+          <li>Chaque niveau terminé débloque le suivant, avec un nouveau décor et de nouveaux pièges.</li>
+          <li>Le bouton <b>loupe</b> change le zoom : proche, moyen, ou large pour voir toute la pyramide.</li>
         </ul>
         <p class="controls" id="controls-help"></p>
         <button id="btn-howto-close" class="primary">Compris !</button>
       </div>
     </div>
 
+    <!-- Pause -->
     <div id="screen-pause" class="screen">
       <div class="card">
         <h2>Pause</h2>
@@ -99,10 +162,12 @@
         <button id="btn-restart">Recommencer (même disposition)</button>
         <button id="btn-new">Nouvelle disposition</button>
         <button id="btn-pause-howto">Comment jouer ?</button>
+        <button id="btn-pause-settings">Réglages</button>
         <button id="btn-menu">Menu</button>
       </div>
     </div>
 
+    <!-- Victoire -->
     <div id="screen-victory" class="screen">
       <div class="card">
         <h2 id="v-title">Sommet atteint !</h2>

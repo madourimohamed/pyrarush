@@ -3,6 +3,8 @@
 Jeu 3D de course sur pyramide, jouable dans le navigateur (mobile + desktop).
 
 - Le concept complet et la feuille de route sont dans [GAME_DESIGN.md](GAME_DESIGN.md). Le relire avant toute évolution du jeu.
+- La direction artistique, les budgets de performance et la **fiche technique des modèles 3D** sont dans [ART_DIRECTION.md](ART_DIRECTION.md). La relire avant tout travail graphique. Les maquettes de `design/` sont une référence d'ambiance (niveau console), pas une cible au détail près.
+- Tout asset externe : licence vérifiée, fichier `LICENSE.txt` dans son dossier `public/models/<pack>/`, ligne dans [CREDITS.md](CREDITS.md).
 - Toute décision de design ou technique validée avec l'utilisateur doit être ajoutée au « Journal des décisions » à la fin de GAME_DESIGN.md.
 - Ne pas implémenter de fonctionnalités d'une version ultérieure (robots, serveur, salons) avant que la version courante soit validée.
 
@@ -27,13 +29,16 @@ Trois couches : **socle** (`src/core`), **niveaux** (`src/levels`), **affichage*
   - `layout.ts` : génération déterministe par graine + garantie qu'une pyramide est terminable.
   - `geometry.ts` : géométrie de la pyramide à degrés (positions des portes, trous, points d'arrivée, boîtes de collision).
   - `game.ts` : état de la partie ; les actions (`interact`, `reportFloor`, `update`) renvoient des événements.
-- `src/levels/` : un fichier par niveau (règles + thème + musique), ordre de progression dans `index.ts`, briques partagées dans `shared.ts`. Ajouter un niveau = un fichier + une ligne dans `index.ts`.
+- `src/levels/` : un fichier par niveau `NNN-nom.ts`, **découvert automatiquement** (`import.meta.glob`) et trié par numéro. Familles de thèmes dans `themes.ts`, briques de règles dans `shared.ts`. Ajouter un niveau = créer un fichier, rien d'autre.
+- Objectif d'échelle : **~100 niveaux et ~100 thèmes**. Règles : pas de duplication (familles de thèmes + `defineTheme(surcharges, base)`, valeurs par défaut, briques partagées), pas de code spécifique à un niveau hors de son fichier, coût d'exécution indépendant du nombre de niveaux (une seule pyramide en mémoire, miniatures seulement pour les niveaux débloqués, décor instancié).
 - `src/client/` : navigateur uniquement (Three.js + HTML/CSS).
   - `session.ts` relie moteur, physique, rendu et commandes ; il réagit aux événements du moteur.
   - `physics.ts` : contrôleur de personnage maison contre des boîtes alignées sur les axes (pas de moteur physique).
   - `camera.ts` : caméra automatique autour de la pyramide.
   - `input/input.ts` : clavier (`event.code`, donc AZERTY et QWERTY), souris, joystick tactile et boutons.
   - `render.ts` : renderer + post-traitement (bloom). Les couleurs > 1 (HDR) déclenchent la lueur.
+  - `storage.ts` (sauvegarde locale), `thumbnails.ts` (miniatures 3D mises en cache, clé = empreinte du niveau), `ui/` (`hud.ts`, `menu.ts`, `icons.ts` : icônes SVG définies une seule fois, `data-icon` dans le HTML).
   - `audio/` : son généré (Web Audio) : `sfx.ts` (recettes d'effets), `music.ts` (séquenceur, style tiré du thème), `audio.ts` (moteur, réglages).
-  - `scene/` : rendu (le monde n'applique aucune règle, il affiche). `environment.ts` (ciel, décor), `textures.ts` (textures procédurales en canvas, aucun fichier image), `props.ts` (scarabée, gant de boxe), `world.ts` (pyramide, portes).
+  - `scene/` : rendu (le monde n'applique aucune règle, il affiche). `world.ts` (structure de la pyramide), `doors.ts` (battants instanciés), `components/` (décor : un composant par type, registre dans `index.ts`, emplacements génériques dans `slots.ts`, `props` pose n'importe quel modèle GLB), `models.ts` (chargement et instanciation des GLB).
+  - Un thème = palette + liste de composants (`theme.components`). Changer le design d'un niveau = changer cette liste ; ajouter un design = un composant enregistré dans le registre. Les tests vérifient que chaque composant et chaque option cités existent. `environment.ts` (ciel, décor), `textures.ts` (textures procédurales en canvas, aucun fichier image), `props.ts` (scarabée, gant de boxe), `world.ts` (pyramide, portes).
 - Tests visuels : Playwright + Chromium headless (rendu logiciel, très lent : piloter `session.frame(dt)` manuellement pour capturer les animations).

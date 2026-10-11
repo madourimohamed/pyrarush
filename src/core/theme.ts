@@ -1,17 +1,27 @@
 /**
  * Socle visuel d'un niveau : uniquement des données (aucune dépendance 3D).
- * Le client sait afficher n'importe quel thème ; un niveau ne fait que le décrire.
+ *
+ * Un thème = une PALETTE (ciel, lumière, pierres, portes, interface, musique)
+ *          + une liste de COMPOSANTS de décor (ce qu'on pose, et avec quelles options).
+ * Le client possède un registre de composants (client/scene/components) : changer de design d'un niveau
+ * à l'autre revient à changer cette liste, sans toucher au moteur ni aux autres niveaux.
+ * Les couleurs HDR (> 1) déclenchent la lueur (bloom).
  */
 
 export type HDR = [number, number, number];
 
 /**
- * Thème visuel d'un niveau : tout ce qui change d'un niveau à l'autre (ciel, lumière, matériaux, décor, interface).
- * Les couleurs de gameplay (passage révélé, indice doré, pièges) restent identiques partout pour rester lisibles.
- * Les couleurs HDR (> 1) déclenchent la lueur (bloom).
+ * Un composant de décor : son nom dans le registre (`use`), ses options, et un identifiant optionnel
+ * (`id`) quand le même composant apparaît plusieurs fois (ex. plusieurs groupes de modèles « props »).
  */
+export interface ComponentSpec {
+  use: string;
+  id?: string;
+  [option: string]: unknown;
+}
+
 export interface Theme {
-  sky: { top: number; mid: number; horizon: number; sun: number; stars?: boolean };
+  sky: { top: number; mid: number; horizon: number; sun: number };
   sun: { color: number; intensity: number; dir: [number, number, number] };
   hemi: { sky: number; ground: number; intensity: number };
   fog: { near: number; far: number };
@@ -19,21 +29,19 @@ export interface Theme {
   ground: { light: number; dark: number };
   paving: string;
   border: number;
-  mountains: { color: number; shape: 'mesa' | 'peaks' };
-  clouds: { color: number; emissive: number; intensity: number };
+  /** Pierres des parois (deux teintes alternées) et dalles des terrasses. */
   stone: [string, string];
   top: string;
+  /** Métal des liserés, linteaux et ornements. */
   trim: { color: number; emissive: number };
+  /** Portes : panneau, encadrement et hiéroglyphe lumineux (HDR). */
   door: { panel: number; frame: number; glyph: HDR };
-  flame: HDR;
-  particles: { color: HDR; size: number; count: number; motion: 'float' | 'snow' | 'embers' };
-  pool: { color: number; emissive: number; glow?: boolean };
-  vegetation: 'palms' | 'lush' | 'pines' | 'rocks' | 'crystals';
-  foliage: { trunk: number; leaf: number };
   /** Dégradé des boutons de l'interface. */
   accent: [string, string];
-  /** Musique générée pour ce thème (voir audio/music.ts). */
+  /** Musique générée pour ce thème (voir client/audio/music.ts). */
   music: MusicStyle;
+  /** Décor, construit dans l'ordre de la liste. */
+  components: ComponentSpec[];
 }
 
 export interface MusicStyle {
@@ -47,32 +55,88 @@ export interface MusicStyle {
   drums: string;
 }
 
-/** Thème de base (le temple des sables). */
-export const BASE_THEME: Theme = {
-  sky: { top: 0x3d63b8, mid: 0xf4a582, horizon: 0xffd7a3, sun: 0xfff1d0 },
-  sun: { color: 0xffd6a5, intensity: 3.2, dir: [-0.72, 0.42, 0.55] },
-  hemi: { sky: 0xa9c1ff, ground: 0xe39d68, intensity: 1.5 },
-  fog: { near: 170, far: 520 },
-  exposure: 0.95,
-  ground: { light: 0xf0b878, dark: 0xd48a52 },
-  paving: '#e9c48c',
-  border: 0xc28a52,
-  mountains: { color: 0xc8775a, shape: 'mesa' },
-  clouds: { color: 0xffffff, emissive: 0xffc9a8, intensity: 0.35 },
-  stone: ['#e3b071', '#d9a465'],
-  top: '#f1d29c',
-  trim: { color: 0xf2c14e, emissive: 0x5a3a00 },
-  door: { panel: 0x16737a, frame: 0x2a1c14, glyph: [1.6, 1.05, 0.45] },
-  flame: [3.2, 1.3, 0.25],
-  particles: { color: [1.6, 1.25, 0.8], size: 0.35, count: 420, motion: 'float' },
-  pool: { color: 0x2cc3d6, emissive: 0x0b4a63 },
-  vegetation: 'palms',
-  foliage: { trunk: 0x9a6a43, leaf: 0x3f9e4d },
-  accent: ['#ffb13b', '#ff4f7b'],
-  music: { scale: [0, 1, 4, 5, 7, 8, 10], root: 62, tempo: 100, lead: 'triangle', drums: 't..t..t.t..t.t..' },
+/** Recoloration des modèles Kenney (par nom de matériau) vers la palette chaude des maquettes. */
+export const KENNEY_COLORS = {
+  leafs: 0x46a33c,
+  grass: 0x58a845,
+  woodBark: 0x9a6a43,
+  stoneDark: 0xc49058,
+  stone: 0xdcae74,
+  dirt: 0xd09a5a,
 };
 
-/** Un thème ne déclare que ce qui diffère du thème de base. */
-export function defineTheme(overrides: Partial<Theme> = {}): Theme {
-  return { ...BASE_THEME, ...overrides };
+/** Thème de base : le Temple des Sables (niveau 1), d'après les maquettes. */
+export const BASE_THEME: Theme = {
+  sky: { top: 0x3f7fd6, mid: 0xffb877, horizon: 0xffe0a8, sun: 0xfff1cc },
+  sun: { color: 0xffc98a, intensity: 3.8, dir: [-0.6, 0.5, 0.62] },
+  hemi: { sky: 0x9cc2ff, ground: 0xd88a48, intensity: 1.35 },
+  fog: { near: 240, far: 700 },
+  exposure: 1.0,
+  ground: { light: 0xeeb46a, dark: 0xc98446 },
+  paving: '#cf9c5c',
+  border: 0xa8703c,
+  stone: ['#d4924c', '#c88644'],
+  top: '#dcae70',
+  trim: { color: 0xf2b93b, emissive: 0x5a3500 },
+  door: { panel: 0x2e1d10, frame: 0x1a0f07, glyph: [1.9, 1.3, 0.35] },
+  accent: ['#ffd84a', '#f59a00'],
+  music: { scale: [0, 1, 4, 5, 7, 8, 10], root: 62, tempo: 100, lead: 'triangle', drums: 't..t..t.t..t.t..' },
+  components: [
+    { use: 'sky', clouds: 0xffffff, cloudGlow: 0xffc9a8 },
+    { use: 'terrain', flat: 9 },
+    { use: 'mountains', color: 0xc8775a, shape: 'mesa' },
+    { use: 'distantPyramids', color: 0xd09a62 },
+    { use: 'moat', color: 0x22b8d0, emissive: 0x0a4a60, width: 5 },
+    // Modèles 3D (Kenney Nature Kit, CC0), recolorés à la palette de la maquette.
+    { use: 'props', id: 'palmiers', models: ['tree_palm', 'tree_palmBend', 'tree_palmTall', 'tree_palmDetailedTall'], place: 'shore', count: 34, height: [6.5, 10], colors: KENNEY_COLORS },
+    { use: 'props', id: 'buissons', models: ['plant_bushLarge', 'plant_bush', 'plant_bushDetailed'], place: 'shore', count: 50, height: [0.9, 1.8], colors: KENNEY_COLORS },
+    { use: 'props', id: 'obelisques', models: ['statue_obelisk'], place: 'shore', count: 6, height: [10, 14], colors: KENNEY_COLORS },
+    { use: 'props', id: 'ruines', models: ['statue_column', 'statue_columnDamaged'], place: 'shore', count: 12, height: [3, 5.5], colors: KENNEY_COLORS },
+    { use: 'props', id: 'rochers', models: ['rock_largeA', 'rock_largeB', 'rock_tallA'], place: 'shore', count: 14, height: [0.8, 2.2], colors: KENNEY_COLORS },
+    { use: 'doorFrames', style: 'pillars', band: '#2f6fc0' },
+    { use: 'banners', cloth: '#2f5fb0', emblem: '#f2c14e', every: 1 },
+    { use: 'braziers', flame: [1.7, 0.7, 0.12], every: 2 },
+    { use: 'statues', model: 'anubis' },
+    { use: 'props', id: 'plantes-terrasses', models: ['plant_bushDetailed', 'plant_bushLarge'], place: 'terraceCorner', spacing: 1.6, height: [0.9, 1.3], colors: KENNEY_COLORS },
+    { use: 'props', id: 'fleurs', models: ['flower_redA', 'flower_yellowA', 'grass_large'], place: 'shore', count: 40, height: [0.5, 0.9], colors: KENNEY_COLORS },
+    { use: 'jars' },
+    { use: 'capstone', style: 'pyramid', color: 0xffc940, glow: [2.2, 1.5, 0.3] },
+    { use: 'particles', color: [1.6, 1.25, 0.8], size: 0.35, count: 420, motion: 'float' },
+  ],
+};
+
+/** Surcharge d'un thème : chaque groupe (sky, sun, door…) peut n'être redéfini qu'en partie. */
+export type ThemeOverrides = {
+  [K in keyof Theme]?: Theme[K] extends readonly unknown[] ? Theme[K] : Theme[K] extends object ? Partial<Theme[K]> : Theme[K];
+};
+
+const isGroup = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/**
+ * Crée un thème à partir d'un thème de base (par défaut le niveau 1) en ne déclarant que ce qui change.
+ * Fusion sur un niveau de profondeur : { sky: { top } } ne remplace que la couleur du haut du ciel.
+ * La liste `components` est remplacée en entier : pour l'ajuster, voir editComponents.
+ */
+export function defineTheme(overrides: ThemeOverrides = {}, base: Theme = BASE_THEME): Theme {
+  const theme: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(overrides)) {
+    const current = theme[key];
+    theme[key] = isGroup(value) && isGroup(current) ? { ...current, ...value } : value;
+  }
+  return theme as unknown as Theme;
+}
+
+/**
+ * Ajuste une liste de composants sans la réécrire : options fusionnées par identifiant (`id`, sinon `use`),
+ * `null` pour retirer un composant, et les noms absents de la liste sont ajoutés à la fin.
+ *   editComponents(themes.sables.components, { banners: { cloth: '#7a2a2a' }, statues: null })
+ */
+export function editComponents(list: ComponentSpec[], edits: Record<string, Omit<ComponentSpec, 'use'> | null>): ComponentSpec[] {
+  const key = (c: ComponentSpec) => c.id ?? c.use;
+  const result = list.filter((c) => edits[key(c)] !== null).map((c) => (edits[key(c)] ? { ...c, ...edits[key(c)] } : c));
+  for (const [name, options] of Object.entries(edits)) {
+    // Nouvelle entrée : « use » peut être donné explicitement (avec un id), sinon c'est le nom de la clé.
+    if (options && !list.some((c) => key(c) === name)) result.push({ use: name, ...options } as ComponentSpec);
+  }
+  return result;
 }

@@ -18,7 +18,7 @@ import {
   type Vec3,
 } from '../core';
 import type { SfxName } from './audio/sfx';
-import { FollowCamera, orbitCamera } from './camera';
+import { FollowCamera, menuCamera } from './camera';
 import type { Input } from './input/input';
 import { CharacterBody } from './physics';
 import { Character } from './scene/character';
@@ -44,6 +44,18 @@ export interface SessionResult {
   doorsTested: number;
 }
 
+/** Titre et sous-titre du message affiché après l'ouverture d'une porte. */
+function toastText(e: Extract<GameEvent, { type: 'doorResult' }>): [string, string] {
+  const change = e.to - e.from;
+  const floors = (n: number) => `${n} étage${Math.abs(n) > 1 ? 's' : ''}`;
+  const delta = change > 0 ? `+${floors(change)}` : change < 0 ? `−${floors(-change)}` : '';
+  if (e.fx === 'passage') return ['Passage trouvé !', delta];
+  if (e.hint?.type === 'hotCold') return ['Mur', { chaud: 'Chaud !', tiede: 'Tiède…', froid: 'Froid.' }[e.hint.level]];
+  if (e.hint?.type === 'scarab') return ['Mur', e.hint.near ? 'Le scarabée s’agite : tout près !' : 'Suis le scarabée !'];
+  if (e.fx === 'wall') return ['Mur', 'Rien ici…'];
+  return [e.message, delta || 'Bing ! Tu recules…'];
+}
+
 /** Une partie en cours côté navigateur : relie le moteur de règles, la physique, le rendu et les commandes. */
 export class GameSession {
   readonly game: Game;
@@ -51,7 +63,7 @@ export class GameSession {
   readonly camera: FollowCamera;
   private readonly tweens = new Tweens();
   private readonly body: CharacterBody;
-  private readonly character = new Character(0xff6b5a);
+  private readonly character = new Character();
   private clock = 0;
   private accumulator = 0;
   private locked = false;
@@ -87,7 +99,7 @@ export class GameSession {
     hud.setFloor(1, 1);
     hud.setTime(0);
     hud.setPrompt(false);
-    hud.showToast(config.name, 'info', 2.5);
+    hud.showToast(config.name, 'info', 2.5, 'Trouve les passages secrets !');
   }
 
   private get player() {
@@ -106,7 +118,7 @@ export class GameSession {
       this.tweens.update(dt);
       this.world.update(dt);
       const height = this.config.floors * FLOOR_HEIGHT;
-      orbitCamera(this.camera.camera, this.attractTime, this.world.groundHalf * 1.75, height * 0.9 + 7, height * 0.4);
+      menuCamera(this.camera.camera, this.attractTime, this.world.groundHalf, height);
       return;
     }
     if (this.paused) {
@@ -215,7 +227,7 @@ export class GameSession {
           this.hud.setFloor(event.to, this.player.bestFloor);
           this.world.setPrivateHints(this.player.knownPassages, event.to);
           if (event.cause === 'fall') {
-            this.hud.showToast(`Chute ! Étage ${event.to}`, 'bad');
+            this.hud.showToast('Chute !', 'bad', 1.8, `Retour à l'étage ${event.to}`);
             navigator.vibrate?.(60);
             this.sound.play('fall');
           }
@@ -231,10 +243,8 @@ export class GameSession {
     const door = this.game.doorsById.get(e.doorId)!;
     const kind: ToastKind =
       e.to > e.from ? 'good' : e.to < e.from ? 'bad' : e.hint?.type === 'hotCold' ? e.hint.level : e.hint ? 'scarab' : 'info';
-    const change = e.to - e.from;
-    const floors = (n: number) => `${n} étage${Math.abs(n) > 1 ? 's' : ''}`;
-    const suffix = e.fx === 'passage' || change === 0 ? '' : change > 0 ? ` +${floors(change)}` : ` −${floors(-change)}`;
-    this.hud.showToast(e.message + suffix, TRAP_FX.has(e.fx) ? 'bad' : kind);
+    const [title, sub] = toastText(e);
+    this.hud.showToast(title, TRAP_FX.has(e.fx) ? 'bad' : kind, 1.8, sub);
     this.hud.setPrompt(false);
     this.nearestDoor = null;
     this.world.setHighlight(null);

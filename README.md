@@ -4,7 +4,7 @@
 
 Explore les portes de la pyramide pour découvrir les passages secrets, évite les pièges, mémorise ton chemin et atteins le sommet le plus vite possible. Six niveaux à débloquer, chacun avec son décor, ses couleurs, sa musique et de nouveaux pièges.
 
-![Menu de PyraRush](docs/screenshots/menu.png)
+![Accueil de PyraRush](docs/screenshots/menu.png)
 
 > Statut : **V1, prototype solo jouable.** Les robots et le multijoueur sont prévus pour la V2 (voir la [feuille de route](#feuille-de-route)).
 
@@ -173,14 +173,14 @@ En développement, `window.__session()` donne accès à la partie en cours depui
 Le projet est organisé en **trois couches** :
 
 1. **`src/core/` — le socle.** Le cœur du jeu : moteur de règles, mécaniques des portes, génération des pyramides, géométrie, et la *forme* d'un niveau et d'un thème. TypeScript pur, sans 3D ni DOM : il sera réutilisé tel quel par les robots et le serveur (V2).
-2. **`src/levels/` — les niveaux.** Un fichier par niveau, qui ne contient **que des données** : règles (étages, contenu des portes, trous, limites) et thème (graphismes, couleurs, musique). On construit un niveau à partir du socle, sans toucher au moteur.
+2. **`src/levels/` — les niveaux.** Un fichier par niveau (`NNN-nom.ts`, découvert automatiquement), qui ne contient **que des données** : règles (étages, contenu des portes, trous, limites) et thème (une famille de `themes.ts`, éventuellement variée). On construit un niveau à partir du socle, sans toucher au moteur. L'architecture est prévue pour des **centaines de niveaux et de thèmes**.
 3. **`src/client/` — l'affichage.** Rendu 3D, commandes, interface et son. Il sait jouer et afficher n'importe quel niveau.
 
 ```
 src/
 ├── core/                  ← socle : aucune dépendance 3D ni DOM
 │   ├── level.ts             forme d'un niveau, valeurs par défaut, band(), buildLevels()
-│   ├── theme.ts             forme d'un thème + thème de base, defineTheme()
+│   ├── theme.ts             forme d'un thème + thème de base, defineTheme(surcharges, base)
 │   ├── mechanics/           un type de porte = un module
 │   │   ├── mechanic.ts        interface Mechanic
 │   │   ├── basic.ts           passage, mur (indices), petit piège
@@ -191,24 +191,28 @@ src/
 │   ├── game.ts              état de la partie : actions → événements
 │   ├── rng.ts               générateur pseudo-aléatoire (mulberry32)
 │   └── core.test.ts         tests du moteur et des niveaux
-├── levels/                ← un fichier par niveau (données uniquement)
-│   ├── 01-temple-des-sables.ts … 06-cite-celeste.ts
+├── levels/                ← un fichier par niveau (données uniquement), découvert automatiquement
+│   ├── 001-temple-des-sables.ts … 006-cite-celeste.ts
+│   ├── themes.ts            familles de thèmes partagées (sables, oasis, glace, lave…)
 │   ├── shared.ts            briques de règles réutilisables entre niveaux
-│   └── index.ts             ordre de progression des niveaux
+│   └── index.ts             découverte et tri des niveaux (rien à modifier pour en ajouter)
 └── client/                ← navigateur uniquement
-    ├── main.ts              écrans, niveaux et progression, options, boucle de rendu
+    ├── main.ts              orchestration : écrans, options, progression, boucle de rendu
+    ├── storage.ts           sauvegarde locale (progression, records, réglages)
+    ├── thumbnails.ts        miniatures 3D des niveaux et portrait (mis en cache)
     ├── session.ts           relie moteur, physique, rendu, son et commandes
     ├── physics.ts           contrôleur de personnage (collisions boîtes alignées)
     ├── camera.ts            caméra automatique et zoom
     ├── render.ts            renderer Three.js + lueur (bloom)
     ├── audio/               son généré : synth.ts, sfx.ts (effets), music.ts (séquenceur), audio.ts
     ├── input/input.ts       clavier, souris, joystick tactile
-    ├── ui/hud.ts            interface en jeu
+    ├── ui/                  hud.ts (interface en jeu), menu.ts (accueil, records), icons.ts (icônes SVG)
     └── scene/
         ├── world.ts           pyramide, portes, braseros (couleurs du thème)
+        ├── decor.ts           bannières, jarres, lianes (instanciées : un appel de dessin par type)
         ├── environment.ts     ciel, sol, montagnes, nuages, plan d'eau, végétation, particules
         ├── props.ts           scarabée, gant de boxe
-        ├── character.ts       personnage
+        ├── character.ts       l'explorateur encapuchonné
         ├── textures.ts        textures procédurales (canvas, aucun fichier image)
         └── fx.ts              animations et particules
 ```
@@ -231,43 +235,40 @@ Le moteur ne connaît ni Three.js ni le DOM, et le temps lui est toujours fourni
 
 ## Ajouter un niveau
 
-1. Copier un fichier existant, par exemple `src/levels/06-cite-celeste.ts`, en `src/levels/07-mon-niveau.ts`.
-2. Régler les **règles** et le **thème** :
+Créer **un seul fichier** dans `src/levels/`, nommé `NNN-nom.ts` (NNN = position dans la progression, ex. `007-mon-niveau.ts`) :
 
-   ```ts
-   import { band, defineLevel, defineTheme } from '../core';
+```ts
+import { band, defineLevel, defineTheme } from '../core';
+import { themes } from './themes';
 
-   export default defineLevel({
-     name: 'Mon niveau',
-     tagline: 'Ce que ce niveau apporte de nouveau.',
-     rules: {
-       floors: 8,                // nombre d'étages
-       maxFloorsLost: 3,         // perte maximale en un seul effet
-       maxFloorsGained: 2,       // gain maximal (téléporteurs, paris)
-       protectedTopFloors: 2,    // un bonus ne dépose jamais sur ces derniers étages
-       bands: [
-         //   étages  passages  autres portes                          trous
-         band(1, 3,   3,        { smallTrap: 3, teleportUp: [0, 1] },  [1, 2]),
-         band(4, 8,   2,        { smallTrap: 3, bigTrap: 2 },          [2, 3]),
-       ],
-       limits: { teleportUp: 2 },              // maximum sur toute la pyramide
-       settings: { teleportUp: { min: 2, max: 2 } },
-     },
-     // Le thème ne déclare que ce qui diffère du thème de base.
-     theme: defineTheme({
-       sky: { top: 0x1a3a6a, mid: 0x6aa0d6, horizon: 0xd6ecff, sun: 0xffffff },
-       stone: ['#a0a0b0', '#9090a0'],
-       door: { panel: 0x7a2a2a, frame: 0x1a0a0a, glyph: [2.5, 2.0, 0.8] },
-       particles: { color: [1.6, 1.6, 1.9], size: 0.3, count: 800, motion: 'snow' },
-       vegetation: 'pines',
-       music: { scale: [0, 2, 3, 5, 7, 8, 10], root: 60, tempo: 110, lead: 'triangle', drums: 'k...s...k.k.s...' },
-     }),
-   });
-   ```
+export default defineLevel({
+  name: 'Mon niveau',
+  tagline: 'Ce que ce niveau apporte de nouveau.',
+  duration: '4–8 min',
+  highlights: ['Point fort 1', 'Point fort 2', 'Atteins le sommet !'],
+  rules: {
+    floors: 8,                // nombre d'étages
+    maxFloorsLost: 3,         // perte maximale en un seul effet
+    maxFloorsGained: 2,       // gain maximal (téléporteurs, paris)
+    protectedTopFloors: 2,    // un bonus ne dépose jamais sur ces derniers étages
+    bands: [
+      //   étages  passages  autres portes                          trous
+      band(1, 3,   3,        { smallTrap: 3, teleportUp: [0, 1] },  [1, 2]),
+      band(4, 8,   2,        { smallTrap: 3, bigTrap: 2 },          [2, 3]),
+    ],
+    limits: { teleportUp: 2 },              // maximum sur toute la pyramide
+    settings: { teleportUp: { min: 2, max: 2 } },
+  },
+  // Une famille de thèmes telle quelle (themes.glace), ou variée en ne déclarant que ce qui change :
+  theme: defineTheme({ sky: { top: 0x1a3a6a }, banner: { cloth: '#7a2a2a' } }, themes.glace),
+});
+```
 
-3. L'ajouter à la fin de la liste dans `src/levels/index.ts`.
+C'est tout : le niveau est découvert automatiquement, et son numéro, son déblocage, sa carte (avec miniature 3D), sa musique et son record sont gérés sans autre modification. Les tests vérifient la numérotation (sans trou ni doublon) et que le niveau est valide et toujours terminable.
 
-Le numéro, l'identifiant, le déblocage, la carte du menu et la sauvegarde du record sont automatiques. Les tests vérifient que le niveau est valide et toujours terminable. Une seule pyramide est construite à la fois (la précédente est libérée) : ajouter des niveaux ne coûte rien en performance.
+Pour un nouvel univers visuel réutilisable, ajouter une famille dans `src/levels/themes.ts`. La fusion des thèmes se fait sur un niveau de profondeur : `{ sky: { top } }` ne change que la couleur du haut du ciel.
+
+**Performance** : une seule pyramide est construite à la fois (la précédente est libérée), les miniatures ne sont calculées que pour les niveaux débloqués puis mises en cache, et chaque type de décor est dessiné en un seul appel. Le nombre total de niveaux n'a pas d'effet sur la fluidité.
 
 ## Ajouter une mécanique de porte
 

@@ -23,37 +23,57 @@ function shade(hex: string, amount: number): string {
   return `rgb(${f(n >> 16)}, ${f((n >> 8) & 255)}, ${f(n & 255)})`;
 }
 
-/** Assises de pierres taillées. Une tuile = 2 m × 1 m (2 rangées de blocs décalés). */
+/**
+ * Gros blocs de pierre taillée, de largeurs irrégulières, joints sombres et arêtes éclairées (maquettes).
+ * Une tuile = 3 m × 1,5 m (2 assises).
+ */
 export function stoneTexture(base: string, seed: number): THREE.CanvasTexture {
   const size = 512;
   const [c, ctx] = canvas(size);
   const rng = new Rng(seed);
-  ctx.fillStyle = shade(base, -0.28);
+  ctx.fillStyle = shade(base, -0.45);
   ctx.fillRect(0, 0, size, size);
   const rows = 2;
   const rowH = size / rows;
-  const mortar = 7;
+  const mortar = 10;
   for (let row = 0; row < rows; row++) {
-    const offset = row % 2 === 0 ? 0 : size / 4;
-    for (let col = -1; col < 2; col++) {
-      const x = col * (size / 2) + offset;
+    // Largeurs irrégulières qui bouclent sur la tuile (la texture se répète sans couture).
+    const widths: number[] = [];
+    let total = 0;
+    while (total < size) {
+      const w = Math.min(size - total, 120 + rng.next() * 180);
+      widths.push(size - total - w < 90 ? size - total : w);
+      total += widths[widths.length - 1];
+    }
+    let x = row % 2 === 0 ? 0 : -60;
+    for (const w of [...widths, widths[0]]) {
       const y = row * rowH;
-      const w = size / 2;
-      const tint = (rng.next() - 0.5) * 0.14;
+      const tint = (rng.next() - 0.5) * 0.22;
       const grad = ctx.createLinearGradient(0, y, 0, y + rowH);
-      grad.addColorStop(0, shade(base, tint + 0.07));
-      grad.addColorStop(1, shade(base, tint - 0.06));
+      grad.addColorStop(0, shade(base, tint + 0.1));
+      grad.addColorStop(0.6, shade(base, tint));
+      grad.addColorStop(1, shade(base, tint - 0.12));
       ctx.fillStyle = grad;
       ctx.fillRect(x + mortar / 2, y + mortar / 2, w - mortar, rowH - mortar);
-      // Arête éclairée en haut, ombrée en bas : effet de pierre taillée.
-      ctx.fillStyle = 'rgba(255,240,210,0.35)';
-      ctx.fillRect(x + mortar / 2, y + mortar / 2, w - mortar, 4);
-      ctx.fillStyle = 'rgba(90,45,10,0.25)';
-      ctx.fillRect(x + mortar / 2, y + rowH - mortar / 2 - 5, w - mortar, 5);
+      // Arêtes : claire en haut et à gauche, sombre en bas et à droite (relief de pierre taillée).
+      ctx.fillStyle = 'rgba(255,236,200,0.45)';
+      ctx.fillRect(x + mortar / 2, y + mortar / 2, w - mortar, 6);
+      ctx.fillRect(x + mortar / 2, y + mortar / 2, 5, rowH - mortar);
+      ctx.fillStyle = 'rgba(70,30,5,0.35)';
+      ctx.fillRect(x + mortar / 2, y + rowH - mortar / 2 - 8, w - mortar, 8);
+      ctx.fillRect(x + w - mortar / 2 - 6, y + mortar / 2, 6, rowH - mortar);
+      // Éclats et fissures.
+      for (let k = 0; k < 3; k++) {
+        ctx.fillStyle = 'rgba(80,40,10,0.18)';
+        ctx.beginPath();
+        ctx.arc(x + rng.next() * w, y + rng.next() * rowH, 4 + rng.next() * 10, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      x += w;
     }
   }
-  for (let i = 0; i < 2600; i++) {
-    ctx.fillStyle = rng.next() < 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(80,40,10,0.08)';
+  for (let i = 0; i < 3200; i++) {
+    ctx.fillStyle = rng.next() < 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(80,40,10,0.1)';
     ctx.fillRect(rng.next() * size, rng.next() * size, 2 + rng.next() * 3, 2 + rng.next() * 3);
   }
   return toTexture(c);

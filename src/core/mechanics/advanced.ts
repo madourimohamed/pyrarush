@@ -62,7 +62,7 @@ export const teleportDown: Mechanic = {
 export const riskyDoor: Mechanic = {
   id: 'riskyDoor',
   label: 'Porte risquée',
-  appearance: { color: 0xf0b429, symbol: (config) => `±${setting(config, 'riskyDoor', 'amount', 3)}` },
+  appearance: { color: 0x0d3446, symbol: (config) => `±${setting(config, 'riskyDoor', 'amount', 3)}` },
   revealPublicly: true,
   oncePerPlayer: true,
   // Jamais à l'étage 1, et un pari gagné ne dépose jamais sur les étages protégés.

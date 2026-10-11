@@ -1,6 +1,19 @@
+import { icon, type IconName } from './icons';
+
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
 export type ToastKind = 'good' | 'bad' | 'info' | 'scarab' | 'chaud' | 'tiede' | 'froid';
+
+/** Icône associée à chaque type de message. */
+const TOAST_ICONS: Record<ToastKind, IconName> = {
+  good: 'up',
+  bad: 'down',
+  info: 'info',
+  scarab: 'scarab',
+  chaud: 'thermo',
+  tiede: 'thermo',
+  froid: 'thermo',
+};
 
 export function formatTime(ms: number): string {
   const total = Math.max(0, ms) / 1000;
@@ -15,10 +28,18 @@ export class Hud {
   private timer = $('timer');
   private ladder = $('ladder');
   private toast = $('toast');
+  private toastIcon = this.toast.querySelector<HTMLElement>('.toast-icon')!;
+  private toastTitle = this.toast.querySelector<HTMLElement>('.toast-title')!;
+  private toastSub = this.toast.querySelector<HTMLElement>('.toast-sub')!;
   private prompt = $('prompt');
   private actButton = $('btn-act');
   private toastTimer = 0;
   private floors = 0;
+
+  setLevel(number: number, name: string): void {
+    $('hud-level').textContent = `Niveau ${number}`;
+    $('hud-level-name').textContent = name;
+  }
 
   setup(floors: number): void {
     this.floors = floors;
@@ -38,7 +59,7 @@ export class Hud {
   }
 
   setFloor(floor: number, best: number): void {
-    this.floorLabel.textContent = floor > this.floors ? 'Sommet !' : `Étage ${floor} / ${this.floors}`;
+    this.floorLabel.textContent = floor > this.floors ? 'Sommet' : `${floor} / ${this.floors}`;
     for (const rung of Array.from(this.ladder.children) as HTMLElement[]) {
       const f = rung.classList.contains('summit') ? this.floors + 1 : Number(rung.dataset.floor);
       rung.classList.toggle('current', f === floor);
@@ -50,8 +71,12 @@ export class Hud {
     this.timer.textContent = formatTime(ms);
   }
 
-  showToast(text: string, kind: ToastKind, seconds = 1.8): void {
-    this.toast.textContent = text;
+  /** Carte de message : icône, titre et sous-titre optionnel. */
+  showToast(title: string, kind: ToastKind, seconds = 1.8, sub = ''): void {
+    this.toastIcon.innerHTML = icon(TOAST_ICONS[kind]);
+    this.toastTitle.textContent = title;
+    this.toastSub.textContent = sub;
+    this.toastSub.style.display = sub ? '' : 'none';
     this.toast.className = `show ${kind}`;
     window.clearTimeout(this.toastTimer);
     this.toastTimer = window.setTimeout(() => this.hideToast(), seconds * 1000);

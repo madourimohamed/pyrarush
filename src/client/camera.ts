@@ -9,11 +9,12 @@ export const ZOOM_LABELS = ['Proche', 'Moyen', 'Large'] as const;
  * Niveaux de zoom : proche (le personnage), moyen, large (toute la pyramide).
  * dist : distance en mètres, ou multiple de la demi-largeur de la pyramide pour le plan large.
  * focus : part du cadrage tirée vers le centre de la pyramide plutôt que vers le joueur.
+ * yaw : décalage de la caméra sur le côté, pour une vue de trois-quarts comme sur les maquettes.
  */
 const ZOOMS = [
-  { dist: (_half: number) => 12.5, pitch: 0.55, focus: 0 },
-  { dist: (half: number) => Math.max(20, half * 1.05), pitch: 0.62, focus: 0.2 },
-  { dist: (half: number) => half * 2.5, pitch: 0.78, focus: 0.7 },
+  { dist: (_half: number) => 8.5, pitch: 0.42, focus: 0, yaw: 0.38 },
+  { dist: (half: number) => Math.max(16, half * 0.9), pitch: 0.58, focus: 0.15, yaw: 0.3 },
+  { dist: (half: number) => half * 2.5, pitch: 0.78, focus: 0.7, yaw: 0.5 },
 ];
 
 /**
@@ -45,7 +46,7 @@ export class FollowCamera {
 
   /** Lacet total utilisé pour orienter les commandes (avant = vers la pyramide). */
   get viewYaw(): number {
-    return this.yaw + this.userYaw;
+    return this.yaw + this.userYaw + sampleZoom(this.zoomSmooth, 1).yaw;
   }
 
   addUserInput(dx: number, dy: number, active: boolean): void {
@@ -106,14 +107,24 @@ function sampleZoom(value: number, half: number) {
     dist: THREE.MathUtils.lerp(a.dist(half), b.dist(half), t),
     pitch: THREE.MathUtils.lerp(a.pitch, b.pitch, t),
     focus: THREE.MathUtils.lerp(a.focus, b.focus, t),
+    yaw: THREE.MathUtils.lerp(a.yaw, b.yaw, t),
   };
 }
 
-/** Plan large qui tourne lentement autour de la pyramide (écran d'accueil). */
-export function orbitCamera(camera: THREE.PerspectiveCamera, time: number, radius: number, height: number, lookY: number): void {
-  const a = time * 0.08 + 0.6;
-  camera.position.set(Math.sin(a) * radius, height, Math.cos(a) * radius);
-  camera.lookAt(0, lookY, 0);
+/**
+ * Cadrage de l'écran d'accueil (maquette) : la pyramide en grand sur la droite, le personnage au premier plan,
+ * avec un lent balancement de la caméra devant la façade principale.
+ */
+export function menuCamera(camera: THREE.PerspectiveCamera, time: number, groundHalf: number, pyramidHeight: number): void {
+  const portrait = camera.aspect < 1;
+  const a = Math.sin(time * 0.12) * 0.28 - 0.35;
+  const dist = groundHalf * (portrait ? 1.9 : 1.2) + 6;
+  // Assez haut pour passer au-dessus des palmiers de la rive.
+  camera.position.set(Math.sin(a) * dist, pyramidHeight * 0.7 + 8, Math.cos(a) * dist);
+  // Viser à gauche du centre pour décaler la pyramide vers la droite de l'écran (le menu occupe la gauche).
+  const right = new THREE.Vector3(Math.cos(a), 0, -Math.sin(a));
+  const target = new THREE.Vector3(0, pyramidHeight * 0.42, 0).addScaledVector(right, portrait ? 0 : -groundHalf * 0.42);
+  camera.lookAt(target);
 }
 
 function angleDelta(from: number, to: number): number {

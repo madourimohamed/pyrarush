@@ -18,6 +18,11 @@ export interface PyramidConfig {
   floors: number;
   /** Portes par face au dernier étage ; chaque étage inférieur en a une de plus par face. */
   doorsPerSideAtTop: number;
+  /**
+   * Portes par face au premier étage. Les étages intermédiaires sont interpolés et les portes réparties
+   * sur toute la longueur de la paroi. Absent : une porte de plus par face à chaque étage (pyramide dense).
+   */
+  doorsPerSideAtBase?: number;
   /** Perte maximale d'étages en un seul effet. */
   maxFloorsLost: number;
   /** Gain maximal d'étages en un seul effet (le passage classique fait toujours +1). */
@@ -65,7 +70,7 @@ export interface Door {
 export interface Hole {
   floor: number;
   side: number;
-  /** Le trou est situé juste à droite de la porte `slot` de cet étage. */
+  /** Indice parmi les emplacements de trou possibles de cette terrasse (voir geometry.holeTangents). */
   slot: number;
 }
 

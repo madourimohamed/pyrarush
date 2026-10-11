@@ -1,4 +1,3 @@
-import { doorsPerSide } from './layout';
 import type { Door, Hole, Layout, PyramidConfig } from './types';
 
 /**
@@ -10,14 +9,14 @@ import type { Door, Hole, Layout, PyramidConfig } from './types';
  */
 export const FLOOR_HEIGHT = 3;
 export const TERRACE_DEPTH = 3;
-/** Espacement des portes = 2 × profondeur de terrasse : les portes de deux parois successives s'intercalent. */
+/** Espacement minimal des portes = 2 × profondeur de terrasse (pyramide dense : une porte de plus par face à chaque étage). */
 export const DOOR_SPACING = TERRACE_DEPTH * 2;
 export const CORNER_MARGIN = 1;
 export const DOOR_WIDTH = 1.4;
 export const DOOR_HEIGHT = 2.2;
 export const HOLE_WIDTH = 1.2;
-/** Un trou est décalé d'un quart d'espacement par rapport à une porte : il ne bloque jamais une porte. */
-export const HOLE_OFFSET = DOOR_SPACING / 4;
+/** Distance minimale entre le bord d'un trou et le bord d'une porte (au-dessus ou au-dessous). */
+export const HOLE_CLEARANCE = 0.15;
 export const GROUND_DEPTH = 7;
 export const INTERACT_RANGE = 1.8;
 
@@ -48,9 +47,16 @@ export function sideFrame(side: number) {
   return { outX: s.out[0], outZ: s.out[1], tanX: s.tan[0], tanZ: s.tan[1] };
 }
 
-/** Demi-largeur de la paroi de l'étage `floor`. */
+/** Nombre de portes par face à un étage. */
+export function doorsPerSide(config: PyramidConfig, floor: number): number {
+  if (config.doorsPerSideAtBase === undefined) return config.doorsPerSideAtTop + (config.floors - floor);
+  const t = config.floors > 1 ? (config.floors - floor) / (config.floors - 1) : 0;
+  return Math.round(config.doorsPerSideAtTop + (config.doorsPerSideAtBase - config.doorsPerSideAtTop) * t);
+}
+
+/** Demi-largeur de la paroi de l'étage `floor` : chaque étage déborde d'une profondeur de terrasse sur le suivant. */
 export function wallHalf(config: PyramidConfig, floor: number): number {
-  return (doorsPerSide(config, floor) * DOOR_SPACING + 2 * CORNER_MARGIN) / 2;
+  return (config.doorsPerSideAtTop * DOOR_SPACING + 2 * CORNER_MARGIN) / 2 + (config.floors - floor) * TERRACE_DEPTH;
 }
 
 /** Demi-largeur extérieure de la terrasse de l'étage `floor`. */
@@ -67,12 +73,45 @@ export function floorAtY(config: PyramidConfig, y: number): number {
   return Math.max(1, Math.min(config.floors + 1, Math.round(y / FLOOR_HEIGHT) + 1));
 }
 
+/** Les portes sont réparties régulièrement sur toute la longueur utile de la paroi. */
 export function doorTangent(config: PyramidConfig, floor: number, slot: number): number {
-  return -wallHalf(config, floor) + CORNER_MARGIN + DOOR_SPACING * (slot + 0.5);
+  const half = wallHalf(config, floor);
+  const spacing = (2 * (half - CORNER_MARGIN)) / doorsPerSide(config, floor);
+  return -half + CORNER_MARGIN + spacing * (slot + 0.5);
+}
+
+export function doorTangents(config: PyramidConfig, floor: number): number[] {
+  return Array.from({ length: doorsPerSide(config, floor) }, (_, slot) => doorTangent(config, floor, slot));
+}
+
+/** Milieux des intervalles entre deux portes voisines d'une paroi (réservés au décor, jamais un trou). */
+export function gapTangents(config: PyramidConfig, floor: number): number[] {
+  const doors = doorTangents(config, floor);
+  return doors.slice(1).map((t, i) => (t + doors[i]) / 2);
+}
+
+/**
+ * Emplacements de trou possibles sur la terrasse `floor` (identiques sur les 4 faces) : au quart et aux trois quarts
+ * de chaque intervalle entre portes de la paroi, en gardant les emplacements loin des portes de la paroi du dessous
+ * (le puits du trou débouche sur cette paroi). Le milieu des intervalles reste libre pour le décor.
+ */
+export function holeTangents(config: PyramidConfig, floor: number): number[] {
+  if (floor < 2) return [];
+  const above = doorTangents(config, floor);
+  const below = doorTangents(config, floor - 1);
+  const clearance = (DOOR_WIDTH + HOLE_WIDTH) / 2 + HOLE_CLEARANCE;
+  const result: number[] = [];
+  for (let i = 0; i < above.length - 1; i++) {
+    for (const f of [0.25, 0.75]) {
+      const t = above[i] + (above[i + 1] - above[i]) * f;
+      if ([...above, ...below].every((d) => Math.abs(d - t) >= clearance)) result.push(t);
+    }
+  }
+  return result;
 }
 
 export function holeTangent(config: PyramidConfig, hole: Hole): number {
-  return doorTangent(config, hole.floor, hole.slot) + HOLE_OFFSET;
+  return holeTangents(config, hole.floor)[hole.slot];
 }
 
 function onSide(side: number, radius: number, tangent: number, y: number): Vec3 {
@@ -91,21 +130,16 @@ export function doorFront(config: PyramidConfig, door: Door): Vec3 {
 }
 
 /**
- * Point d'arrivée sûr sur une terrasse, sur la même face et au plus près de `tangent`.
- * Il est aligné sur la grille des portes : il tombe toujours à HOLE_OFFSET d'un trou, jamais dedans.
+ * Point d'arrivée sûr sur une terrasse, sur la même face : devant la porte la plus proche de `tangent`.
+ * Les trous n'étant jamais devant une porte, on n'atterrit jamais dans un trou.
  */
 export function landingPoint(config: PyramidConfig, floor: number, side: number, tangent: number): Vec3 {
   if (floor > config.floors) {
     const half = wallHalf(config, config.floors);
     return onSide(side, half * 0.45, Math.max(-half * 0.5, Math.min(half * 0.5, tangent)), floorY(floor));
   }
-  const inner = wallHalf(config, floor);
-  const grid0 = doorTangent(config, floor, 0);
-  const step = DOOR_SPACING / 2;
-  const limit = inner - CORNER_MARGIN - step / 2;
-  const clamped = Math.max(-limit, Math.min(limit, tangent));
-  const snapped = grid0 + Math.round((clamped - grid0) / step) * step;
-  return onSide(side, terraceMidHalf(config, floor), snapped, floorY(floor));
+  const nearest = doorTangents(config, floor).reduce((best, t) => (Math.abs(t - tangent) < Math.abs(best - tangent) ? t : best));
+  return onSide(side, terraceMidHalf(config, floor), nearest, floorY(floor));
 }
 
 /** Demi-largeur de la ligne médiane d'une terrasse (là où l'on marche). */
