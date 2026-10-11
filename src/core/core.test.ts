@@ -309,3 +309,32 @@ describe('étoiles', () => {
   });
 });
 
+describe('bonus', () => {
+  it('le Bouclier annule une chute par piège puis une chute physique, une seule fois', () => {
+    const game = new Game(pyramid1, 21);
+    const p = game.addPlayer('a');
+    p.floor = 3;
+    const trap = game.layout.doorsByFloor[3].find((d) => d.mechanic === 'smallTrap')!;
+    expect(game.useBonus('a', 'shield', 0)).toEqual([{ type: 'bonusUsed', playerId: 'a', bonus: 'shield' }]);
+    const events = game.interact('a', trap.id, 0);
+    expect(p.floor).toBe(3);
+    expect(events.some((e) => e.type === 'shielded')).toBe(true);
+    expect(p.shield).toBe(false);
+    game.reportFloor('a', 2, 0);
+    expect(p.floor).toBe(2);
+
+    game.useBonus('a', 'shield', 0);
+    expect(game.reportFloor('a', 1, 0)).toEqual([{ type: 'shielded', playerId: 'a', cause: 'fall', floor: 2 }]);
+    expect(p.floor).toBe(2);
+  });
+
+  it('l’Œil de Râ montre un passage de l’étage actuel, le Sablier rend du temps', () => {
+    const game = new Game(pyramid1, 21);
+    game.addPlayer('a');
+    const events = game.useBonus('a', 'eye', 1000);
+    const reveal = events.find((e) => e.type === 'privateReveal');
+    expect(reveal && reveal.type === 'privateReveal' && game.doorsById.get(reveal.doorId)?.mechanic).toBe('passage');
+    expect(game.useBonus('a', 'hourglass', 0)[0]).toMatchObject({ bonus: 'hourglass', timeBonusMs: 10000 });
+  });
+});
+

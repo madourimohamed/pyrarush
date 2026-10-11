@@ -24,7 +24,7 @@ En dev (ou avec `?debug=1`), `window.__debug` expose la partie, le gel de la sim
 Mesures graphiques : toujours capturer « avant / après » avec `npm run capture` et comparer aux objectifs de la bible (§ 8). Les mesures en navigateur automatisé (rendu logiciel) ne valent que pour les compteurs.
 Dans ce WSL, Chromium (Playwright) a besoin de bibliothèques extraites localement : `LD_LIBRARY_PATH=<scratchpad>/libs/usr/lib/x86_64-linux-gnu` (libnss3, libnspr4, libasound2).
 
-Commits : committer au fur et à mesure (en local) ; **ne jamais pousser sur le dépôt distant sans accord explicite**.
+Commits : committer au fur et à mesure puis pousser chaque commit sur `origin master` (accord donné par l’utilisateur le 2026-10-11).
 
 ## Architecture
 

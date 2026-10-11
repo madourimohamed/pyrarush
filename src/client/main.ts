@@ -14,6 +14,7 @@ import { applyIcons } from './ui/icons';
 import { enterFullscreen, setupFullscreen } from './ui/fullscreen';
 import { MoveTutorial } from './ui/tutorial';
 import { renderVictory } from './ui/victory';
+import { renderBonusButton, renderChests } from './ui/bonus';
 import { renderLevelCards, renderLevelInfo, renderRecords, showThumbnail, type MenuState } from './ui/menu';
 import { preloadComponents } from './scene/components';
 import { installDebugApi } from './debug/api';
@@ -144,7 +145,7 @@ $('controls-help').textContent = isTouch
   : 'ZQSD / WASD ou flèches : bouger · Espace : sauter · E : ouvrir · glisser la souris : caméra · molette ou C : zoom';
 
 // ---------- Écrans ----------
-const screens = ['screen-menu', 'screen-pause', 'screen-victory', 'screen-howto', 'screen-settings', 'screen-records'] as const;
+const screens = ['screen-menu', 'screen-pause', 'screen-chests', 'screen-victory', 'screen-howto', 'screen-settings', 'screen-records'] as const;
 type Screen = (typeof screens)[number];
 /** Écrans ouverts par-dessus un autre (menu ou pause), qui y reviennent à la fermeture. */
 const overlays: Screen[] = ['screen-howto', 'screen-settings', 'screen-records'];
@@ -263,6 +264,8 @@ async function startGame(seed: number, level: Level = selected): Promise<void> {
   hud.setLevel(level.number, level.name);
   show(null);
   created.onIntroEnd = () => tutorial.start(created);
+  created.onShieldEnd = refreshBonusButton;
+  refreshBonusButton();
   created.startIntro(zoom);
   performance.measure('pyrarush:level-ready', 'pyrarush:level-start');
 }
@@ -280,23 +283,45 @@ function onVictory(result: SessionResult): void {
     progress.unlock(unlocked);
     refreshThumbnails();
   }
-  renderVictory({
-    level: playing,
-    time: result.time,
-    falls: result.falls,
-    doorsTested: result.doorsTested,
-    seed: result.seed,
-    result: stars,
-    newRecord: isRecord && hadPrevious,
-    next,
-    nextThumbnail: next ? thumbnails.get(next.number) : undefined,
-    justUnlocked,
-    onStar: (i) => audio.play(`star${i}`),
-  });
-  if (justUnlocked) setTimeout(() => audio.play('unlock'), 1900);
   renderMenu();
-  show('screen-victory');
+  // D'abord le trésor du sommet, puis le bilan du niveau.
+  renderChests({
+    current: progress.bonus(),
+    onOpen: () => audio.play('chest'),
+    onPick: (bonus) => progress.setBonus(bonus),
+    onDone: () => {
+      renderVictory({
+        level: playing,
+        time: result.time,
+        falls: result.falls,
+        doorsTested: result.doorsTested,
+        seed: result.seed,
+        result: stars,
+        newRecord: isRecord && hadPrevious,
+        next,
+        nextThumbnail: next ? thumbnails.get(next.number) : undefined,
+        justUnlocked,
+        onStar: (i) => audio.play(`star${i}`),
+      });
+      show('screen-victory');
+      if (justUnlocked) setTimeout(() => audio.play('unlock'), 1900);
+    },
+  });
+  show('screen-chests');
 }
+
+// ---------- Bonus ----------
+function refreshBonusButton(): void {
+  renderBonusButton(progress.bonus(), session?.shieldActive ?? false);
+}
+
+function useBonus(): void {
+  const bonus = progress.bonus();
+  if (!bonus || !session?.useBonus(bonus)) return;
+  progress.setBonus(null);
+  refreshBonusButton();
+}
+$('btn-bonus').addEventListener('click', useBonus);
 
 function pause(): void {
   if (!session || session.paused || current !== null) return;
@@ -354,6 +379,7 @@ document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('cli
 window.addEventListener('keydown', (e) => {
   if (current === null && !(e.target instanceof HTMLInputElement)) {
     if (e.code === 'KeyC') setZoom((zoom + 1) % 3, true);
+    if (e.code === 'KeyB') useBonus();
     if (e.code === 'Equal' || e.code === 'NumpadAdd') setZoom(zoom - 1, true);
     if (e.code === 'Minus' || e.code === 'NumpadSubtract') setZoom(zoom + 1, true);
   }

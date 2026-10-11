@@ -70,6 +70,22 @@ export const SFX = {
   star1: (ctx, out, t) => [84, 91].forEach((n, i) => tone(ctx, out, t + i * 0.06, midiToFreq(n), 0.5, { type: 'triangle', gain: 0.12 })),
   star2: (ctx, out, t) => [88, 95].forEach((n, i) => tone(ctx, out, t + i * 0.06, midiToFreq(n), 0.5, { type: 'triangle', gain: 0.12 })),
   star3: (ctx, out, t) => [91, 98, 103].forEach((n, i) => tone(ctx, out, t + i * 0.06, midiToFreq(n), 0.7, { type: 'triangle', gain: 0.13 })),
+  /** Coffre : grincement du couvercle puis étincelles. */
+  chest: (ctx, out, t) => {
+    tone(ctx, out, t, 220, 0.3, { type: 'sawtooth', to: 140, gain: 0.06, lowpass: 900, vibrato: [30, 12] });
+    [84, 88, 91, 96].forEach((n, i) => tone(ctx, out, t + 0.25 + i * 0.05, midiToFreq(n), 0.4, { type: 'triangle', gain: 0.1 }));
+  },
+  /** Bonus utilisé : scintillement magique. */
+  bonus: (ctx, out, t) => {
+    tone(ctx, out, t, 500, 0.5, { type: 'sine', to: 1500, gain: 0.08, vibrato: [20, 10] });
+    [79, 86, 91].forEach((n, i) => tone(ctx, out, t + 0.1 + i * 0.08, midiToFreq(n), 0.5, { type: 'triangle', gain: 0.08 }));
+  },
+  /** Le bouclier absorbe une chute : « dong » cristallin. */
+  shield: (ctx, out, t) => {
+    tone(ctx, out, t, midiToFreq(76), 0.9, { type: 'sine', gain: 0.18, vibrato: [5, 5] });
+    tone(ctx, out, t, midiToFreq(88), 0.6, { type: 'triangle', gain: 0.08 });
+    noise(ctx, out, t, 0.12, { freq: 3000, gain: 0.05 });
+  },
   click: (ctx, out, t) => tone(ctx, out, t, 880, 0.06, { type: 'triangle', gain: 0.08 }),
 } satisfies Record<string, Recipe>;
 

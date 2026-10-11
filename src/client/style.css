@@ -1541,3 +1541,184 @@ body.ios .ios-tip {
     top: 22%;
   }
 }
+
+/* ---------- Bonus : bouton en jeu ---------- */
+#btn-bonus {
+  position: absolute;
+  right: calc(18px + var(--safe-r));
+  bottom: calc(22px + var(--safe-b));
+  width: 62px;
+  height: 62px;
+  display: none;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 236, 180, 0.9);
+  color: #3a2200;
+  background: radial-gradient(circle at 35% 30%, #fff3c0, var(--gold) 55%, #d98a10);
+  box-shadow: 0 0 22px rgba(255, 207, 90, 0.7), 0 6px 18px rgba(20, 10, 0, 0.35);
+  pointer-events: auto;
+  cursor: pointer;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+#btn-bonus.has {
+  display: grid;
+}
+#btn-bonus.active {
+  pointer-events: none;
+  animation: none;
+  opacity: 0.75;
+}
+#btn-bonus .bonus-icon {
+  width: 32px;
+  height: 32px;
+}
+#btn-bonus .key {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--glass-strong);
+}
+body.touch #btn-bonus {
+  right: calc(36px + var(--safe-r));
+  bottom: calc(136px + var(--safe-b));
+  width: 58px;
+  height: 58px;
+}
+body.touch #btn-bonus .key,
+#btn-bonus.active .key {
+  display: none;
+}
+
+/* ---------- Trésor du sommet ---------- */
+.chests-card h2 {
+  margin: 2px 0 6px;
+}
+.chests {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin: 26px 0 10px;
+}
+.chest {
+  position: relative;
+  width: 96px;
+  height: 84px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  animation: chest-idle 2.4s ease-in-out infinite;
+}
+.chest:nth-child(2) {
+  animation-delay: -0.8s;
+}
+.chest:nth-child(3) {
+  animation-delay: -1.6s;
+}
+.chest-body,
+.chest-lid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border: 3px solid #5a3410;
+  background: linear-gradient(180deg, #b8742c, #7c4615);
+  box-shadow: inset 0 0 0 4px rgba(255, 207, 90, 0.55);
+}
+.chest-body {
+  bottom: 0;
+  height: 52px;
+  border-radius: 6px 6px 10px 10px;
+}
+.chest-body::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  width: 14px;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--gold);
+  border: 2px solid #5a3410;
+  transform: translateX(-50%);
+}
+.chest-lid {
+  top: 8px;
+  height: 30px;
+  border-radius: 40px 40px 4px 4px;
+  transform-origin: 50% 100%;
+  transition: transform 0.45s cubic-bezier(0.3, 1.6, 0.6, 1);
+  z-index: 2;
+}
+.loot {
+  position: absolute;
+  left: 50%;
+  bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 120px;
+  color: var(--gold);
+  font-size: 13px;
+  line-height: 1.1;
+  opacity: 0;
+  transform: translate(-50%, 20px) scale(0.6);
+  transition: opacity 0.3s, transform 0.5s cubic-bezier(0.3, 1.6, 0.6, 1);
+  z-index: 1;
+}
+.loot svg {
+  width: 40px;
+  height: 40px;
+  filter: drop-shadow(0 0 10px rgba(255, 207, 90, 0.9));
+}
+.chests:not(.picked) .chest:hover {
+  transform: translateY(-4px) scale(1.05);
+}
+.chest.open {
+  animation: none;
+}
+.chest.open .chest-lid {
+  transform: perspective(160px) translateY(-6px) rotateX(55deg) rotate(-12deg);
+}
+.chest.open .loot {
+  opacity: 1;
+  transform: translate(-50%, -34px) scale(1);
+}
+.chests.picked .chest:not(.chosen) {
+  opacity: 0.5;
+  filter: saturate(0.5);
+  cursor: default;
+}
+.chest.chosen .loot svg {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.chest-result {
+  min-height: 62px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 18px 0 6px;
+}
+.chest-result b {
+  color: var(--gold);
+  font-size: 19px;
+}
+.chest-result small {
+  color: var(--ink-soft);
+}
+#btn-chests-continue {
+  visibility: hidden;
+}
+#btn-chests-continue.show {
+  visibility: visible;
+}
+@keyframes chest-idle {
+  50% {
+    transform: translateY(-3px) rotate(-1.5deg);
+  }
+}
+

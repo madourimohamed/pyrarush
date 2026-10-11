@@ -1,4 +1,4 @@
-import type { Level } from '../core';
+import { BONUS_IDS, type BonusId, type Level } from '../core';
 
 /** Stockage local tolérant : en navigation privée ou si le stockage est bloqué, le jeu continue sans sauvegarde. */
 export const storage = {
@@ -39,6 +39,14 @@ export const progress = {
     const improved = stars > this.stars(level);
     if (improved) storage.set(`stars:${level.config.id}`, String(stars));
     return improved;
+  },
+  /** Bonus en réserve (un seul), gagné dans un coffre du sommet. */
+  bonus(): BonusId | null {
+    const v = storage.get('bonus');
+    return BONUS_IDS.find((b) => b === v) ?? null;
+  },
+  setBonus(bonus: BonusId | null): void {
+    storage.set('bonus', bonus ?? '');
   },
   /** Enregistre un temps ; renvoie true si c'est un nouveau record (et qu'il y en avait un avant). */
   recordTime(level: Level, ms: number): { isRecord: boolean; hadPrevious: boolean } {

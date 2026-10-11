@@ -43,6 +43,7 @@
         <span class="toast-icon"></span>
         <div><b class="toast-title"></b><small class="toast-sub"></small></div>
       </div>
+      <button id="btn-bonus" aria-label="Bonus"><span class="bonus-icon"></span><span class="key">B</span></button>
       <div id="prompt"><span class="key">E</span> Ouvrir la porte</div>
       <div id="tutorial" aria-live="polite">
         <div class="tuto-move">
@@ -163,6 +164,7 @@
           <li>Après une chute, les passages que tu as déjà trouvés restent marqués en <b class="c-hint">doré</b>, pour toi seul.</li>
           <li>Les portes ne changent jamais pendant une partie : mémorise-les !</li>
           <li>Chaque niveau terminé débloque le suivant, avec un nouveau décor et de nouveaux pièges.</li>
+          <li>Au sommet, ouvre un des <b class="c-hint">trois coffres</b> : il contient un bonus à utiliser une fois (bouton bonus ou touche B) — <b>Œil de Râ</b>, <b>Bouclier d'Anubis</b> ou <b>Sablier de Thot</b>.</li>
           <li>Le bouton <b>loupe</b> change le zoom : proche, moyen, ou large pour voir toute la pyramide.</li>
         </ul>
         <p class="controls" id="controls-help"></p>
@@ -180,6 +182,17 @@
         <button id="btn-pause-howto">Comment jouer ?</button>
         <button id="btn-pause-settings">Réglages</button>
         <button id="btn-menu">Menu</button>
+      </div>
+    </div>
+
+    <!-- Trésor du sommet -->
+    <div id="screen-chests" class="screen">
+      <div class="card chests-card">
+        <div class="eyebrow">Trésor du sommet</div>
+        <h2>Choisis un coffre !</h2>
+        <div class="chests" id="chests"></div>
+        <p id="chest-result" class="chest-result" aria-live="polite"></p>
+        <button id="btn-chests-continue" class="primary">Continuer</button>
       </div>
     </div>
 

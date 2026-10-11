@@ -6,12 +6,14 @@ import {
   doorTangent,
   floorAtY,
   landingPoint,
+  sideCoords,
   sideFrame,
   terraceDistance,
   spawnPoint,
   summitFloor,
   INTERACT_RANGE,
   FLOOR_HEIGHT,
+  type BonusId,
   type Door,
   type GameEvent,
   type PyramidConfig,
@@ -26,6 +28,7 @@ import { Character } from './scene/character';
 import { burst, easeInOut, Tweens } from './scene/fx';
 import { releaseScarab } from './scene/props';
 import { HINT_COLORS, World } from './scene/world';
+import { BONUS_INFO } from './ui/bonus';
 import type { Hud, ToastKind } from './ui/hud';
 
 export const PLAYER_ID = 'local';
@@ -36,6 +39,7 @@ export interface SoundPlayer {
 }
 const TRAP_FX = new Set(['smallTrap', 'bigTrap', 'riskyLose']);
 const STEP = 1 / 60;
+const GOLD = 0xffd34a;
 
 export interface SessionResult {
   config: PyramidConfig;
@@ -80,7 +84,16 @@ export class GameSession {
   /** Temps passé à marcher (s), pour le tutoriel de déplacement. */
   movedTime = 0;
   onIntroEnd?: () => void;
+  /** Le bouclier vient d'être consommé (pour mettre à jour le bouton du bonus). */
+  onShieldEnd?: () => void;
   private attractTime = 0;
+  /** Passage montré par l'Œil de Râ, jusqu'à `until` (ms de jeu). */
+  private eyeReveal: { doorId: string; until: number } | null = null;
+  /** Bulle dorée autour du personnage tant que le Bouclier d'Anubis est actif. */
+  private readonly shieldBubble = new THREE.Mesh(
+    new THREE.SphereGeometry(1.25, 24, 16),
+    new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false }),
+  );
 
   constructor(
     config: PyramidConfig,
@@ -100,6 +113,9 @@ export class GameSession {
     this.body = new CharacterBody(this.world.colliders, spawnPoint(config));
     this.world.scene.add(this.character.root);
     this.character.faceTowards(0, -1);
+    this.shieldBubble.position.y = 1;
+    this.shieldBubble.visible = false;
+    this.character.root.add(this.shieldBubble);
     this.syncCharacter();
 
     hud.setup(config.floors);
@@ -115,6 +131,18 @@ export class GameSession {
 
   private get config() {
     return this.game.config;
+  }
+
+  get shieldActive(): boolean {
+    return this.player.shield;
+  }
+
+  /** Utilise un bonus ; renvoie false s'il ne peut pas servir maintenant (il reste alors en réserve). */
+  useBonus(bonus: BonusId): boolean {
+    if (this.attract || this.paused || this.intro > 0 || this.locked || this.finished) return false;
+    const events = this.game.useBonus(PLAYER_ID, bonus, this.clock);
+    this.handle(events);
+    return events.length > 0;
   }
 
   frame(dt: number): void {
@@ -178,6 +206,12 @@ export class GameSession {
     }
 
     this.handle(this.game.update(this.clock));
+    if (this.eyeReveal && this.clock >= this.eyeReveal.until) {
+      if (!this.game.reveals.has(this.eyeReveal.doorId)) this.world.setReveal(this.eyeReveal.doorId, false);
+      this.eyeReveal = null;
+    }
+    this.shieldBubble.visible = this.player.shield;
+    if (this.player.shield) this.shieldBubble.scale.setScalar(1 + Math.sin(this.clock / 180) * 0.04);
     this.tweens.update(dt);
     this.world.update(dt);
     this.syncCharacter();
@@ -224,10 +258,22 @@ export class GameSession {
   }
 
   private handle(events: GameEvent[]): void {
+    const shielded = events.some((e) => e.type === 'shielded');
     for (const event of events) {
       switch (event.type) {
         case 'doorResult':
-          this.onDoorResult(event);
+          this.onDoorResult(event, shielded);
+          break;
+        case 'bonusUsed':
+          this.onBonusUsed(event.bonus, event.timeBonusMs);
+          break;
+        case 'privateReveal':
+          this.eyeReveal = { doorId: event.doorId, until: event.until };
+          this.world.setReveal(event.doorId, true);
+          this.world.flashDoor(event.doorId, GOLD, (event.until - this.clock) / 1000);
+          break;
+        case 'shielded':
+          this.onShielded(event.cause, event.floor);
           break;
         case 'publicReveal':
           this.world.setReveal(event.doorId, true);
@@ -251,7 +297,30 @@ export class GameSession {
     }
   }
 
-  private onDoorResult(e: Extract<GameEvent, { type: 'doorResult' }>): void {
+  private onBonusUsed(bonus: BonusId, timeBonusMs = 0): void {
+    const info = BONUS_INFO[bonus];
+    this.sound.play('bonus');
+    this.clock = Math.max(0, this.clock - timeBonusMs);
+    const root = this.character.root;
+    burst(this.world.scene, this.tweens, root.position.clone().add(new THREE.Vector3(0, 1.5, 0)), GOLD, 16, 3, 2);
+    this.hud.showToast(info.name, 'good', 2.2, bonus === 'shield' ? 'Bouclier actif : ta prochaine chute sera annulée' : info.effect);
+  }
+
+  /** Le bouclier a annulé une chute : après une chute physique, on remonte le joueur sur sa terrasse. */
+  private onShielded(cause: 'door' | 'fall', floor: number): void {
+    this.sound.play('shield');
+    navigator.vibrate?.(40);
+    this.hud.showToast("Bouclier d'Anubis !", 'good', 2, cause === 'door' ? 'Le piège est annulé' : 'Ta chute est annulée');
+    const root = this.character.root;
+    burst(this.world.scene, this.tweens, root.position.clone().add(new THREE.Vector3(0, 1, 0)), GOLD, 22, 4, 2.5);
+    if (cause === 'fall') {
+      const { side, tangent } = sideCoords(this.body.pos);
+      this.playTeleport(landingPoint(this.config, floor, side, tangent), floor, GOLD);
+    }
+    this.onShieldEnd?.();
+  }
+
+  private onDoorResult(e: Extract<GameEvent, { type: 'doorResult' }>, shielded = false): void {
     const door = this.game.doorsById.get(e.doorId)!;
     const kind: ToastKind =
       e.to > e.from ? 'good' : e.to < e.from ? 'bad' : e.hint?.type === 'hotCold' ? e.hint.level : e.hint ? 'scarab' : 'info';
@@ -264,6 +333,13 @@ export class GameSession {
     this.nearestDoor = null;
     this.world.setHighlight(null);
 
+    if (shielded) {
+      // Le bouclier a absorbé le piège : la porte tremble, le joueur ne bouge pas.
+      this.world.shakeDoor(door.id);
+      this.world.flashDoor(door.id, GOLD, 0.8);
+      this.character.react('bump');
+      return;
+    }
     if (e.to === e.from && TRAP_FX.has(e.fx)) {
       // Déjà tout en bas : le gant frappe quand même et repousse le joueur en arrière (perte de temps).
       const c = doorFront(this.config, door);
@@ -492,6 +568,8 @@ export class GameSession {
 
   dispose(): void {
     this.tweens.clear();
+    this.shieldBubble.geometry.dispose();
+    (this.shieldBubble.material as THREE.Material).dispose();
     this.world.dispose();
   }
 }

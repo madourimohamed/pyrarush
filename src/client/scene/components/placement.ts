@@ -1,8 +1,7 @@
-import * as THREE from 'three';
 import {
   doorFront,
   holeTangent,
-  sideFrame,
+  sideCoords,
   terraceOuterHalf,
   wallHalf,
   HOLE_WIDTH,
@@ -71,13 +70,6 @@ export function decorFootprints(layout: Layout, theme: Theme): Footprint[] {
     }
   }
   return footprints;
-}
-
-/** Position d'un point par rapport à la face la plus proche : distance au centre et position le long de la face. */
-function sideCoords(p: THREE.Vector3): { side: number; radial: number; tangent: number } {
-  const side = Math.abs(p.z) >= Math.abs(p.x) ? (p.z >= 0 ? 0 : 2) : p.x >= 0 ? 1 : 3;
-  const f = sideFrame(side);
-  return { side, radial: Math.abs(side % 2 === 0 ? p.z : p.x), tangent: p.x * f.tanX + p.z * f.tanZ };
 }
 
 export function checkPlacement(layout: Layout, footprints: Footprint[]): Violation[] {

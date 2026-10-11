@@ -31,6 +31,9 @@ const ICONS = {
   thermo: stroke('<path d="M10 14.5V5a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0z"/><path d="M12 9v7"/>'),
   scarab: stroke('<ellipse cx="12" cy="14" rx="5" ry="6.2"/><circle cx="12" cy="6" r="2.2"/><path d="M12 8v12M7 11L3.5 9M7 15l-3.5 1M17 11l3.5-2M17 15l3.5 1"/>'),
   info: stroke('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6v.4"/>'),
+  eye: stroke('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3" fill="currentColor"/>'),
+  shield: stroke('<path d="M12 2.8l8 3v6c0 5-3.5 8.3-8 9.6-4.5-1.3-8-4.6-8-9.6v-6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>'),
+  hourglass: stroke('<path d="M6.5 3h11M6.5 21h11M7.5 3c0 5 4.5 6 4.5 9s-4.5 4-4.5 9M16.5 3c0 5-4.5 6-4.5 9s4.5 4 4.5 9"/><path d="M9.5 19h5l-2.5-3z" fill="currentColor"/>'),
   pow: stroke('<path d="M12 2.5l2 5.5 5.5-1.5-3 5 4.5 3.5-5.8.6L16 21l-4-4.2L8 21l.8-5.4L3 15l4.5-3.5-3-5L10 8z"/>'),
   pyramid:
     '<svg viewBox="0 0 100 88" aria-hidden="true"><defs><linearGradient id="pyr-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff2b0"/><stop offset="0.5" stop-color="#ffc83d"/><stop offset="1" stop-color="#e08a1e"/></linearGradient></defs><path d="M50 3L97 85H3z" fill="url(#pyr-g)"/><path d="M50 3L97 85H50z" fill="#000" opacity="0.16"/><path d="M27 46h46M16 66h68" stroke="#7a4210" stroke-width="3" opacity="0.45"/><path d="M50 3l6 10H44z" fill="#fff8d6"/></svg>',

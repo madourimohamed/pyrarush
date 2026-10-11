@@ -50,6 +50,8 @@ export interface PlayerState {
   usedDoors: Set<string>;
   /** Portes déjà essayées par ce joueur et ce qu'il y a découvert : base de la trace privée des portes. */
   tried: Map<string, TriedOutcome>;
+  /** Bouclier d'Anubis actif : la prochaine chute (piège ou trou) est annulée. */
+  shield: boolean;
   falls: number;
   doorsTested: number;
   finishedAt?: number;
@@ -102,6 +104,17 @@ export type Hint =
    */
   | { type: 'scarab'; dir: 1 | -1; near: boolean; doors: number; target: string };
 
+/**
+ * Bonus gagnés dans les coffres du sommet (un seul en réserve, utilisable une fois) :
+ * eye = Œil de Râ (montre un passage de l'étage), shield = Bouclier d'Anubis (annule la prochaine chute),
+ * hourglass = Sablier de Thot (−10 s au chronomètre). Jamais indispensables pour gagner.
+ */
+export const BONUS_IDS = ['eye', 'shield', 'hourglass'] as const;
+export type BonusId = (typeof BONUS_IDS)[number];
+/** Durée de l'Œil de Râ et gain du Sablier de Thot (ms). */
+export const BONUS_EYE_MS = 5000;
+export const BONUS_HOURGLASS_MS = 10000;
+
 /** Ce qu'un joueur a découvert derrière une porte : un passage (monte), un mur, ou un piège (descend ou repousse). */
 export type TriedOutcome = 'up' | 'wall' | 'trap';
 
@@ -125,4 +138,9 @@ export type GameEvent =
   | { type: 'publicReveal'; doorId: string; until: number }
   | { type: 'revealEnd'; doorId: string }
   | { type: 'floorChanged'; playerId: string; from: number; to: number; cause: 'door' | 'fall' }
-  | { type: 'victory'; playerId: string; time: number };
+  | { type: 'victory'; playerId: string; time: number }
+  | { type: 'bonusUsed'; playerId: string; bonus: BonusId; timeBonusMs?: number }
+  /** Passage montré à un seul joueur (Œil de Râ). */
+  | { type: 'privateReveal'; playerId: string; doorId: string; until: number }
+  /** Le bouclier a annulé une chute : par une porte (piège) ou physique (trou, bord) ; le joueur reste à `floor`. */
+  | { type: 'shielded'; playerId: string; cause: 'door' | 'fall'; floor: number };

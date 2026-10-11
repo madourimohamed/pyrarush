@@ -114,6 +114,13 @@ export function holeTangent(config: PyramidConfig, hole: Hole): number {
   return holeTangents(config, hole.floor)[hole.slot];
 }
 
+/** Position d'un point par rapport à la face la plus proche : distance au centre et position le long de la face. */
+export function sideCoords(p: { x: number; z: number }): { side: number; radial: number; tangent: number } {
+  const side = Math.abs(p.z) >= Math.abs(p.x) ? (p.z >= 0 ? 0 : 2) : p.x >= 0 ? 1 : 3;
+  const f = sideFrame(side);
+  return { side, radial: Math.abs(side % 2 === 0 ? p.z : p.x), tangent: p.x * f.tanX + p.z * f.tanZ };
+}
+
 function onSide(side: number, radius: number, tangent: number, y: number): Vec3 {
   const f = sideFrame(side);
   return { x: f.outX * radius + f.tanX * tangent, y, z: f.outZ * radius + f.tanZ * tangent };

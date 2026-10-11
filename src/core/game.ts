@@ -2,7 +2,7 @@ import { generateLayout } from './layout';
 import { doorFront, INTERACT_RANGE, type Vec3 } from './geometry';
 import { getMechanic } from './mechanics/registry';
 import { wall } from './mechanics/basic';
-import { summitFloor, type Door, type GameEvent, type Layout, type PlayerState, type PyramidConfig } from './types';
+import { summitFloor, BONUS_EYE_MS, BONUS_HOURGLASS_MS, type BonusId, type Door, type GameEvent, type Layout, type PlayerState, type PyramidConfig } from './types';
 
 /**
  * État et règles d'une partie, sans rendu ni réseau.
@@ -33,6 +33,7 @@ export class Game {
       knownPassages: new Set(),
       usedDoors: new Set(),
       tried: new Map(),
+      shield: false,
       falls: 0,
       doorsTested: 0,
     };
@@ -58,7 +59,12 @@ export class Game {
     if (mechanic.oncePerPlayer && player.usedDoors.has(door.id)) mechanic = wall;
     const outcome = mechanic.resolve({ door, layout: this.layout, player });
     const from = player.floor;
-    const to = this.clampFloor(from, outcome.delta);
+    let to = this.clampFloor(from, outcome.delta);
+    const shielded = to < from && player.shield;
+    if (shielded) {
+      player.shield = false;
+      to = from;
+    }
     player.doorsTested++;
     if (mechanic.oncePerPlayer) player.usedDoors.add(door.id);
     if (mechanic.rememberAsPassage && to > from) player.knownPassages.add(door.id);
@@ -77,6 +83,7 @@ export class Game {
         message: outcome.message,
       },
     ];
+    if (shielded) events.push({ type: 'shielded', playerId, cause: 'door', floor: from });
     if (mechanic.revealPublicly && to > from) {
       const until = now + this.config.publicRevealMs;
       this.reveals.set(door.id, until);
@@ -92,7 +99,35 @@ export class Game {
     if (!player || player.finishedAt !== undefined || floor === player.floor) return [];
     // On ne monte jamais physiquement : seules les portes font monter.
     if (floor > player.floor) return [];
+    if (player.shield) {
+      player.shield = false;
+      return [{ type: 'shielded', playerId, cause: 'fall', floor: player.floor }];
+    }
     return this.moveTo(player, floor, 'fall', now);
+  }
+
+  /** Utilise un bonus (gagné dans un coffre). Renvoie les événements correspondants, ou rien si sans effet. */
+  useBonus(playerId: string, bonus: BonusId, now: number): GameEvent[] {
+    const player = this.players.get(playerId);
+    if (!player || player.finishedAt !== undefined) return [];
+    switch (bonus) {
+      case 'eye': {
+        const doors = this.layout.doorsByFloor[player.floor] ?? [];
+        const passages = doors.filter((d) => d.mechanic === 'passage');
+        const target = passages.find((d) => !player.knownPassages.has(d.id)) ?? passages[0];
+        if (!target) return [];
+        return [
+          { type: 'bonusUsed', playerId, bonus },
+          { type: 'privateReveal', playerId, doorId: target.id, until: now + BONUS_EYE_MS },
+        ];
+      }
+      case 'shield':
+        if (player.shield) return [];
+        player.shield = true;
+        return [{ type: 'bonusUsed', playerId, bonus }];
+      case 'hourglass':
+        return [{ type: 'bonusUsed', playerId, bonus, timeBonusMs: BONUS_HOURGLASS_MS }];
+    }
   }
 
   update(now: number): GameEvent[] {
