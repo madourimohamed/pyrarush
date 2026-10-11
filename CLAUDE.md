@@ -16,6 +16,7 @@ Node 22 est requis. Dans ce WSL, `npm` pointe vers le npm Windows : utiliser le 
 - `npm test` : tests du moteur de règles (Vitest)
 - `npm run build` : vérification des types + build statique dans `dist/`
 - `npm run build:server` puis `npm run server` : serveur de duel (`server/`) qui sert aussi `dist/` ; `PORT` (défaut 8787). `npm start` fait tout (builds + serveur). En dev, Vite relaie `/ws` vers le port 8787.
+- Intégration continue : `.github/workflows/ci.yml` (types, tests, build du jeu et du serveur) à chaque push sur `master` et à chaque pull request.
 - Tests entre amis : le tunnel Cloudflare doit pointer vers ce serveur (et non `vite preview`, qui ne gère pas les WebSockets).
 
 - `npm run capture -- --label <nom>` : captures des vues de référence + mesures (`tools/capture-reference.mjs`, serveur lancé au préalable, ex. `npm run preview`). Sortie dans `docs/reference/niveau-<n>/<nom>/`.

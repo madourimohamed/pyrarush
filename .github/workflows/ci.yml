@@ -1,0 +1,44 @@
+# Intégration continue : à chaque push et pull request, vérifie que le jeu compile et que les tests passent.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+# Un nouveau push annule la vérification encore en cours sur la même branche.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verifier:
+    name: Types, tests et builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Les navigateurs Playwright ne servent qu'aux captures manuelles : inutiles ici.
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Dépendances
+        run: npm ci
+
+      - name: Vérification des types
+        run: npm run typecheck
+
+      - name: Tests (moteur, niveaux, décor, serveur de duel)
+        run: npm test
+
+      - name: Build du jeu
+        run: npx vite build
+
+      - name: Build du serveur de duel
+        run: npm run build:server
