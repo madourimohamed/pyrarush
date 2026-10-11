@@ -37,6 +37,11 @@ export const SFX = {
   },
   /** Gant de boxe : ressort qui se détend. */
   spring: (ctx, out, t) => tone(ctx, out, t, 180, 0.35, { type: 'sine', to: 520, gain: 0.22, vibrato: [60, 28] }),
+  /** Momie : grognement sourd et souffle. */
+  groan: (ctx, out, t) => {
+    tone(ctx, out, t, 120, 0.7, { type: 'sawtooth', to: 75, gain: 0.16, lowpass: 650, vibrato: [7, 9] });
+    noise(ctx, out, t, 0.5, { filter: 'lowpass', freq: 500, gain: 0.08 });
+  },
   /** Impact « POW ! ». */
   pow: (ctx, out, t) => {
     noise(ctx, out, t, 0.25, { filter: 'lowpass', freq: 2500, to: 200, gain: 0.45 });

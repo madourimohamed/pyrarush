@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { buildColliders, terraceOuterHalf, wallHalf, FLOOR_HEIGHT, Rng, type Box, type Layout, type Theme } from '../../core';
+import { buildColliders, terraceOuterHalf, wallHalf, FLOOR_HEIGHT, Rng, type Box, type Door, type Layout, type Theme } from '../../core';
 import { buildComponents } from './components';
 import { DoorsView } from './doors';
 import { FragileTiles } from './fragile';
 import type { Tweens } from './fx';
-import { BoxingGlove } from './props';
+import { GUARDIANS, type TrapGuardian } from './guardians';
 import { applyWorldUVs, stoneTexture, tileTexture } from './textures';
 import { sunDirection } from './themes';
 
@@ -23,7 +23,8 @@ export class World {
   readonly pyramidHalf: number;
   readonly groundHalf: number;
   readonly doors: DoorsView;
-  private readonly glove = new BoxingGlove();
+  /** Gardiens des pièges, un par sorte, créés seulement si le thème les utilise. */
+  private readonly guardians: TrapGuardian[];
   private readonly updateComponents: (dt: number, time: number) => void;
   private time = 0;
 
@@ -44,7 +45,8 @@ export class World {
     this.buildTrims();
     this.doors = new DoorsView(layout, theme, tweens);
     this.fragile = new FragileTiles(this.colliders, theme.top, this.scene, tweens);
-    this.scene.add(this.doors.group, this.glove.root);
+    this.guardians = theme.trapStyles.map((style) => GUARDIANS[style]());
+    this.scene.add(this.doors.group, ...this.guardians.map((g) => g.root));
 
     this.updateComponents = buildComponents(
       {
@@ -184,12 +186,17 @@ export class World {
     this.doors.open(doorId, holdSeconds);
   }
 
-  /** Piège : la porte s'ouvre et un gant de boxe jaillit. `onHit` est appelé à l'impact. */
-  punchDoor(doorId: string, big: boolean, onHit: () => void): void {
-    const transform = this.doors.transform(doorId);
+  /** Gardien d'une porte piégée : toujours le même pour une porte donnée, variés d'une porte à l'autre. */
+  guardianFor(door: Door): TrapGuardian {
+    return this.guardians[(door.floor * 3 + door.ring) % this.guardians.length];
+  }
+
+  /** Piège : la porte s'ouvre et son gardien surgit. `onHit` est appelé à l'impact. */
+  punchDoor(door: Door, big: boolean, onHit: () => void): void {
+    const transform = this.doors.transform(door.id);
     if (!transform) return onHit();
-    this.doors.open(doorId, 0.6);
-    this.glove.punch(this.tweens, transform, big, onHit);
+    this.doors.open(door.id, 0.6);
+    this.guardianFor(door).strike(this.tweens, transform, big, onHit);
   }
 
   update(dt: number): void {

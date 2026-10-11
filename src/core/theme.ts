@@ -40,9 +40,14 @@ export interface Theme {
   accent: [string, string];
   /** Musique générée pour ce thème (voir client/audio/music.ts). */
   music: MusicStyle;
+  /** Gardiens qui surgissent des portes piégées (apparence seulement) ; chaque porte en reçoit un, toujours le même. */
+  trapStyles: TrapStyle[];
   /** Décor, construit dans l'ordre de la liste. */
   components: ComponentSpec[];
 }
+
+/** Gardiens de piège disponibles (voir client/scene/guardians.ts). */
+export type TrapStyle = 'glove' | 'mummy';
 
 export interface MusicStyle {
   /** Gamme, en demi-tons depuis la tonique. */
@@ -81,6 +86,7 @@ export const BASE_THEME: Theme = {
   door: { panel: 0x2e1d10, frame: 0x1a0f07, glyph: [1.9, 1.3, 0.35] },
   accent: ['#ffd84a', '#f59a00'],
   music: { scale: [0, 1, 4, 5, 7, 8, 10], root: 62, tempo: 100, lead: 'triangle', drums: 't..t..t.t..t.t..' },
+  trapStyles: ['glove', 'mummy'],
   components: [
     { use: 'sky', clouds: 0xffffff, cloudGlow: 0xffc9a8 },
     { use: 'terrain', flat: 9 },

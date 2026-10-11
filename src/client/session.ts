@@ -329,7 +329,9 @@ export class GameSession {
     const [title, sub] = toastText(e, scarab?.words);
     const tried = this.player.tried.get(door.id);
     if (tried) this.world.doors.markTried(door.id, tried);
-    this.hud.showToast(title, TRAP_FX.has(e.fx) ? 'bad' : kind, 1.8, sub);
+    // Piège : le titre peut venir du gardien qui surgit (« Le gardien surgit ! »).
+    const trapTitle = e.fx !== 'riskyLose' && TRAP_FX.has(e.fx) ? this.world.guardianFor(door).title : undefined;
+    this.hud.showToast(trapTitle ?? title, TRAP_FX.has(e.fx) ? 'bad' : kind, 1.8, sub);
     this.hud.setPrompt(false);
     this.nearestDoor = null;
     this.world.setHighlight(null);
@@ -381,7 +383,7 @@ export class GameSession {
         break;
       }
       default:
-        // Pièges et pari perdu : un gant de boxe jaillit et envoie le joueur en contrebas.
+        // Pièges et pari perdu : le gardien de la porte surgit et envoie le joueur en contrebas.
         if (e.fx === 'riskyLose') this.sound.play('riskyLose');
         this.punch(door, target, e.from - e.to > 1);
     }
@@ -408,8 +410,8 @@ export class GameSession {
   private punch(door: Door, target: Vec3, big: boolean): void {
     this.lock();
     this.world.flashDoor(door.id, 0xff2a1a, 0.6);
-    this.sound.play('spring');
-    this.world.punchDoor(door.id, big, () => {
+    this.sound.play(this.world.guardianFor(door).cue);
+    this.world.punchDoor(door, big, () => {
       navigator.vibrate?.(big ? [80, 40, 120] : 90);
       this.sound.play('pow');
       this.sound.play('fall');
