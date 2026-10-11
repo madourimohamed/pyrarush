@@ -338,3 +338,18 @@ describe('bonus', () => {
   });
 });
 
+describe('dalles fragiles', () => {
+  it('occupent des emplacements de trou libres, avec une boîte de collision fine', () => {
+    for (const level of levels) {
+      for (let seed = 1; seed <= 20; seed++) {
+        const layout = generateLayout(level.config, seed);
+        const keys = layout.holes.map((h) => `${h.floor}-${h.side}-${h.slot}`);
+        expect(new Set(keys).size).toBe(keys.length);
+        const fragile = layout.holes.filter((h) => h.fragile);
+        expect(buildColliders(layout).filter((b) => b.kind === 'fragile')).toHaveLength(fragile.length);
+      }
+    }
+    expect(generateLayout(levels[0].config, 7).holes.some((h) => h.fragile && h.floor >= 4)).toBe(true);
+  });
+});
+

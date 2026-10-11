@@ -10,6 +10,8 @@ export interface FloorBand {
   mechanics: Record<string, CountSpec>;
   /** Trous dans la terrasse, à franchir en sautant. Ignoré à l'étage 1 (le sol). */
   holes: CountSpec;
+  /** Dalles fragiles (fissurées) : elles s'effondrent sous les pieds, il faut les sauter. Mêmes emplacements que les trous. */
+  fragile?: CountSpec;
 }
 
 export interface PyramidConfig {
@@ -76,6 +78,8 @@ export interface Hole {
   side: number;
   /** Indice parmi les emplacements de trou possibles de cette terrasse (voir geometry.holeTangents). */
   slot: number;
+  /** Dalle fragile : le trou est recouvert d'une dalle qui s'effondre quand on marche dessus, puis se reforme. */
+  fragile?: boolean;
 }
 
 export interface Layout {

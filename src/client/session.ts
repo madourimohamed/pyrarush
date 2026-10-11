@@ -194,6 +194,7 @@ export class GameSession {
         steps++;
       }
       if (this.body.pos.y < -10) this.body.teleport(spawnPoint(this.config));
+      this.world.fragile.update(dt, this.body, (name) => this.sound.play(name));
 
       if (this.body.grounded && !this.finished) {
         this.handle(this.game.reportFloor(PLAYER_ID, floorAtY(this.config, this.body.pos.y), this.clock));
@@ -568,8 +569,6 @@ export class GameSession {
 
   dispose(): void {
     this.tweens.clear();
-    this.shieldBubble.geometry.dispose();
-    (this.shieldBubble.material as THREE.Material).dispose();
     this.world.dispose();
   }
 }

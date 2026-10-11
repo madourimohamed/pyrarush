@@ -101,6 +101,38 @@ export function tileTexture(base: string, seed: number): THREE.CanvasTexture {
   return toTexture(c);
 }
 
+/** Dalle fragile : même pierre que les terrasses, mais fendue de fissures sombres bien visibles (lisibilité du piège). */
+export function crackedTileTexture(base: string, seed: number): THREE.CanvasTexture {
+  const size = 256;
+  const [c, ctx] = canvas(size);
+  const rng = new Rng(seed);
+  ctx.fillStyle = shade(base, -0.12);
+  ctx.fillRect(0, 0, size, size);
+  ctx.strokeStyle = shade(base, -0.4);
+  ctx.lineWidth = 8;
+  ctx.strokeRect(4, 4, size - 8, size - 8);
+  ctx.strokeStyle = 'rgba(38, 20, 6, 0.92)';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (let i = 0; i < 7; i++) {
+    let x = size / 2 + (rng.next() - 0.5) * 30;
+    let y = size / 2 + (rng.next() - 0.5) * 30;
+    const angle = (i / 7) * Math.PI * 2 + rng.next() * 0.6;
+    // Chaque fissure s'affine en s'éloignant du centre (un trait par segment).
+    for (let step = 0; step < 5; step++) {
+      const a = angle + (rng.next() - 0.5) * 0.9;
+      ctx.lineWidth = 9 - step * 1.4;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      x += Math.cos(a) * 28;
+      y += Math.sin(a) * 28;
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+  }
+  return toTexture(c, false);
+}
+
 /** Hiéroglyphes lumineux gravés sur les portes. */
 export function glyphTextures(): THREE.CanvasTexture[] {
   const draws: ((ctx: CanvasRenderingContext2D) => void)[] = [

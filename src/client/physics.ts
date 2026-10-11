@@ -87,7 +87,7 @@ export class CharacterBody {
     let hit = false;
     const i = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
     for (const box of this.boxes) {
-      if (!this.overlaps(box)) continue;
+      if (box.off || !this.overlaps(box)) continue;
       hit = true;
       if (axis === 'y') {
         this.pos.y = d > 0 ? box.min[1] - BODY_HEIGHT - EPS : box.max[1] + EPS;

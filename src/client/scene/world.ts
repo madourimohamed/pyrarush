@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { buildColliders, terraceOuterHalf, wallHalf, FLOOR_HEIGHT, Rng, type Box, type Layout, type Theme } from '../../core';
 import { buildComponents } from './components';
 import { DoorsView } from './doors';
+import { FragileTiles } from './fragile';
 import type { Tweens } from './fx';
 import { BoxingGlove } from './props';
 import { applyWorldUVs, stoneTexture, tileTexture } from './textures';
@@ -18,6 +19,7 @@ export const HINT_COLORS = { chaud: 0xff3b1f, tiede: 0xffa21f, froid: 0x3d9bff }
 export class World {
   readonly scene = new THREE.Scene();
   readonly colliders: Box[];
+  readonly fragile: FragileTiles;
   readonly pyramidHalf: number;
   readonly groundHalf: number;
   readonly doors: DoorsView;
@@ -41,6 +43,7 @@ export class World {
     this.buildBlocks();
     this.buildTrims();
     this.doors = new DoorsView(layout, theme, tweens);
+    this.fragile = new FragileTiles(this.colliders, theme.top, this.scene, tweens);
     this.scene.add(this.doors.group, this.glove.root);
 
     this.updateComponents = buildComponents(

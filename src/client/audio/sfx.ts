@@ -70,6 +70,17 @@ export const SFX = {
   star1: (ctx, out, t) => [84, 91].forEach((n, i) => tone(ctx, out, t + i * 0.06, midiToFreq(n), 0.5, { type: 'triangle', gain: 0.12 })),
   star2: (ctx, out, t) => [88, 95].forEach((n, i) => tone(ctx, out, t + i * 0.06, midiToFreq(n), 0.5, { type: 'triangle', gain: 0.12 })),
   star3: (ctx, out, t) => [91, 98, 103].forEach((n, i) => tone(ctx, out, t + i * 0.06, midiToFreq(n), 0.7, { type: 'triangle', gain: 0.13 })),
+  /** Dalle fragile qui se fend : craquement sec. */
+  crack: (ctx, out, t) => {
+    noise(ctx, out, t, 0.08, { freq: 2200, gain: 0.2 });
+    noise(ctx, out, t + 0.09, 0.06, { freq: 1600, gain: 0.16 });
+    tone(ctx, out, t, 300, 0.12, { to: 120, gain: 0.1 });
+  },
+  /** Dalle qui s'effondre : éboulement sourd. */
+  crumble: (ctx, out, t) => {
+    noise(ctx, out, t, 0.6, { filter: 'lowpass', freq: 900, to: 150, gain: 0.35 });
+    tone(ctx, out, t, 90, 0.5, { to: 40, gain: 0.25 });
+  },
   /** Coffre : grincement du couvercle puis étincelles. */
   chest: (ctx, out, t) => {
     tone(ctx, out, t, 220, 0.3, { type: 'sawtooth', to: 140, gain: 0.06, lowpass: 900, vibrato: [30, 12] });

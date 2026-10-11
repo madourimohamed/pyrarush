@@ -65,7 +65,11 @@ export function generateLayout(config: PyramidConfig, seed: number): Layout {
         for (let slot = 0; slot < spots; slot++) candidates.push({ floor, side, slot });
       }
       const count = Math.min(resolveCount(rng, band.holes), candidates.length);
-      layout.holes.push(...rng.shuffle(candidates).slice(0, count));
+      const shuffled = rng.shuffle(candidates);
+      layout.holes.push(...shuffled.slice(0, count));
+      // Les dalles fragiles prennent les emplacements restants (aucun tirage si le niveau n'en a pas : dispositions inchangées).
+      const fragile = band.fragile === undefined ? 0 : Math.min(resolveCount(rng, band.fragile), shuffled.length - count);
+      layout.holes.push(...shuffled.slice(count, count + fragile).map((hole) => ({ ...hole, fragile: true })));
     }
   }
 

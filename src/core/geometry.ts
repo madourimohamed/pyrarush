@@ -17,13 +17,16 @@ export const DOOR_HEIGHT = 2.2;
 export const HOLE_WIDTH = 1.2;
 /** Distance minimale entre le bord d'un trou et le bord d'une porte (au-dessus ou au-dessous). */
 export const HOLE_CLEARANCE = 0.15;
+export const FRAGILE_THICKNESS = 0.4;
 export const GROUND_DEPTH = 7;
 export const INTERACT_RANGE = 1.8;
 
 export interface Box {
   min: [number, number, number];
   max: [number, number, number];
-  kind: 'ground' | 'block' | 'boundary';
+  kind: 'ground' | 'block' | 'boundary' | 'fragile';
+  /** Boîte désactivée (dalle fragile effondrée) : on la traverse. */
+  off?: boolean;
   /** Pour les blocs : numéro de la paroi (étage). */
   floor?: number;
 }
@@ -255,12 +258,13 @@ export function buildColliders(layout: Layout): Box[] {
       const out = f.outX !== 0 ? f.outX : f.outZ;
       const r0 = out > 0 ? b : -a;
       const r1 = out > 0 ? a : -b;
-      for (const [lo, hi] of pieces) {
-        boxes.push(
-          alongX
-            ? { min: [lo, y0, r0], max: [hi, y1, r1], kind: 'block', floor }
-            : { min: [r0, y0, lo], max: [r1, y1, hi], kind: 'block', floor },
-        );
+      const box = (lo: number, hi: number, bottom: number, kind: Box['kind']): Box =>
+        alongX ? { min: [lo, bottom, r0], max: [hi, y1, r1], kind, floor } : { min: [r0, bottom, lo], max: [r1, y1, hi], kind, floor };
+      for (const [lo, hi] of pieces) boxes.push(box(lo, hi, y0, 'block'));
+      // Une dalle fragile recouvre le haut du trou (épaisseur FRAGILE_THICKNESS).
+      for (const hole of holes.filter((h) => h.side === side && h.fragile)) {
+        const c = holeTangent(config, hole) * (alongX ? f.tanX : f.tanZ);
+        boxes.push(box(c - HOLE_WIDTH / 2, c + HOLE_WIDTH / 2, y1 - FRAGILE_THICKNESS, 'fragile'));
       }
     }
   }

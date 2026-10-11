@@ -65,12 +65,13 @@ export interface LevelDefinition {
 /** Déclare un niveau (aide au typage et à l'autocomplétion). */
 export const defineLevel = (definition: LevelDefinition): LevelDefinition => definition;
 
-/** Raccourci d'écriture pour une tranche d'étages : du, au, passages, autres portes, trous. */
-export const band = (from: number, to: number, passages: number, mechanics: FloorBand['mechanics'], holes: CountSpec): FloorBand => ({
+/** Raccourci d'écriture pour une tranche d'étages : du, au, passages, autres portes, trous, dalles fragiles. */
+export const band = (from: number, to: number, passages: number, mechanics: FloorBand['mechanics'], holes: CountSpec, fragile?: CountSpec): FloorBand => ({
   floors: [from, to],
   passages,
   mechanics,
   holes,
+  ...(fragile !== undefined && { fragile }),
 });
 
 /** Transforme la liste ordonnée des définitions en niveaux numérotés, prêts à jouer. */

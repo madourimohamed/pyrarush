@@ -5,7 +5,7 @@ export default defineLevel({
   name: 'Le Temple des Sables',
   tagline: 'Passages, murs et gants de boxe : apprends les bases.',
   duration: '2–5 min',
-  highlights: ['Découvre les bases', 'Explore les passages', 'Évite les gants de boxe', 'Atteins le sommet !'],
+  highlights: ['Découvre les bases', 'Évite les gants de boxe', 'Saute les dalles fissurées', 'Atteins le sommet !'],
   // Étoiles : sommet atteint ; moins de 2 min 30 s ; au plus 1 chute. À ajuster après les tests.
   goals: { time: 150, maxFalls: 1 },
   rules: {
@@ -21,8 +21,8 @@ export default defineLevel({
       band(1, 1, 2, { smallTrap: 2 }, 0),
       band(2, 2, 2, { smallTrap: 3 }, [1, 2]),
       band(3, 3, 2, { smallTrap: 2, riskyDoor: 1 }, [1, 2]), // ±2 : vers l'étage 5 ou l'étage 1
-      band(4, 4, 2, { smallTrap: 2 }, 2),
-      band(5, 6, 1, { smallTrap: 2 }, [1, 2]), // un seul passage en haut : le sommet se mérite
+      band(4, 4, 2, { smallTrap: 2 }, 1, 1), // première dalle fissurée, une fois les bases acquises
+      band(5, 6, 1, { smallTrap: 2 }, [1, 2], 1), // un seul passage en haut : le sommet se mérite
     ],
     settings: { riskyDoor: { amount: 2 } },
   },
