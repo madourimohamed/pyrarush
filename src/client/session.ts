@@ -422,6 +422,19 @@ export class GameSession {
     }, 1700);
   }
 
+  /**
+   * Outil de mesure (vues de référence) : place le joueur sur un étage, devant la porte la plus proche du centre
+   * de la face donnée, sans passer par les règles du jeu.
+   */
+  debugPlace(floor: number, side = 0): void {
+    const target = landingPoint(this.config, floor, side, 0);
+    this.player.floor = floor;
+    this.body.teleport(target);
+    this.character.faceTowards(-target.x, -target.z);
+    this.hud.setFloor(floor, Math.max(floor, this.player.bestFloor));
+    this.world.setPrivateHints(this.player.knownPassages, floor);
+  }
+
   dispose(): void {
     this.tweens.clear();
     this.world.dispose();

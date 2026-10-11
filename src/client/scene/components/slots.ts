@@ -119,6 +119,29 @@ export function facadeSlots(layout: Layout): Slot[] {
   return [0, 1, 2, 3].map((side) => ({ floor: 1, side, position: onSide(side, a, 0, 0), rotationY: sideRotation(side) }));
 }
 
+/** Décale un emplacement dans son repère local : x le long de la face, z vers l'extérieur. */
+export function shifted(slot: Slot, along: number, out: number): Slot {
+  const offset = new THREE.Vector3(along, 0, out).applyAxisAngle(new THREE.Vector3(0, 1, 0), slot.rotationY);
+  return { ...slot, position: slot.position.clone().add(offset) };
+}
+
+/** De part et d'autre de l'entrée centrale de chaque façade (statues gardiennes…). */
+export function facadeFlankSlots(layout: Layout, spacing: number, out = 0.55): Slot[] {
+  return facadeSlots(layout).flatMap((s) => [-1, 1].map((sign) => shifted(s, sign * spacing, out)));
+}
+
+/** Coins des terrasses, rentrés de `inset` le long de la face (plantes, objets d'angle). */
+export function cornerInsetSlots(layout: Layout, inset: number): Slot[] {
+  return terraceCornerSlots(layout).map((s) => shifted(s, -inset, 0));
+}
+
+/** Petits objets groupés près des coins (jarres…), positions tirées d'une graine pour rester identiques. */
+export function cornerClusterSlots(layout: Layout, perCorner: number, rng: Rng): Slot[] {
+  return terraceCornerSlots(layout).flatMap((corner) =>
+    Array.from({ length: perCorner }, (_, k) => shifted(corner, -1.3 - k * 0.7, -0.1 - rng.next() * 0.3)),
+  );
+}
+
 /** Point au hasard dans l'anneau carré [inner, outer] autour de la pyramide (décor extérieur). */
 export function ringPoint(rng: Rng, inner: number, outer: number): THREE.Vector3 {
   const side = rng.int(0, 3);

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import type { Layout } from '../../../core';
 import { instancedModel, isModelReady, modelHeight } from '../models';
 import { defineComponent, place, type SceneContext } from './component';
-import { facadeSlots, ringPoint, terraceCornerSlots, terraceEdgeSlots, wallFootSlots, type Slot } from './slots';
+import { cornerInsetSlots, facadeFlankSlots, ringPoint, terraceEdgeSlots, wallFootSlots, type Slot } from './slots';
 
 /** Où poser les objets : sur la rive, autour de l'étang, au pied des parois, aux coins ou au bord des terrasses, de part et d'autre des entrées. */
 export type Placement = 'shore' | 'pondside' | 'wallFoot' | 'terraceCorner' | 'terraceEdge' | 'facade';
@@ -50,26 +51,27 @@ export const props = defineComponent(
   (o) => o.models,
 );
 
-function spots(ctx: SceneContext, o: typeof props.defaults): Spot[] {
-  const { rng, layout } = ctx;
-  const fromSlots = (slots: Slot[]) => slots.map((s) => ({ position: s.position.clone(), rotationY: s.rotationY }));
+/** Emplacements sur la pyramide (calculés depuis la géométrie du jeu) ; null pour les emplacements extérieurs. */
+export function propSlots(layout: Layout, o: Pick<typeof props.defaults, 'place' | 'every' | 'offset' | 'spacing'>): Slot[] | null {
   switch (o.place) {
     case 'wallFoot':
-      return fromSlots(wallFootSlots(layout, o.every, o.offset));
+      return wallFootSlots(layout, o.every, o.offset);
     case 'terraceEdge':
-      return fromSlots(terraceEdgeSlots(layout, o.every));
+      return terraceEdgeSlots(layout, o.every);
     case 'terraceCorner':
-      return terraceCornerSlots(layout).map((s) => {
-        const inward = new THREE.Vector3(-o.spacing, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), s.rotationY);
-        return { position: s.position.clone().add(inward), rotationY: s.rotationY };
-      });
+      return cornerInsetSlots(layout, o.spacing);
     case 'facade':
-      return facadeSlots(layout).flatMap((s) =>
-        [-1, 1].map((sign) => ({
-          position: s.position.clone().add(new THREE.Vector3(sign * o.spacing, 0, 0.55).applyAxisAngle(new THREE.Vector3(0, 1, 0), s.rotationY)),
-          rotationY: s.rotationY,
-        })),
-      );
+      return facadeFlankSlots(layout, o.spacing);
+    default:
+      return null;
+  }
+}
+
+function spots(ctx: SceneContext, o: typeof props.defaults): Spot[] {
+  const { rng } = ctx;
+  const onPyramid = propSlots(ctx.layout, o);
+  if (onPyramid) return onPyramid.map((s) => ({ position: s.position.clone(), rotationY: s.rotationY }));
+  switch (o.place) {
     case 'pondside': {
       const pond = ctx.anchors.pond;
       if (!pond) return [];

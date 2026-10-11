@@ -13,6 +13,8 @@ import { formatTime, Hud } from './ui/hud';
 import { applyIcons } from './ui/icons';
 import { renderLevelCards, renderLevelInfo, renderRecords, showThumbnail, type MenuState } from './ui/menu';
 import { preloadComponents } from './scene/components';
+import { installDebugApi } from './debug/api';
+import { PerfStats } from './debug/stats';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -247,6 +249,7 @@ async function showBackground(): Promise<void> {
 }
 
 async function startGame(seed: number, level: Level = selected): Promise<void> {
+  performance.mark('pyrarush:level-start');
   playing = level;
   applyUiTheme(level);
   const created = await createSession({ ...level.config, hints: hintMode }, level, seed);
@@ -254,6 +257,7 @@ async function startGame(seed: number, level: Level = selected): Promise<void> {
   session = created;
   hud.setLevel(level.number, level.name);
   show(null);
+  performance.measure('pyrarush:level-ready', 'pyrarush:level-start');
 }
 
 function onVictory(result: SessionResult): void {
@@ -355,10 +359,24 @@ function resize(): void {
 }
 window.addEventListener('resize', resize);
 
+// ---------- Mesures (étape 0 de la bible graphique) ----------
+/** ?stats=1 affiche le compteur ; en développement ou avec ?debug=1, window.__debug expose les outils de mesure. */
+const stats = new PerfStats(renderer.renderer, params.has('stats'));
+let frozen = false;
+if (import.meta.env.DEV || params.has('debug')) {
+  installDebugApi({
+    session: () => session,
+    startLevel: (n, seed) => startGame(seed, levels[Math.min(levels.length, Math.max(1, n)) - 1]),
+    setFrozen: (f) => (frozen = f),
+    stats,
+  });
+}
+performance.mark('pyrarush:start');
+
 // ---------- Démarrage ----------
 applyUiTheme(selected);
 renderMenu();
-showBackground();
+void showBackground().then(() => performance.measure('pyrarush:menu-ready', 'pyrarush:start'));
 resize();
 setZoom(zoom);
 show('screen-menu');
@@ -368,8 +386,10 @@ renderer.renderer.setAnimationLoop((now) => {
   const dt = (now - last) / 1000;
   last = now;
   if (session) {
-    session.frame(dt);
+    stats.beginFrame(now);
+    if (!frozen) session.frame(dt);
     renderer.render(session.world.scene, session.camera.camera);
+    stats.endFrame(now);
   }
 });
 
@@ -381,5 +401,3 @@ setTimeout(() => {
   refreshThumbnails();
 }, 400);
 
-// Accès de débogage (développement uniquement) : window.__session()
-if (import.meta.env.DEV) (window as unknown as { __session: () => GameSession | null }).__session = () => session;

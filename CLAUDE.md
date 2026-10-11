@@ -16,8 +16,15 @@ Node 22 est requis. Dans ce WSL, `npm` pointe vers le npm Windows : utiliser le 
 - `npm test` : tests du moteur de règles (Vitest)
 - `npm run build` : vérification des types + build statique dans `dist/`
 
-Paramètres d'URL utiles : `?seed=123` (rejouer une pyramide), `?debloquer=6` (débloque les niveaux jusqu'à 6 pour tester), `?indices=scarab|hotCold|none`.
-En dev, `window.__session()` donne accès à la partie en cours.
+- `npm run capture -- --label <nom>` : captures des vues de référence + mesures (`tools/capture-reference.mjs`, serveur lancé au préalable, ex. `npm run preview`). Sortie dans `docs/reference/niveau-<n>/<nom>/`.
+
+Paramètres d'URL utiles : `?seed=123` (rejouer une pyramide), `?debloquer=6` (débloque les niveaux jusqu'à 6 pour tester), `?indices=scarab|hotCold|none`, `?stats=1` (compteur de performance), `?debug=1` (outils de mesure en production).
+En dev (ou avec `?debug=1`), `window.__debug` expose la partie, le gel de la simulation, les vues de référence et les mesures (`src/client/debug/`).
+
+Mesures graphiques : toujours capturer « avant / après » avec `npm run capture` et comparer aux objectifs de la bible (§ 8). Les mesures en navigateur automatisé (rendu logiciel) ne valent que pour les compteurs.
+Dans ce WSL, Chromium (Playwright) a besoin de bibliothèques extraites localement : `LD_LIBRARY_PATH=<scratchpad>/libs/usr/lib/x86_64-linux-gnu` (libnss3, libnspr4, libasound2).
+
+Commits : committer au fur et à mesure (en local) ; **ne jamais pousser sur le dépôt distant sans accord explicite**.
 
 ## Architecture
 

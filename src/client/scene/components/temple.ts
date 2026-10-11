@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { DOOR_HEIGHT, DOOR_WIDTH, FLOOR_HEIGHT, Rng, type HDR } from '../../../core';
 import { glowTexture } from '../textures';
 import { canvasTexture, defineComponent, hdr, instanced, place, type SceneContext } from './component';
-import { doorSlots, facadeSlots, onSide, terraceCornerSlots, terraceEdgeSlots, wallGapSlots, type Slot } from './slots';
+import { cornerClusterSlots, doorSlots, facadeFlankSlots, terraceCornerSlots, terraceEdgeSlots, wallGapSlots, type Slot } from './slots';
 
 /** Matrices « emplacement × décalage local » : une pièce répétée sur chaque emplacement. */
 function atSlots(slots: Slot[], local: THREE.Matrix4): THREE.Matrix4[] {
@@ -101,11 +101,7 @@ export const braziers = defineComponent({ flame: [3.2, 1.3, 0.25] as HDR, every:
 /** Statues gardiennes de part et d'autre de l'entrée centrale de chaque façade. */
 export const statues = defineComponent({ model: 'anubis' as const, spacing: 1.75 }, (ctx, o) => {
   const parts = anubisParts();
-  const matrices = facadeSlots(ctx.layout).flatMap((s) =>
-    [-1, 1].map((sign) => {
-      return place(s.position.clone().add(tangentOf(s, sign * o.spacing, 0.55)), s.rotationY);
-    }),
-  );
+  const matrices = atSlots(facadeFlankSlots(ctx.layout, o.spacing), new THREE.Matrix4());
   const stone = new THREE.MeshStandardMaterial({ color: ctx.theme.stone[1], roughness: 0.85 });
   const black = new THREE.MeshStandardMaterial({ color: 0x15151c, roughness: 0.35, metalness: 0.3 });
   const gold = new THREE.MeshStandardMaterial({ color: ctx.theme.trim.color, metalness: 0.7, roughness: 0.25, emissive: ctx.theme.trim.emissive });
@@ -113,12 +109,6 @@ export const statues = defineComponent({ model: 'anubis' as const, spacing: 1.75
   ctx.scene.add(instanced(parts.black, black, matrices, { shadow: true }));
   ctx.scene.add(instanced(parts.gold, gold, matrices, { shadow: true }));
 });
-
-/** Décalage le long d'une face (tangent) et vers l'extérieur (out), pour un emplacement donné. */
-function tangentOf(slot: Slot, tangent: number, out: number): THREE.Vector3 {
-  const local = new THREE.Vector3(tangent, 0, out);
-  return local.applyAxisAngle(new THREE.Vector3(0, 1, 0), slot.rotationY);
-}
 
 /** Chacal assis sur son socle, en formes simples (z local = vers l'extérieur). */
 function anubisParts(): Record<'stone' | 'black' | 'gold', THREE.BufferGeometry> {
@@ -160,14 +150,7 @@ function anubisParts(): Record<'stone' | 'black' | 'gold', THREE.BufferGeometry>
 /** Jarres en terre cuite près des coins des terrasses. */
 export const jars = defineComponent({ color: 0xb8643a, perCorner: 2 }, (ctx, o) => {
   const rng = new Rng(ctx.layout.seed ^ 0xdec0);
-  const matrices: THREE.Matrix4[] = [];
-  for (const corner of terraceCornerSlots(ctx.layout)) {
-    const r = corner.position.clone().setY(0).length() / Math.SQRT2;
-    for (let k = 0; k < o.perCorner; k++) {
-      const p = onSide(corner.side, r - 0.1 - rng.next() * 0.3, r - 1.3 - k * 0.7, corner.position.y);
-      matrices.push(place(p, rng.next() * 6, 0.8 + rng.next() * 0.5));
-    }
-  }
+  const matrices = cornerClusterSlots(ctx.layout, o.perCorner, rng).map((s) => place(s.position, rng.next() * 6, 0.8 + rng.next() * 0.5));
   const profile = [
     [0, 0],
     [0.16, 0.02],
