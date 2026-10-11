@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getMechanic, DOOR_HEIGHT, DOOR_WIDTH, type Layout, type Theme } from '../../core';
+import { getMechanic, DOOR_HEIGHT, DOOR_WIDTH, type Layout, type Theme, type TriedOutcome } from '../../core';
 import { doorSlots, type DoorSlot } from './components/slots';
 import { symbolTexture, type Tweens } from './fx';
 import { glyphTextures } from './textures';
@@ -8,6 +8,11 @@ import { glyphTextures } from './textures';
 const COLORS = { hint: 0xffc93c, reveal: 0x3ce0ff, highlight: 0x7ff6ff };
 /** Symbole des portes mystère : cyan lumineux (HDR). */
 const MYSTERY_GLYPH = new THREE.Color(0.5, 2.2, 2.8);
+/** Trace privée des portes essayées : mur scellé (pierre), piège fissuré (rouge sombre). */
+const TRIED_LOOK = {
+  wall: { panel: new THREE.Color(0x8c7a62), glyph: new THREE.Color(0.55, 0.5, 0.42) },
+  trap: { panel: new THREE.Color(0x4a1712), glyph: new THREE.Color(1.6, 0.25, 0.12) },
+};
 
 interface DoorState {
   slot: DoorSlot;
@@ -15,6 +20,10 @@ interface DoorState {
   baseColor: THREE.Color;
   glyphIdle: THREE.Color;
   mystery: boolean;
+  /** Ce que le joueur a découvert derrière la porte (trace privée), ou null si jamais ouverte. */
+  tried: TriedOutcome | null;
+  /** Case de l'atlas d'origine (hiéroglyphe ou symbole ±N). */
+  cell: number;
   highlighted: boolean;
   privateHint: boolean;
   revealed: boolean;
@@ -36,6 +45,9 @@ export class DoorsView {
   private readonly panels: THREE.InstancedMesh;
   private readonly emblems: THREE.InstancedMesh;
   private readonly emissive: THREE.InstancedBufferAttribute;
+  private readonly cellAttr: THREE.InstancedBufferAttribute;
+  /** Cases de l'atlas des symboles de trace (scellé, fissure). */
+  private readonly traceCells: Record<'wall' | 'trap', number>;
   private readonly markerGeo = new THREE.OctahedronGeometry(0.3);
   private readonly markerMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 1.8, 0.4) });
   private readonly beamGeo = new THREE.CylinderGeometry(0.6, 0.9, 18, 14, 1, true);
@@ -54,7 +66,8 @@ export class DoorsView {
     // Atlas des symboles : 4 hiéroglyphes + les symboles des portes reconnaissables (±2, ±3…).
     const glyphs = glyphTextures().map((t) => t.image as HTMLCanvasElement);
     const symbols = [...new Set(slots.map((s) => getMechanic(s.door.mechanic).appearance?.symbol(layout.config)).filter((x): x is string => !!x))];
-    const cells = [...glyphs, ...symbols.map((sym) => symbolTexture(sym).image as HTMLCanvasElement)];
+    const cells = [...glyphs, ...symbols.map((sym) => symbolTexture(sym).image as HTMLCanvasElement), sealCanvas(), crackCanvas()];
+    this.traceCells = { wall: cells.length - 2, trap: cells.length - 1 };
     const atlas = document.createElement('canvas');
     atlas.width = 128 * cells.length;
     atlas.height = 128;
@@ -82,6 +95,7 @@ export class DoorsView {
     // Symboles : case de l'atlas par instance (attribut aCell), couleur HDR par instance.
     const emblemGeo = new THREE.PlaneGeometry(0.95, 0.95);
     const cellAttr = new THREE.InstancedBufferAttribute(new Float32Array(count), 1);
+    this.cellAttr = cellAttr;
     emblemGeo.setAttribute('aCell', cellAttr);
     const emblemMat = new THREE.MeshBasicMaterial({ map: atlasTexture, transparent: true, depthWrite: false });
     emblemMat.onBeforeCompile = (shader) => {
@@ -96,13 +110,16 @@ export class DoorsView {
     slots.forEach((slot, index) => {
       const mechanic = getMechanic(slot.door.mechanic);
       const symbol = mechanic.appearance?.symbol(layout.config);
-      cellAttr.setX(index, symbol ? glyphs.length + symbols.indexOf(symbol) : slot.door.ring % glyphs.length);
+      const cell = symbol ? glyphs.length + symbols.indexOf(symbol) : slot.door.ring % glyphs.length;
+      cellAttr.setX(index, cell);
       const state: DoorState = {
         slot,
         index,
         baseColor: new THREE.Color(mechanic.appearance?.color ?? theme.door.panel),
         glyphIdle: symbol ? MYSTERY_GLYPH.clone() : glyphColor.clone(),
         mystery: !!symbol,
+        tried: null,
+        cell,
         highlighted: false,
         privateHint: false,
         revealed: false,
@@ -114,6 +131,15 @@ export class DoorsView {
       this.writeMatrix(state);
     });
     this.group.add(this.panels, this.emblems);
+  }
+
+  /** Trace privée : la porte garde l'aspect de ce que le joueur y a découvert (le passage reste signalé par l'indice doré). */
+  markTried(doorId: string, outcome: TriedOutcome): void {
+    const s = this.states.get(doorId);
+    if (!s || s.tried === outcome) return;
+    s.tried = outcome;
+    this.cellAttr.setX(s.index, outcome === 'up' ? s.cell : this.traceCells[outcome]);
+    this.cellAttr.needsUpdate = true;
   }
 
   setHighlight(doorId: string | null): void {
@@ -185,11 +211,13 @@ export class DoorsView {
         glow.set(COLORS.hint).multiplyScalar(0.5 + (s.highlighted ? 0.4 * pulse : 0));
         glyphBoost = 1;
       } else {
-        panel.copy(s.baseColor);
+        const look = s.tried === 'wall' || s.tried === 'trap' ? TRIED_LOOK[s.tried] : null;
+        panel.copy(look ? look.panel : s.baseColor);
         if (s.highlighted) glow.set(COLORS.highlight).multiplyScalar(0.25 + 0.25 * pulse);
       }
-      if (s.mystery) glyphBoost = Math.max(glyphBoost, 0.35 + 0.35 * pulse);
-      glyph.copy(s.glyphIdle).multiplyScalar(1 + glyphBoost);
+      if (s.mystery && !s.tried) glyphBoost = Math.max(glyphBoost, 0.35 + 0.35 * pulse);
+      const traced = !s.flashColor && !s.revealed && !s.privateHint && (s.tried === 'wall' || s.tried === 'trap');
+      glyph.copy(traced ? TRIED_LOOK[s.tried as 'wall' | 'trap'].glyph : s.glyphIdle).multiplyScalar(1 + glyphBoost);
       this.panels.setColorAt(s.index, panel);
       this.emissive.setXYZ(s.index, glow.r, glow.g, glow.b);
       this.emblems.setColorAt(s.index, glyph);
@@ -235,3 +263,38 @@ export class DoorsView {
     return mesh;
   }
 }
+
+/** Symbole « scellé » : trois barres de pierre en travers (mur déjà essayé). */
+function sealCanvas(): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#ffffff';
+  for (const y of [38, 60, 82]) g.fillRect(22, y, 84, 11);
+  g.globalAlpha = 0.6;
+  g.fillRect(30, 30, 6, 66);
+  g.fillRect(92, 30, 6, 66);
+  return c;
+}
+
+/** Symbole « fissure » : éclair brisé (piège déjà déclenché). */
+function crackCanvas(): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  g.strokeStyle = '#ffffff';
+  g.lineWidth = 9;
+  g.lineCap = g.lineJoin = 'round';
+  g.beginPath();
+  g.moveTo(70, 14);
+  g.lineTo(50, 56);
+  g.lineTo(76, 66);
+  g.lineTo(52, 114);
+  g.moveTo(50, 56);
+  g.lineTo(30, 62);
+  g.moveTo(76, 66);
+  g.lineTo(98, 58);
+  g.stroke();
+  return c;
+}
+

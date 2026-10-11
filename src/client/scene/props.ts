@@ -3,8 +3,9 @@ import { walkTerrace, type PyramidConfig } from '../../core';
 import { burst, easeOutCubic, type Tweens } from './fx';
 
 /**
- * Scarabée doré : il sort du mur et détale le long de la terrasse vers le passage le plus proche,
- * puis s'enfouit. Proche du passage, il s'agite et brille davantage.
+ * Scarabée doré : il sort du mur et détale le long de la terrasse vers le passage le plus proche, puis s'enfouit.
+ * La longueur de sa course indique la distance (il s'arrête avant la porte, sans la désigner) ;
+ * proche du passage, il s'agite et brille davantage.
  */
 export function releaseScarab(
   scene: THREE.Scene,
@@ -15,6 +16,7 @@ export function releaseScarab(
   tangent: number,
   dir: 1 | -1,
   near: boolean,
+  run: number,
 ): void {
   const root = new THREE.Group();
   const shellMat = new THREE.MeshStandardMaterial({
@@ -45,8 +47,8 @@ export function releaseScarab(
   root.scale.setScalar(0);
   scene.add(root);
 
-  const distance = near ? 4.5 : 8;
-  const duration = near ? 2 : 1.7;
+  const distance = run;
+  const duration = 1.3 + run * 0.07;
   const point = (s: number) => walkTerrace(config, floor, side, tangent, dir * s);
   const start = point(0);
   root.position.set(start.x, start.y, start.z);

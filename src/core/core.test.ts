@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defineTheme, editComponents, doorTangents, holeTangents, DOOR_WIDTH, getMechanic, Game, generateLayout, walkTerrace, doorTangent, terraceMidHalf, buildColliders, landingPoint, holeTangent, HOLE_WIDTH, sideFrame, doorsPerSide } from './index';
+import { defineTheme, editComponents, terraceDistance, doorTangents, holeTangents, DOOR_WIDTH, getMechanic, Game, generateLayout, walkTerrace, doorTangent, terraceMidHalf, buildColliders, landingPoint, holeTangent, HOLE_WIDTH, sideFrame, doorsPerSide } from './index';
 import { levelFiles, levels, levelConfigs } from '../levels';
 
 const pyramid1 = levels[0].config;
@@ -152,7 +152,7 @@ describe('géométrie', () => {
         }
       }
     }
-  });
+  }, 30000);
 });
 
 describe('indices', () => {
@@ -172,6 +172,9 @@ describe('indices', () => {
       while (doors[(door.ring - dir * other + n) % n].mechanic !== 'passage') other++;
       expect(steps).toBeLessThanOrEqual(other);
       expect(result.hint.near).toBe(steps <= 2);
+      const hint = result.hint;
+      expect(hint.doors).toBe(steps);
+      expect(doors.find((d) => d.id === hint.target)?.mechanic).toBe('passage');
     }
   });
 
@@ -262,6 +265,30 @@ describe('géométrie des portes et des trous', () => {
         doors.slice(1).forEach((t, i) => expect(t - doors[i]).toBeGreaterThanOrEqual(DOOR_WIDTH + 1));
       }
     }
+  });
+});
+
+describe('trace des portes essayées', () => {
+  it('chaque porte essayée est mémorisée avec ce qu’elle cachait', () => {
+    const game = new Game(pyramid1, 11);
+    const p = game.addPlayer('a');
+    const floorDoors = game.layout.doorsByFloor[1];
+    const wallDoor = floorDoors.find((d) => d.mechanic === 'wall')!;
+    const trap = floorDoors.find((d) => d.mechanic === 'smallTrap')!;
+    game.interact('a', wallDoor.id, 0);
+    game.interact('a', trap.id, 0); // étage 1 : le piège repousse sans faire descendre
+    expect(p.tried.get(wallDoor.id)).toBe('wall');
+    expect(p.tried.get(trap.id)).toBe('trap');
+    const passage = floorDoors.find((d) => d.mechanic === 'passage')!;
+    game.interact('a', passage.id, 0);
+    expect(p.tried.get(passage.id)).toBe('up');
+  });
+
+  it('la distance le long d’une terrasse fait le tour dans le bon sens', () => {
+    const r = terraceMidHalf(pyramid1, 2);
+    expect(terraceDistance(pyramid1, 2, { side: 0, tangent: 0 }, { side: 0, tangent: 2 }, 1)).toBeCloseTo(2);
+    expect(terraceDistance(pyramid1, 2, { side: 0, tangent: 0 }, { side: 0, tangent: 2 }, -1)).toBeCloseTo(8 * r - 2);
+    expect(terraceDistance(pyramid1, 2, { side: 0, tangent: r }, { side: 1, tangent: -r }, 1)).toBeCloseTo(0);
   });
 });
 

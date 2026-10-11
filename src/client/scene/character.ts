@@ -27,6 +27,8 @@ export class Character {
   private runPhase = 0;
   private squash = 0;
   private time = 0;
+  /** Réaction en cours (se cogner contre un mur…), jouée par-dessus l'animation de course. */
+  private pose: { kind: 'bump'; t: number; duration: number } | null = null;
 
   constructor(scarfColor = 0x2f5fb0) {
     const mat = (color: number, opts: THREE.MeshStandardMaterialParameters = {}) =>
@@ -151,10 +153,29 @@ export class Character {
     this.scarfTail.rotation.x = 0.2 + wind * 1.2 + Math.sin(this.time * 12) * 0.15 * (0.3 + wind);
     this.scarfTail.rotation.z = Math.sin(this.time * 7) * 0.2 * wind;
 
+    if (this.pose) {
+      this.pose.t += dt;
+      const p = this.pose.t / this.pose.duration;
+      if (p >= 1) {
+        this.pose = null;
+        this.body.rotation.set(0, 0, 0);
+      } else {
+        const k = Math.sin(p * Math.PI);
+        this.body.rotation.x = -0.35 * k;
+        this.body.rotation.z = Math.sin(p * Math.PI * 6) * 0.12 * (1 - p);
+        this.arms[0].rotation.x = this.arms[1].rotation.x = -0.9 * k;
+      }
+    }
+
     this.squash *= Math.exp(-10 * dt);
     const stretch = grounded ? 0 : THREE.MathUtils.clamp(velY * 0.015, -0.12, 0.15);
     const s = 1 - this.squash + stretch;
     this.body.scale.set(1 / Math.sqrt(s), s, 1 / Math.sqrt(s));
+  }
+
+  /** Petite réaction expressive : « bump » = se cogne contre un mur et recule, tête qui secoue. */
+  react(kind: 'bump'): void {
+    this.pose = { kind, t: 0, duration: 0.55 };
   }
 
   land(impact: number): void {

@@ -25,7 +25,7 @@ export const wall: Mechanic = {
         return {
           delta: 0,
           fx: 'wall',
-          hint: { type: 'scarab', dir: nearest.dir, near },
+          hint: { type: 'scarab', dir: nearest.dir, near, doors: nearest.distance, target: nearest.target },
           message: near ? 'Le scarabée s’agite : c’est tout près !' : 'Mur… suis le scarabée !',
         };
       }
@@ -42,16 +42,16 @@ export const smallTrap: Mechanic = {
 };
 
 /** Passage le plus proche du même étage : distance (en portes, autour de l'anneau) et sens pour y aller. */
-export function nearestPassage(layout: Layout, door: Door): { distance: number; dir: 1 | -1 } {
+export function nearestPassage(layout: Layout, door: Door): { distance: number; dir: 1 | -1; target: string } {
   const floorDoors = layout.doorsByFloor[door.floor];
   const ringSize = floorDoors.length;
-  let best = { distance: Infinity, dir: 1 as 1 | -1 };
+  let best = { distance: Infinity, dir: 1 as 1 | -1, target: door.id };
   for (const other of floorDoors) {
     if (other.mechanic !== 'passage') continue;
     const forward = (other.ring - door.ring + ringSize) % ringSize;
     const backward = ringSize - forward;
-    if (forward < best.distance) best = { distance: forward, dir: 1 };
-    if (backward < best.distance) best = { distance: backward, dir: -1 };
+    if (forward < best.distance) best = { distance: forward, dir: 1, target: other.id };
+    if (backward < best.distance) best = { distance: backward, dir: -1, target: other.id };
   }
   return best;
 }

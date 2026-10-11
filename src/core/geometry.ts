@@ -150,6 +150,18 @@ export function terraceMidHalf(config: PyramidConfig, floor: number): number {
 }
 
 /**
+ * Distance (m) à parcourir le long de la ligne médiane d'une terrasse, d'un point à un autre, dans le sens `dir`
+ * (+1 = sens des portes croissantes, comme Door.ring et walkTerrace).
+ */
+export function terraceDistance(config: PyramidConfig, floor: number, from: { side: number; tangent: number }, to: { side: number; tangent: number }, dir: 1 | -1): number {
+  const r = terraceMidHalf(config, floor);
+  const perimeter = 8 * r;
+  const unroll = (p: { side: number; tangent: number }) => p.side * 2 * r + Math.max(-r, Math.min(r, p.tangent)) + r;
+  const d = (unroll(to) - unroll(from)) * dir;
+  return ((d % perimeter) + perimeter) % perimeter;
+}
+
+/**
  * Point situé à `distance` mètres le long de la ligne médiane d'une terrasse, en partant de (side, tangent),
  * en tournant aux coins. distance > 0 = sens des portes croissantes (même sens que Door.ring).
  */

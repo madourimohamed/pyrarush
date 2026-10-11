@@ -32,6 +32,7 @@ export class Game {
       bestFloor: 1,
       knownPassages: new Set(),
       usedDoors: new Set(),
+      tried: new Map(),
       falls: 0,
       doorsTested: 0,
     };
@@ -61,6 +62,7 @@ export class Game {
     player.doorsTested++;
     if (mechanic.oncePerPlayer) player.usedDoors.add(door.id);
     if (mechanic.rememberAsPassage && to > from) player.knownPassages.add(door.id);
+    player.tried.set(door.id, to > from ? 'up' : to < from || outcome.fx !== 'wall' ? 'trap' : 'wall');
 
     const events: GameEvent[] = [
       {

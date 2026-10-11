@@ -48,6 +48,8 @@ export interface PlayerState {
   knownPassages: Set<string>;
   /** Portes à usage unique déjà consommées par ce joueur. */
   usedDoors: Set<string>;
+  /** Portes déjà essayées par ce joueur et ce qu'il y a découvert : base de la trace privée des portes. */
+  tried: Map<string, TriedOutcome>;
   falls: number;
   doorsTested: number;
   finishedAt?: number;
@@ -94,8 +96,14 @@ export type HotColdLevel = 'chaud' | 'tiede' | 'froid';
 
 export type Hint =
   | { type: 'hotCold'; level: HotColdLevel }
-  /** dir : +1 = sens des portes croissantes autour de l'anneau, −1 = sens inverse. near : passage à 2 portes ou moins. */
-  | { type: 'scarab'; dir: 1 | -1; near: boolean };
+  /**
+   * dir : +1 = sens des portes croissantes autour de l'anneau, −1 = sens inverse ; near : passage à 2 portes ou moins ;
+   * doors : nombre de portes jusqu'au passage ; target : porte visée (pour régler la course du scarabée, jamais montrée).
+   */
+  | { type: 'scarab'; dir: 1 | -1; near: boolean; doors: number; target: string };
+
+/** Ce qu'un joueur a découvert derrière une porte : un passage (monte), un mur, ou un piège (descend ou repousse). */
+export type TriedOutcome = 'up' | 'wall' | 'trap';
 
 /** Étage spécial : atteindre floors + 1 signifie être au sommet. */
 export const summitFloor = (config: PyramidConfig) => config.floors + 1;

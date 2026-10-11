@@ -7,6 +7,7 @@ import {
   floorAtY,
   landingPoint,
   sideFrame,
+  terraceDistance,
   spawnPoint,
   summitFloor,
   INTERACT_RANGE,
@@ -45,13 +46,13 @@ export interface SessionResult {
 }
 
 /** Titre et sous-titre du message affiché après l'ouverture d'une porte. */
-function toastText(e: Extract<GameEvent, { type: 'doorResult' }>): [string, string] {
+function toastText(e: Extract<GameEvent, { type: 'doorResult' }>, scarabWords?: string): [string, string] {
   const change = e.to - e.from;
   const floors = (n: number) => `${n} étage${Math.abs(n) > 1 ? 's' : ''}`;
   const delta = change > 0 ? `+${floors(change)}` : change < 0 ? `−${floors(-change)}` : '';
   if (e.fx === 'passage') return ['Passage trouvé !', delta];
   if (e.hint?.type === 'hotCold') return ['Mur', { chaud: 'Chaud !', tiede: 'Tiède…', froid: 'Froid.' }[e.hint.level]];
-  if (e.hint?.type === 'scarab') return ['Mur', e.hint.near ? 'Le scarabée s’agite : tout près !' : 'Suis le scarabée !'];
+  if (e.hint?.type === 'scarab') return ['Mur', scarabWords ?? 'Suis le scarabée !'];
   if (e.fx === 'wall') return ['Mur', 'Rien ici…'];
   return [e.message, delta || 'Bing ! Tu recules…'];
 }
@@ -243,7 +244,10 @@ export class GameSession {
     const door = this.game.doorsById.get(e.doorId)!;
     const kind: ToastKind =
       e.to > e.from ? 'good' : e.to < e.from ? 'bad' : e.hint?.type === 'hotCold' ? e.hint.level : e.hint ? 'scarab' : 'info';
-    const [title, sub] = toastText(e);
+    const scarab = e.hint?.type === 'scarab' ? this.scarabCourse(door, e.hint) : null;
+    const [title, sub] = toastText(e, scarab?.words);
+    const tried = this.player.tried.get(door.id);
+    if (tried) this.world.doors.markTried(door.id, tried);
     this.hud.showToast(title, TRAP_FX.has(e.fx) ? 'bad' : kind, 1.8, sub);
     this.hud.setPrompt(false);
     this.nearestDoor = null;
@@ -259,13 +263,14 @@ export class GameSession {
     }
     if (e.to === e.from) {
       this.world.shakeDoor(door.id);
+      this.character.react('bump');
       this.sound.play('wall');
       if (e.hint?.type === 'hotCold') this.world.flashDoor(door.id, HINT_COLORS[e.hint.level]);
       else this.world.flashDoor(door.id, 0x555555, 0.5);
-      if (e.hint?.type === 'scarab') {
+      if (e.hint?.type === 'scarab' && scarab) {
         const tangent = doorTangent(this.config, door.floor, door.slot);
-        releaseScarab(this.world.scene, this.tweens, this.config, door.floor, door.side, tangent, e.hint.dir, e.hint.near);
-        this.sound.play(e.hint.near ? 'scarabExcited' : 'scarab');
+        releaseScarab(this.world.scene, this.tweens, this.config, door.floor, door.side, tangent, e.hint.dir, scarab.near, scarab.run);
+        this.sound.play(scarab.near ? 'scarabExcited' : 'scarab');
       }
       return;
     }
@@ -292,6 +297,24 @@ export class GameSession {
         if (e.fx === 'riskyLose') this.sound.play('riskyLose');
         this.punch(door, target, e.from - e.to > 1);
     }
+  }
+
+  /**
+   * Course du scarabée : il parcourt environ 60 % du chemin jusqu'au passage le plus proche (entre 2,5 et 16 m),
+   * ce qui donne la direction et la distance sans désigner la porte. Deux murs testés suffisent à trianguler.
+   */
+  private scarabCourse(door: Door, hint: { dir: 1 | -1; target: string }): { run: number; near: boolean; words: string } {
+    const target = this.game.doorsById.get(hint.target)!;
+    const path = terraceDistance(
+      this.config,
+      door.floor,
+      { side: door.side, tangent: doorTangent(this.config, door.floor, door.slot) },
+      { side: target.side, tangent: doorTangent(this.config, target.floor, target.slot) },
+      hint.dir,
+    );
+    const near = path <= 8;
+    const words = near ? 'Le scarabée s’agite : tout près !' : path <= 18 ? 'Pas très loin… suis le scarabée' : 'Loin d’ici… suis le scarabée';
+    return { run: Math.max(2.5, Math.min(16, path * 0.6)), near, words };
   }
 
   private punch(door: Door, target: Vec3, big: boolean): void {
