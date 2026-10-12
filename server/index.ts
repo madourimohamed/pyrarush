@@ -8,19 +8,21 @@ import { AccountService } from './accounts';
 import { createApi } from './api';
 import { openDatabase } from './db';
 import { Lobby, type Peer } from './rooms';
-import { clientIp, LIMITS, MessageBudget } from './security';
+import { clientIp, LIMITS, MessageBudget, originAllowed } from './security';
 import { resolveStatic } from './static';
 
 /**
  * Serveur du jeu : sert le jeu compilé (dist/), l'API des comptes (/api) et les salles multijoueur en WebSocket (/ws),
  * sur le même port, pour qu'un seul tunnel ou un seul hébergement suffise.
  *   PORT (défaut 8787), DIST (défaut ./dist), DATABASE (défaut ./data/pyrarush.sqlite),
- *   TURNSTILE_SECRET (anti-robot ; absent en local), TRUST_CLOUDFLARE=1 (derrière Cloudflare : vraie adresse des joueurs).
+ *   TURNSTILE_SECRET (anti-robot ; absent en local), TRUST_CLOUDFLARE=1 (derrière Cloudflare : vraie adresse des joueurs),
+ *   ALLOWED_ORIGINS (origines supplémentaires autorisées en multijoueur, séparées par des virgules, ex. une appli mobile).
  */
 const PORT = Number(process.env.PORT ?? 8787);
 const DIST = resolve(process.env.DIST ?? 'dist');
 const DATABASE = resolve(process.env.DATABASE ?? 'data/pyrarush.sqlite');
 const TRUST_CLOUDFLARE = process.env.TRUST_CLOUDFLARE === '1';
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? '').split(',').map((o) => o.trim()).filter(Boolean);
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -78,7 +80,13 @@ function serveStatic(url: string, res: import('node:http').ServerResponse): void
 }
 
 const lobby = new Lobby(levels);
-const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 4096 });
+const wss = new WebSocketServer({
+  server,
+  path: '/ws',
+  maxPayload: 4096,
+  // Un autre site ne peut pas ouvrir de connexion multijoueur depuis le navigateur d'un visiteur.
+  verifyClient: ({ origin, req }: { origin: string; req: import('node:http').IncomingMessage }) => originAllowed(origin, req.headers.host, ALLOWED_ORIGINS),
+});
 const socketsPerIp = new Map<string, number>();
 let nextId = 1;
 

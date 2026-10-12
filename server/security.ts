@@ -135,3 +135,19 @@ export class MessageBudget {
     return this.count > LIMITS.messagesPerSecond ? 'drop' : 'ok';
   }
 }
+
+/**
+ * Origine autorisée pour une connexion multijoueur : une page servie par ce même site (même hôte), ou une origine
+ * listée dans `allowed` (par exemple une appli mobile). Sans en-tête Origin (programme hors navigateur), la connexion
+ * est acceptée : elle doit de toute façon présenter un jeton de compte valide.
+ */
+export function originAllowed(origin: string | undefined, host: string | undefined, allowed: string[] = []): boolean {
+  if (!origin) return true;
+  if (allowed.includes(origin)) return true;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
