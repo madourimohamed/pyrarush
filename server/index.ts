@@ -1,6 +1,6 @@
-import { createReadStream, existsSync, mkdirSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { dirname, extname, join, normalize, resolve } from 'node:path';
+import { dirname, extname, join, resolve } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { levels } from '../src/levels';
 import { parseClientMessage, type ServerMessage } from '../src/net/protocol';
@@ -9,6 +9,7 @@ import { createApi } from './api';
 import { openDatabase } from './db';
 import { Lobby, type Peer } from './rooms';
 import { clientIp, LIMITS, MessageBudget } from './security';
+import { resolveStatic } from './static';
 
 /**
  * Serveur du jeu : sert le jeu compilé (dist/), l'API des comptes (/api) et les salles multijoueur en WebSocket (/ws),
@@ -41,16 +42,29 @@ const accounts = new AccountService(openDatabase(DATABASE), levels.map((l) => l.
 const api = createApi(accounts, { turnstileSecret: process.env.TURNSTILE_SECRET });
 setInterval(() => accounts.purgeExpiredSessions(), 3600_000).unref();
 
+/**
+ * Aucune requête ne doit pouvoir arrêter le serveur (les parties en cours de tout le monde seraient coupées) :
+ * toute erreur inattendue est journalisée et ne concerne que la requête ou la connexion fautive.
+ */
 const server = createServer((req, res) => {
-  void api.serve(req, res, clientIp(req, TRUST_CLOUDFLARE)).then((handled) => {
-    if (!handled) serveStatic(req.url ?? '/', res);
-  });
+  api
+    .serve(req, res, clientIp(req, TRUST_CLOUDFLARE))
+    .then((handled) => {
+      if (!handled) serveStatic(req.url ?? '/', res);
+    })
+    .catch((error) => {
+      console.error('Requête en erreur :', error);
+      if (!res.headersSent) res.writeHead(500);
+      res.end();
+    });
 });
 
 function serveStatic(url: string, res: import('node:http').ServerResponse): void {
-  const path = normalize(decodeURIComponent(url.split('?')[0])).replace(/^(\.\.[/\\])+/, '');
-  let file = join(DIST, path);
-  if (!file.startsWith(DIST) || !existsSync(file) || statSync(file).isDirectory()) file = join(DIST, 'index.html');
+  const file = resolveStatic(DIST, url);
+  if (!file) {
+    res.writeHead(400).end('Adresse invalide.');
+    return;
+  }
   if (!existsSync(file)) {
     res.writeHead(404).end('Jeu non compilé : lancer « npm run build ».');
     return;
@@ -101,14 +115,26 @@ wss.on('connection', (socket, req) => {
     if (verdict === 'flood') return socket.close(4008, 'Trop de messages');
     if (verdict === 'drop') return;
     const message = parseClientMessage(String(data));
-    if (message) lobby.handle(peer, message);
+    if (!message) return;
+    try {
+      lobby.handle(peer, message);
+    } catch (error) {
+      // Un bug du moteur ne doit faire tomber que cette connexion, jamais le serveur.
+      console.error('Message en erreur :', message.t, error);
+      socket.close(1011, 'Erreur du serveur');
+    }
   });
   socket.on('close', () => {
     clearInterval(heartbeat);
     socketsPerIp.set(ip, Math.max(0, (socketsPerIp.get(ip) ?? 1) - 1));
     if (socketsPerIp.get(ip) === 0) socketsPerIp.delete(ip);
-    lobby.leave(peer);
+    try {
+      lobby.leave(peer);
+    } catch (error) {
+      console.error('Départ en erreur :', error);
+    }
   });
+  socket.on('error', (error) => console.error('Connexion en erreur :', error.message));
 });
 
 server.listen(PORT, () => {
