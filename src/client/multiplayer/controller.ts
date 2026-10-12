@@ -134,14 +134,14 @@ export class MultiplayerController {
 
   private async create(): Promise<void> {
     if (!(await this.connect())) return;
-    this.connection.send({ t: 'create', level: this.host.selected().number, name: this.host.playerName(), powers: this.density });
+    this.connection.send({ t: 'create', level: this.host.selected().number, powers: this.density });
   }
 
   private async join(raw: string): Promise<void> {
     const code = normalizeRoomCode(raw);
     if (code.length !== ROOM_CODE_LENGTH) return this.status(`Le code fait ${ROOM_CODE_LENGTH} caractères.`, true);
     if (!(await this.connect())) return;
-    this.connection.send({ t: 'join', code, name: this.host.playerName() });
+    this.connection.send({ t: 'join', code });
   }
 
   private async connect(): Promise<boolean> {

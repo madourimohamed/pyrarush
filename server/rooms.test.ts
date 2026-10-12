@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BOOTS_MS, CLOUD_MS, TRAP_SCENE_MULTI_MS, doorFront, floorY, Game, POWER_RESPAWN_MS, landingPoint, mineSpotValid, MINE_ARM_MS, IMMUNITY_MS, SEAL_MS, type Level, type PowerId, type Vec3 } from '../src/core';
 import { levels } from '../src/levels';
-import { COUNTDOWN_MS, FINISH_GRACE_MS, MAX_PLAYERS, type ServerMessage } from '../src/net/protocol';
+import { COUNTDOWN_MS, FINISH_GRACE_MS, KICK_MS, MAX_PLAYERS, type ServerMessage } from '../src/net/protocol';
 import { Lobby, type Clock, type Peer } from './rooms';
 
 /** Horloge manuelle : le temps n'avance que quand le test le décide. */
@@ -25,11 +25,11 @@ function manualClock() {
   return { clock, advance };
 }
 
-function peer(id: string): Peer & { inbox: ServerMessage[]; last<T extends ServerMessage['t']>(t: T): Extract<ServerMessage, { t: T }> | undefined } {
+function peer(id: string, name = id): Peer & { inbox: ServerMessage[]; last<T extends ServerMessage['t']>(t: T): Extract<ServerMessage, { t: T }> | undefined } {
   const inbox: ServerMessage[] = [];
   return {
     id,
-    name: id,
+    name,
     inbox,
     send: (m) => inbox.push(m),
     last: <T extends ServerMessage['t']>(t: T) => inbox.filter((m) => m.t === t).pop() as Extract<ServerMessage, { t: T }> | undefined,
@@ -45,11 +45,11 @@ const NAMES = ['Alice', 'Bob', 'Chloé', 'Dina', 'Eli', 'Fanny', 'Gus', 'Hugo'];
 function room(count = 2, { launch = true, level = levels[0] as Level } = {}) {
   const { clock, advance } = manualClock();
   const lobby = new Lobby(levels, clock, () => 0.5);
-  const peers = NAMES.slice(0, count).map((name) => peer(name[0].toLowerCase()));
+  const peers = NAMES.slice(0, count).map((name) => peer(name[0].toLowerCase(), name));
   const [a, b, c, d] = peers;
-  lobby.handle(a, { t: 'create', level: level.number, name: NAMES[0], powers: 'many' });
+  lobby.handle(a, { t: 'create', level: level.number, powers: 'many' });
   const code = a.last('room')!.code;
-  peers.slice(1).forEach((p, i) => lobby.handle(p, { t: 'join', code: code.toLowerCase(), name: NAMES[i + 1] }));
+  peers.slice(1).forEach((p) => lobby.handle(p, { t: 'join', code: code.toLowerCase() }));
   if (launch && !a.last('start')) lobby.handle(a, { t: 'launch' });
   return { lobby, peers, a, b, c, d, code, advance };
 }
@@ -94,12 +94,12 @@ describe('multijoueur : salles', () => {
   it('refuse un code inconnu, une salle complète et une partie déjà commencée', () => {
     const { lobby, code } = room(MAX_PLAYERS);
     const extra = peer('x');
-    lobby.handle(extra, { t: 'join', code: 'ZZZZ', name: 'X' });
+    lobby.handle(extra, { t: 'join', code: 'ZZZZ' });
     expect(extra.last('error')?.message).toMatch(/Aucune salle/);
-    lobby.handle(extra, { t: 'join', code, name: 'X' });
+    lobby.handle(extra, { t: 'join', code });
     expect(extra.last('error')?.message).toMatch(/complète/);
     const started = room(2);
-    started.lobby.handle(extra, { t: 'join', code: started.code, name: 'X' });
+    started.lobby.handle(extra, { t: 'join', code: started.code });
     expect(extra.last('error')?.message).toMatch(/déjà commencé/);
   });
 
@@ -137,6 +137,20 @@ describe('multijoueur : salles', () => {
     const door = mirror.layout.doorsByFloor[1].find((d) => d.mechanic === 'passage')!;
     lobby.handle(a, { t: 'interact', seq: 1, doorId: door.id, p: [500, 0, 500] });
     expect(b.last('floor')).toBeUndefined();
+  });
+
+  it('l’hôte exclut un joueur : il quitte la salle et ne peut revenir qu’après 10 minutes (pas de bannissement définitif)', () => {
+    const { lobby, a, b, c, code, advance } = room(3, { launch: false });
+    lobby.handle(b, { t: 'kick', id: 'c' }); // seul l'hôte peut exclure
+    expect(c.last('kicked')).toBeUndefined();
+    lobby.handle(a, { t: 'kick', id: 'c' });
+    expect(c.last('kicked')).toEqual({ t: 'kicked' });
+    expect(a.last('room')!.players.map((p) => p.id)).toEqual(['a', 'b']);
+    lobby.handle(c, { t: 'join', code });
+    expect(c.last('error')?.message).toMatch(/exclu.*10 min/);
+    advance(KICK_MS);
+    lobby.handle(c, { t: 'join', code });
+    expect(a.last('room')!.players.map((p) => p.id)).toEqual(['a', 'b', 'c']);
   });
 
   it('à deux, un départ pendant la course donne la victoire par forfait', () => {
@@ -257,8 +271,8 @@ describe('multijoueur : salles', () => {
     const lobby = new Lobby(levels, clock, () => 0.5);
     const a = peer('a');
     const b = peer('b');
-    lobby.handle(a, { t: 'create', level: 1, name: 'A', powers: 'few' });
-    lobby.handle(b, { t: 'join', code: a.last('room')!.code, name: 'B' });
+    lobby.handle(a, { t: 'create', level: 1, powers: 'few' });
+    lobby.handle(b, { t: 'join', code: a.last('room')!.code });
     lobby.handle(a, { t: 'launch' });
     advance(COUNTDOWN_MS);
     const server = [...lobby.rooms.values()][0];

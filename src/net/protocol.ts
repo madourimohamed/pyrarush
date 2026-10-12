@@ -13,9 +13,11 @@ import { POWER_IDS, type PowerDensity, type PowerId, type PowerReserve } from '.
 export type Vec3Tuple = [number, number, number];
 
 export type ClientMessage =
-  /** Créer une salle : niveau et quantité de pouvoirs cachés (le jeu en déduit le nombre par étage). */
-  | { t: 'create'; level: number; name: string; powers: PowerDensity }
-  | { t: 'join'; code: string; name: string }
+  /** Créer une salle : niveau et quantité de pouvoirs cachés (le jeu en déduit le nombre par étage). Le nom vient du compte. */
+  | { t: 'create'; level: number; powers: PowerDensity }
+  | { t: 'join'; code: string }
+  /** L'hôte exclut un joueur de sa salle (il ne peut pas revenir pendant KICK_MS ; jamais de bannissement définitif). */
+  | { t: 'kick'; id: string }
   /** Le créateur de la salle lance la partie (dès MIN_PLAYERS joueurs ; automatique quand la salle est pleine). */
   | { t: 'launch' }
   /** Position du personnage affiché (pieds) et orientation, ~15 fois par seconde. */
@@ -80,11 +82,15 @@ export type ServerMessage =
   | { t: 'trapped'; id: string; doorId: string; from: number; to: number }
   /** Un joueur demande une revanche (elle part quand tous les joueurs restants l'ont demandée). */
   | { t: 'rematch'; id: string }
+  /** Le destinataire a été exclu de la salle par l'hôte. */
+  | { t: 'kicked' }
   | { t: 'error'; message: string };
 
 /** Joueurs par salle : il en faut MIN_PLAYERS pour lancer ; MAX_PLAYERS est la seule limite à changer pour des salles plus grandes. */
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 4;
+/** Durée pendant laquelle un joueur exclu ne peut pas revenir dans la salle (pas de bannissement définitif). */
+export const KICK_MS = 10 * 60_000;
 /** Compte à rebours entre le lancement et le départ. */
 export const COUNTDOWN_MS = 5000;
 /**
@@ -116,9 +122,11 @@ export function parseClientMessage(raw: string): ClientMessage | null {
   const vec = (v: unknown) => Array.isArray(v) && v.length === 3 && v.every(num);
   switch (msg.t) {
     case 'create':
-      return num(msg.level) && str(msg.name) && (msg.powers === 'few' || msg.powers === 'many') ? (msg as ClientMessage) : null;
+      return num(msg.level) && (msg.powers === 'few' || msg.powers === 'many') ? (msg as ClientMessage) : null;
     case 'join':
-      return str(msg.code, 12) && str(msg.name) ? (msg as ClientMessage) : null;
+      return str(msg.code, 12) ? (msg as ClientMessage) : null;
+    case 'kick':
+      return str(msg.id) ? (msg as ClientMessage) : null;
     case 'pos':
       return vec(msg.p) && num(msg.ry) ? (msg as ClientMessage) : null;
     case 'interact':

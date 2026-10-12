@@ -32,6 +32,7 @@ import {
   arrivalsToFinish,
   COUNTDOWN_MS,
   FINISH_GRACE_MS,
+  KICK_MS,
   MAX_PLAYERS,
   MIN_PLAYERS,
   ROOM_CODE_ALPHABET,
@@ -43,11 +44,15 @@ import {
   type ServerMessage,
   type Vec3Tuple,
 } from '../src/net/protocol';
+import { LIMITS, RateLimiter } from './security';
 
 /** Un joueur connecté (une connexion WebSocket, ou un faux joueur dans les tests). */
 export interface Peer {
   readonly id: string;
+  /** Nom affiché, celui du compte (jamais fourni par le navigateur). */
   name: string;
+  /** Compte du joueur (exclusions temporaires, limites) ; absent dans certains tests. */
+  readonly userId?: string;
   send(message: ServerMessage): void;
 }
 
@@ -115,6 +120,8 @@ export class Room {
   /** Portes vides qui cachent un pouvoir en ce moment (secret : jamais envoyé aux navigateurs). */
   readonly hidden = new Set<string>();
   private respawns: (() => void)[] = [];
+  /** Joueurs exclus par l'hôte, jusqu'à quand (exclusion temporaire, oubliée avec la salle). */
+  private readonly excluded = new Map<string, number>();
 
   constructor(
     readonly code: string,
@@ -136,6 +143,16 @@ export class Room {
 
   get host(): Peer | undefined {
     return this.peers[0];
+  }
+
+  /** Temps restant (ms) avant que ce joueur exclu puisse revenir, ou 0. */
+  exclusionLeft(peer: Peer): number {
+    return Math.max(0, (this.excluded.get(peer.userId ?? peer.id) ?? 0) - this.clock.now());
+  }
+
+  /** L'hôte exclut un joueur : il quitte la salle et ne peut pas revenir pendant KICK_MS. */
+  exclude(peer: Peer): void {
+    this.excluded.set(peer.userId ?? peer.id, this.clock.now() + KICK_MS);
   }
 
   add(peer: Peer): void {
@@ -497,12 +514,15 @@ export class Room {
 export class Lobby {
   readonly rooms = new Map<string, Room>();
   private readonly roomOf = new Map<Peer, Room>();
+  private readonly creations: RateLimiter;
 
   constructor(
     private readonly levels: Level[],
     private readonly clock: Clock = realClock,
     private readonly random: () => number = Math.random,
-  ) {}
+  ) {
+    this.creations = new RateLimiter(LIMITS.roomsPerAccount.max, LIMITS.roomsPerAccount.windowMs, () => clock.now());
+  }
 
   handle(peer: Peer, message: ClientMessage): void {
     const room = this.roomOf.get(peer);
@@ -510,8 +530,8 @@ export class Lobby {
       case 'create': {
         const level = this.levels[Math.round(message.level) - 1];
         if (!level) return peer.send({ t: 'error', message: 'Niveau inconnu.' });
+        if (!this.creations.hit(peer.userId ?? peer.id)) return peer.send({ t: 'error', message: 'Trop de salles créées : patiente quelques minutes.' });
         this.leave(peer);
-        peer.name = cleanName(message.name);
         const created = new Room(this.newCode(), level, message.powers, this.clock, randomSeed, this.random);
         this.rooms.set(created.code, created);
         this.enter(peer, created);
@@ -523,9 +543,19 @@ export class Lobby {
         if (target === room) return;
         if (target.full) return peer.send({ t: 'error', message: 'Cette salle est déjà complète.' });
         if (!target.joinable) return peer.send({ t: 'error', message: 'La partie a déjà commencé : attends la fin de la course.' });
+        const excluded = target.exclusionLeft(peer);
+        if (excluded > 0) return peer.send({ t: 'error', message: `Tu as été exclu de cette salle : réessaie dans ${Math.ceil(excluded / 60000)} min.` });
         this.leave(peer);
-        peer.name = cleanName(message.name);
         this.enter(peer, target);
+        return;
+      }
+      case 'kick': {
+        // Seul l'hôte exclut, jamais lui-même ; le joueur exclu quitte la salle (en pleine course : il est classé parti).
+        const target = room?.peers.find((p) => p.id === message.id);
+        if (!room || peer !== room.host || !target || target === peer) return;
+        room.exclude(target);
+        this.leave(target);
+        target.send({ t: 'kicked' });
         return;
       }
       case 'leave':
@@ -559,4 +589,3 @@ export class Lobby {
   }
 }
 
-const cleanName = (name: string) => name.replace(/[<>]/g, '').trim().slice(0, 16) || 'Explorateur';
