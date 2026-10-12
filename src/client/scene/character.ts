@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { bandageTexture } from './guardians';
 
 /** Couleurs de l'explorateur ; l'écharpe varie d'un joueur à l'autre (multijoueur). */
 const PALETTE = {
@@ -29,6 +30,11 @@ export class Character {
   private time = 0;
   /** Réaction en cours (se cogner contre un mur…), jouée par-dessus l'animation de course. */
   private pose: { kind: 'bump'; t: number; duration: number } | null = null;
+  /** Scènes de piège : panique (bras qui moulinent), cocon de bandelettes, étoiles autour de la tête. */
+  panic = false;
+  private cocoon: THREE.Group | null = null;
+  private stars: THREE.Group | null = null;
+  private dazed = 0;
 
   constructor(scarfColor = 0x2f5fb0) {
     const mat = (color: number, opts: THREE.MeshStandardMaterialParameters = {}) =>
@@ -167,6 +173,20 @@ export class Character {
       }
     }
 
+    if (this.panic) {
+      // Panique cartoon : bras qui moulinent au-dessus de la tête, jambes qui pédalent dans le vide.
+      const f = this.time * 28;
+      this.arms[0].rotation.x = -2.5 + Math.sin(f) * 0.7;
+      this.arms[1].rotation.x = -2.5 + Math.sin(f + Math.PI) * 0.7;
+      this.legs[0].rotation.x = Math.sin(f * 0.9) * 1.1;
+      this.legs[1].rotation.x = Math.sin(f * 0.9 + Math.PI) * 1.1;
+    }
+    if (this.stars) {
+      this.dazed = Math.max(0, this.dazed - dt);
+      this.stars.visible = this.dazed > 0;
+      this.stars.rotation.y += dt * 6;
+    }
+
     this.squash *= Math.exp(-10 * dt);
     const stretch = grounded ? 0 : THREE.MathUtils.clamp(velY * 0.015, -0.12, 0.15);
     const s = 1 - this.squash + stretch;
@@ -176,6 +196,28 @@ export class Character {
   /** Petite réaction expressive : « bump » = se cogne contre un mur et recule, tête qui secoue. */
   react(kind: 'bump'): void {
     this.pose = { kind, t: 0, duration: 0.55 };
+  }
+
+  /**
+   * Enveloppé de bandelettes par la momie : un cocon remplace le corps, seuls les yeux dépassent.
+   * Le cocon fait partie du corps : il suit ses rotations (il tourne quand la momie le lance).
+   */
+  wrap(on: boolean): void {
+    if (!on && !this.cocoon) return;
+    if (!this.cocoon) {
+      this.cocoon = buildCocoon();
+      this.body.add(this.cocoon);
+    }
+    for (const child of this.body.children) child.visible = child === this.cocoon ? on : !on;
+  }
+
+  /** Étourdi : petites étoiles qui tournent autour de la tête pendant `seconds`. */
+  daze(seconds: number): void {
+    if (!this.stars) {
+      this.stars = buildStars();
+      this.root.add(this.stars);
+    }
+    this.dazed = seconds;
   }
 
   land(impact: number): void {
@@ -195,3 +237,55 @@ export class Character {
     this.marker.rotation.y += 0.04;
   }
 }
+
+/** Cocon de bandelettes (momie) : capsule enveloppée, deux yeux lumineux qui dépassent. Créé à la première capture. */
+function buildCocoon(): THREE.Group {
+  const group = new THREE.Group();
+  const cloth = new THREE.MeshStandardMaterial({ map: bandageTexture(), roughness: 0.95 });
+  const shell = new THREE.Mesh(new THREE.CapsuleGeometry(0.34, 0.75, 6, 14), cloth);
+  shell.position.y = 0.72;
+  shell.castShadow = true;
+  group.add(shell);
+  const eyes = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.7, 1.3, 0.3) });
+  for (const side of [-1, 1]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), eyes);
+    eye.scale.set(0.8, 1.3, 0.5);
+    eye.position.set(side * 0.09, 1.12, 0.32);
+    group.add(eye);
+  }
+  return group;
+}
+
+/** Trois étoiles dorées en orbite au-dessus de la tête (étourdi). */
+function buildStars(): THREE.Group {
+  const group = new THREE.Group();
+  group.position.y = 1.55;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#ffe04a';
+  g.strokeStyle = '#a86a00';
+  g.lineWidth = 4;
+  g.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+    const r = i % 2 === 0 ? 28 : 12;
+    g.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r);
+  }
+  g.closePath();
+  g.fill();
+  g.stroke();
+  const texture = new THREE.CanvasTexture(c);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
+  for (let i = 0; i < 3; i++) {
+    const star = new THREE.Sprite(material);
+    const a = (i / 3) * Math.PI * 2;
+    star.position.set(Math.cos(a) * 0.38, Math.sin(a * 2) * 0.06, Math.sin(a) * 0.38);
+    star.scale.setScalar(0.24);
+    group.add(star);
+  }
+  group.visible = false;
+  return group;
+}
+

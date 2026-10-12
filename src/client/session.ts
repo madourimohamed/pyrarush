@@ -7,13 +7,14 @@ import {
   floorAtY,
   landingPoint,
   sideCoords,
-  sideFrame,
   terraceDistance,
   spawnPoint,
   summitFloor,
   INTERACT_RANGE,
   FLOOR_HEIGHT,
   MINE_MAX_ACTIVE,
+  TRAP_FX,
+  TRAP_SCENE_MULTI_MS,
   mineSpotValid,
   SEAL_WINDOW_MS,
   TURBO_SPEED,
@@ -35,6 +36,7 @@ import { CharacterBody } from './physics';
 import { Character } from './scene/character';
 import { burst, easeInOut, shieldBubble, Trail, Tweens } from './scene/fx';
 import { Mines } from './scene/mines';
+import { createTrapScene, trapLanding, TRAP_SCENE_SOLO_S, type TrapScene } from './scene/trapScenes';
 import { releaseScarab } from './scene/props';
 import { HINT_COLORS, World } from './scene/world';
 import { BONUS_INFO } from './ui/bonus';
@@ -60,7 +62,6 @@ export interface NetLink {
 /** Fréquence d'envoi de la position en multijoueur. */
 const POS_INTERVAL = 1 / 15;
 
-const TRAP_FX = new Set(['smallTrap', 'bigTrap', 'riskyLose']);
 const STEP = 1 / 60;
 const GOLD = 0xffd34a;
 
@@ -124,6 +125,8 @@ export class GameSession {
   private immuneUntil = 0;
   /** Étage imposé par le serveur pendant une animation : appliqué dès qu'elle se termine. */
   private pendingFloor: number | null = null;
+  /** Scène de piège en cours (gant, momie) et point d'arrivée du joueur à la fin. */
+  private trapScene: { scene: TrapScene; target: Vec3 } | null = null;
   /** Mines posées par le joueur (pour la limite). */
   private ownMines = new Set<number>();
   /** En multijoueur, l'introduction sert de compte à rebours : on ne peut pas la passer. */
@@ -248,6 +251,7 @@ export class GameSession {
     }
 
     this.handle(this.game.update(this.clock));
+    if (this.trapScene?.scene.update(dt)) this.endTrapScene();
     if (this.eyeReveal && this.clock >= this.eyeReveal.until) {
       if (!this.game.reveals.has(this.eyeReveal.doorId)) this.world.setReveal(this.eyeReveal.doorId, false);
       this.eyeReveal = null;
@@ -299,6 +303,7 @@ export class GameSession {
   removeOpponent(id: string): void {
     const opponent = this.opponents.get(id);
     if (!opponent) return;
+    opponent.stopScene();
     this.world.scene.remove(opponent.character.root);
     this.opponents.delete(id);
   }
@@ -444,6 +449,10 @@ export class GameSession {
   /** Fin de la partie décidée par le serveur : elle s'arrête pour tout le monde. */
   endRace(): void {
     this.finished = true;
+    if (this.trapScene) {
+      this.trapScene.scene.finish();
+      this.trapScene = null;
+    }
     this.lock();
   }
 
@@ -613,8 +622,9 @@ export class GameSession {
     const tried = this.player.tried.get(door.id);
     if (tried) this.world.doors.markTried(door.id, tried);
     // Piège : le titre peut venir du gardien qui surgit (« Le gardien surgit ! »).
-    const trapTitle = e.fx !== 'riskyLose' && TRAP_FX.has(e.fx) ? this.world.guardianFor(door).title : undefined;
-    this.hud.showToast(trapTitle ?? title, TRAP_FX.has(e.fx) ? 'bad' : kind, 1.8, sub);
+    const trap = TRAP_FX.includes(e.fx);
+    const trapTitle = e.fx !== 'riskyLose' && trap ? this.world.guardianFor(door).title : undefined;
+    this.hud.showToast(trapTitle ?? title, trap ? 'bad' : kind, 1.8, sub);
     this.hud.setPrompt(false);
     this.nearestDoor = null;
     this.world.setHighlight(null);
@@ -626,12 +636,9 @@ export class GameSession {
       this.character.react('bump');
       return;
     }
-    if (e.to === e.from && TRAP_FX.has(e.fx)) {
-      // Déjà tout en bas : le gant frappe quand même et repousse le joueur en arrière (perte de temps).
-      const c = doorFront(this.config, door);
-      const f = sideFrame(door.side);
-      const target = { x: c.x + f.outX * 4, y: c.y, z: c.z + f.outZ * 4 };
-      this.punch(door, target, false);
+    if (e.to === e.from && trap) {
+      // Déjà tout en bas : le gardien frappe quand même et repousse le joueur en arrière (perte de temps).
+      this.startTrapScene(door, e.from, e.to);
       return;
     }
     if (e.to === e.from) {
@@ -668,7 +675,7 @@ export class GameSession {
       default:
         // Pièges et pari perdu : le gardien de la porte surgit et envoie le joueur en contrebas.
         if (e.fx === 'riskyLose') this.sound.play('riskyLose');
-        this.punch(door, target, e.from - e.to > 1);
+        this.startTrapScene(door, e.from, e.to);
     }
   }
 
@@ -690,17 +697,70 @@ export class GameSession {
     return { run: Math.max(2.5, Math.min(16, path * 0.6)), near, words };
   }
 
-  private punch(door: Door, target: Vec3, big: boolean): void {
+  /**
+   * Scène de piège cartoon (voir trapScenes.ts) : 3 s en solo, 2 s en multijoueur, gros plan de la caméra du joueur touché.
+   * Le moteur a déjà appliqué les conséquences ; la scène ne fait que les montrer, puis rend les commandes.
+   */
+  private startTrapScene(door: Door, from: number, to: number): void {
     this.lock();
     this.world.flashDoor(door.id, 0xff2a1a, 0.6);
-    this.sound.play(this.world.guardianFor(door).cue);
-    this.world.punchDoor(door, big, () => {
-      navigator.vibrate?.(big ? [80, 40, 120] : 90);
-      this.sound.play('pow');
-      this.sound.play('fall');
-      this.playKnockback(target, big);
-    });
+    const target = trapLanding(this.config, door, from, to);
+    const scene = this.makeTrapScene(door, this.character, target, from - to > 1, true);
+    if (!scene) return this.unlock(target, this.player.floor);
+    this.trapScene = { scene, target };
   }
+
+  /** Construit une scène de piège pour un personnage (le sien, ou un adversaire qui la rejoue sans caméra ni son). */
+  private makeTrapScene(door: Door, character: Character, target: Vec3, big: boolean, local: boolean): TrapScene | null {
+    const transform = this.world.doors.transform(door.id);
+    if (!transform) return null;
+    const guardian = this.world.borrowGuardian(door);
+    this.world.openDoor(door.id, 0.6);
+    const scene = createTrapScene({
+      scene: this.world.scene,
+      tweens: this.tweens,
+      character,
+      guardian,
+      door: transform,
+      shakeDoor: () => this.world.shakeDoor(door.id),
+      openDoor: () => this.world.openDoor(door.id, 0.5),
+      start: character.root.position.clone(),
+      target,
+      big,
+      duration: this.net ? TRAP_SCENE_MULTI_MS / 1000 : TRAP_SCENE_SOLO_S,
+      ...(local && {
+        camera: this.camera,
+        sound: (name: SfxName) => this.sound.play(name),
+        vibrate: (pattern: number | number[]) => navigator.vibrate?.(pattern),
+      }),
+    });
+    // Le gardien est rendu à la fin de la scène, quelle qu'elle soit.
+    const finish = scene.finish.bind(scene);
+    scene.finish = () => {
+      finish();
+      this.world.releaseGuardian(guardian);
+    };
+    return scene;
+  }
+
+  /** Fin de la scène de piège (normale ou forcée) : personnage posé à l'arrivée, commandes et caméra rendues. */
+  private endTrapScene(): void {
+    const current = this.trapScene;
+    if (!current) return;
+    this.trapScene = null;
+    current.scene.finish();
+    this.unlock(current.target, this.player.floor);
+  }
+
+  /** Un adversaire a été piégé : on rejoue la même scène sur son personnage (sans toucher à notre caméra). */
+  opponentTrapped(id: string, doorId: string, from: number, to: number): void {
+    const opponent = this.opponents.get(id);
+    const door = this.game.doorsById.get(doorId);
+    if (!opponent || !door) return;
+    const scene = this.makeTrapScene(door, opponent.character, trapLanding(this.config, door, from, to), from - to > 1, false);
+    if (scene) opponent.playScene(scene);
+  }
+
 
   /** Le personnage entre dans la porte et ressort sur la terrasse supérieure. */
   private playPassage(door: Door, target: Vec3, to: number): void {
@@ -784,6 +844,8 @@ export class GameSession {
   }
 
   private unlock(at: Vec3, floor: number): void {
+    // Une scène de piège garde la main jusqu'à sa fin (endTrapScene la retire avant de rendre les commandes).
+    if (this.trapScene) return;
     this.character.root.scale.setScalar(1);
     this.body.teleport(at);
     this.locked = false;
@@ -854,6 +916,9 @@ export class GameSession {
   }
 
   dispose(): void {
+    this.trapScene?.scene.finish();
+    this.trapScene = null;
+    for (const opponent of this.opponents.values()) opponent.stopScene();
     this.tweens.clear();
     this.world.dispose();
   }

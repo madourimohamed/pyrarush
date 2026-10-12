@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Vec3Tuple } from '../../net/protocol';
 import { Character } from '../scene/character';
 import { shieldBubble, Trail } from '../scene/fx';
+import type { TrapScene } from '../scene/trapScenes';
 
 /**
  * Couleurs d'écharpe des adversaires, dans l'ordre de départ (le joueur local garde toujours la bleue).
@@ -27,6 +28,8 @@ export class Opponent {
   private boots = 0;
   private immune = 0;
   private time = 0;
+  /** Scène de piège rejouée sur ce personnage : les positions reçues sont ignorées pendant ce temps. */
+  private scene: TrapScene | null = null;
 
   constructor(name: string, color: number, scene: THREE.Scene) {
     this.character = new Character(color);
@@ -50,6 +53,16 @@ export class Opponent {
     }
   }
 
+  playScene(scene: TrapScene): void {
+    this.scene?.finish();
+    this.scene = scene;
+  }
+
+  stopScene(): void {
+    this.scene?.finish();
+    this.scene = null;
+  }
+
   /** Ce qu'on voit de l'adversaire : bouclier, turbo, bottes, immunité (durées en ms). */
   setState(shield: boolean, turboMs: number, bootsMs: number, immuneMs: number): void {
     this.bubble.visible = shield;
@@ -66,6 +79,12 @@ export class Opponent {
     const airborne = Math.abs(this.velocity.y) > 1.5;
     this.trail.update(dt, this.character.root.position, this.seen && (this.turbo > 0 || (this.boots > 0 && airborne)), camera);
     if (!this.seen) return;
+    if (this.scene) {
+      // La scène anime le personnage ; ensuite, il rejoint en douceur sa position reçue.
+      if (this.scene.update(dt)) this.scene = null;
+      this.character.setMarker(zoom);
+      return;
+    }
     this.character.body.visible = this.immune <= 0 || this.time % 0.2 < 0.12;
     if (this.bubble.visible) this.bubble.scale.setScalar(1 + Math.sin(this.time * 5.5) * 0.04);
     const root = this.character.root;

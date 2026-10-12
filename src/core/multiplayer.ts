@@ -50,6 +50,11 @@ export const CLOUD_MS = 3000;
  */
 export const BOOTS_MS = 8000;
 export const BOOTS_JUMP = 1.15;
+/**
+ * Scène de piège (gant, momie) en multijoueur : version raccourcie (3 s en solo). Pendant la scène, le joueur
+ * ne déclenche pas de mine (pas de second coup absurde en plein vol).
+ */
+export const TRAP_SCENE_MULTI_MS = 2000;
 /** Immunité après une attaque subie (pas d'attaques en chaîne). */
 export const IMMUNITY_MS = 4000;
 /** Affichage des compteurs (pas une limite de jeu). */

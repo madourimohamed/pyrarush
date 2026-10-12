@@ -21,6 +21,9 @@ const ZOOMS = [
  * Caméra automatique : toujours à l'extérieur de la pyramide, face à la paroi la plus proche,
  * elle tourne autour quand le joueur longe une terrasse. Le glissement ne sert qu'à ajuster ponctuellement.
  */
+/** Gros plan des scènes de piège : distance (m) et inclinaison. */
+const CLOSE_UP = { dist: 4.6, pitch: 0.22 };
+
 export class FollowCamera {
   readonly camera: THREE.PerspectiveCamera;
   yaw = 0;
@@ -32,6 +35,13 @@ export class FollowCamera {
   /** Niveau de zoom choisi, et valeur lissée (0 → 2) pour des transitions douces. */
   zoom: ZoomLevel = 0;
   zoomSmooth = 0;
+  /**
+   * Gros plan comique (scènes de piège) : 0 = caméra habituelle, 1 = tout près du personnage, qu'elle suit même très haut.
+   * La valeur affichée rejoint la consigne en douceur : remettre 0 suffit pour que la caméra revienne seule.
+   */
+  closeUp = 0;
+  private closeUpSmooth = 0;
+  private shakeAmount = 0;
 
   constructor(aspect: number) {
     this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 400);
@@ -49,6 +59,11 @@ export class FollowCamera {
     return this.yaw + this.userYaw + sampleZoom(this.zoomSmooth, 1).yaw;
   }
 
+  /** Secousse (impact), qui s'atténue toute seule. */
+  shake(amount: number): void {
+    this.shakeAmount = Math.max(this.shakeAmount, amount);
+  }
+
   addUserInput(dx: number, dy: number, active: boolean): void {
     if (dx || dy || active) this.sinceUserInput = 0;
     this.userYaw -= dx * 0.006;
@@ -63,19 +78,22 @@ export class FollowCamera {
 
     if (!this.initialized) this.zoomSmooth = this.zoom;
     this.zoomSmooth += (this.zoom - this.zoomSmooth) * (1 - Math.exp(-5 * dt));
+    this.closeUpSmooth += (this.closeUp - this.closeUpSmooth) * (1 - Math.exp(-4 * dt));
+    const c = this.closeUpSmooth;
     const z = sampleZoom(this.zoomSmooth, pyramidHalf);
 
     const desiredTarget = player
       .clone()
-      .add(new THREE.Vector3(0, 1.3, 0))
-      .lerp(new THREE.Vector3(0, pyramidHeight * 0.4, 0), z.focus);
+      .add(new THREE.Vector3(0, 1.3 - c * 0.4, 0))
+      .lerp(new THREE.Vector3(0, pyramidHeight * 0.4, 0), z.focus * (1 - c));
     if (!this.initialized) {
       this.yaw = desiredYaw;
       this.target.copy(desiredTarget);
       this.initialized = true;
     }
     this.yaw += angleDelta(this.yaw, desiredYaw) * (1 - Math.exp(-3.5 * dt));
-    this.target.lerp(desiredTarget, 1 - Math.exp(-10 * dt));
+    // En gros plan, la cible suit plus vite (le personnage peut voler très haut).
+    this.target.lerp(desiredTarget, 1 - Math.exp(-(10 + 12 * c) * dt));
 
     this.sinceUserInput += dt;
     if (this.sinceUserInput > USER_RETURN_DELAY) {
@@ -85,15 +103,22 @@ export class FollowCamera {
     }
 
     const portrait = this.camera.aspect < 1;
-    const dist = z.dist * (portrait ? 1.3 : 1) + extraDistance;
+    const dist = THREE.MathUtils.lerp(z.dist * (portrait ? 1.3 : 1) + extraDistance, CLOSE_UP.dist * (portrait ? 1.25 : 1), c);
     const yaw = this.viewYaw;
-    const pitch = Math.min(1.35, z.pitch + this.userPitch);
+    const pitch = THREE.MathUtils.lerp(Math.min(1.35, z.pitch + this.userPitch), CLOSE_UP.pitch, c);
     this.camera.position.set(
       this.target.x + Math.sin(yaw) * Math.cos(pitch) * dist,
       this.target.y + Math.sin(pitch) * dist,
       this.target.z + Math.cos(yaw) * Math.cos(pitch) * dist,
     );
     this.camera.lookAt(this.target);
+    if (this.shakeAmount > 0.002) {
+      const s = this.shakeAmount;
+      this.camera.position.add(new THREE.Vector3((Math.random() - 0.5) * s, (Math.random() - 0.5) * s, (Math.random() - 0.5) * s));
+      this.shakeAmount *= Math.exp(-9 * dt);
+    } else {
+      this.shakeAmount = 0;
+    }
   }
 }
 

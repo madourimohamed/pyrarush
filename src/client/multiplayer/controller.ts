@@ -207,6 +207,9 @@ export class MultiplayerController {
         this.floors.set(m.id, m.floor);
         this.renderFloors();
         break;
+      case 'trapped':
+        session?.opponentTrapped(m.id, m.doorId, m.from, m.to);
+        break;
       case 'arrived':
         if (m.id === this.me) this.host.hud.showToast(m.rank === 1 ? 'Premier au sommet !' : `Sommet : ${place(m.rank)}`, 'good', 3, 'Les autres finissent leur course…');
         else this.host.hud.showToast(`${this.name(m.id)} au sommet !`, m.rank === 1 ? 'bad' : 'info', 2.2, place(m.rank));

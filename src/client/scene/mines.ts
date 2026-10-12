@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Vec3 } from '../../core';
-import { burst, easeOutCubic, type Tweens } from './fx';
-import { comicTexture } from './guardians';
+import { burst, type Tweens } from './fx';
+import { comicMaterial, popComic } from './guardians';
 
 interface MineView {
   root: THREE.Group;
@@ -21,7 +21,6 @@ export class Mines {
   private readonly bulb = new THREE.SphereGeometry(0.08, 10, 8);
   private readonly ownMaterial = new THREE.MeshStandardMaterial({ color: 0x2b2420, roughness: 0.6, metalness: 0.4 });
   private readonly hiddenMaterial: THREE.MeshStandardMaterial;
-  private readonly boom = new THREE.SpriteMaterial({ map: comicTexture('BOUM!', '#ff8a2a', '#7a1d0a', '#4a0d04'), transparent: true, depthTest: false });
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -57,15 +56,7 @@ export class Mines {
     const at = this.remove(id) ?? new THREE.Vector3(fallback.x, fallback.y, fallback.z);
     burst(this.scene, this.tweens, at.clone().add(new THREE.Vector3(0, 0.4, 0)), 0xff7a2a, 22, 5, 3);
     burst(this.scene, this.tweens, at.clone().add(new THREE.Vector3(0, 0.3, 0)), 0x4a3a30, 12, 3, 2);
-    const sprite = new THREE.Sprite(this.boom);
-    sprite.renderOrder = 10;
-    sprite.position.copy(at).add(new THREE.Vector3(0, 1.6, 0));
-    this.scene.add(sprite);
-    this.tweens.add(
-      0.8,
-      (t) => sprite.scale.setScalar(2.4 * easeOutCubic(Math.min(1, t * 4)) * (t > 0.7 ? 1 - (t - 0.7) / 0.3 : 1)),
-      () => this.scene.remove(sprite),
-    );
+    popComic(this.scene, this.tweens, comicMaterial('BOUM!', '#ff8a2a', '#7a1d0a', '#4a0d04'), at.clone().add(new THREE.Vector3(0, 1.6, 0)), 2.4);
   }
 
   update(dt: number): void {

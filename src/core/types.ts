@@ -125,6 +125,9 @@ export const BONUS_HOURGLASS_MS = 10000;
 /** 'power' : en duel, un pouvoir a été trouvé derrière cette porte vide (marque ajoutée par le navigateur). */
 export type TriedOutcome = 'up' | 'wall' | 'trap' | 'power';
 
+/** Effets de porte joués par un gardien (gant ou momie) qui projette le joueur : pièges et pari perdu. */
+export const TRAP_FX: readonly string[] = ['smallTrap', 'bigTrap', 'riskyLose'];
+
 /** Étage spécial : atteindre floors + 1 signifie être au sommet. */
 export const summitFloor = (config: PyramidConfig) => config.floors + 1;
 

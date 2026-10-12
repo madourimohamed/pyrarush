@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOOTS_MS, CLOUD_MS, doorFront, floorY, Game, POWER_RESPAWN_MS, landingPoint, mineSpotValid, MINE_ARM_MS, IMMUNITY_MS, SEAL_MS, type Level, type PowerId, type Vec3 } from '../src/core';
+import { BOOTS_MS, CLOUD_MS, TRAP_SCENE_MULTI_MS, doorFront, floorY, Game, POWER_RESPAWN_MS, landingPoint, mineSpotValid, MINE_ARM_MS, IMMUNITY_MS, SEAL_MS, type Level, type PowerId, type Vec3 } from '../src/core';
 import { levels } from '../src/levels';
 import { COUNTDOWN_MS, FINISH_GRACE_MS, MAX_PLAYERS, type ServerMessage } from '../src/net/protocol';
 import { Lobby, type Clock, type Peer } from './rooms';
@@ -337,6 +337,35 @@ describe('multijoueur : salles', () => {
     lobby.handle(a, { t: 'power', seq: 3, power: 'boots', p: [0, 0, 0] });
     expect(b.last('state')).toMatchObject({ id: 'a', bootsMs: BOOTS_MS });
     expect(a.last('self')).toMatchObject({ bootsMs: BOOTS_MS, powers: { boots: 1, cloud: 0 } });
+  });
+
+  it('un piège est relayé aux autres (ils rejouent la scène) ; pendant la scène, pas de mine', () => {
+    const { lobby, a, b, advance } = room();
+    advance(COUNTDOWN_MS);
+    const config = levels[0].config;
+    const mirror = new Game(config, a.last('start')!.seed);
+    // b monte à l'étage 2, puis ouvre un piège : il redescend à l'étage 1.
+    const passage = mirror.layout.doorsByFloor[1].find((d) => d.mechanic === 'passage')!;
+    const pf = doorFront(config, passage);
+    lobby.handle(b, { t: 'interact', seq: 1, doorId: passage.id, p: [pf.x, pf.y, pf.z] });
+    const trap = mirror.layout.doorsByFloor[2].find((d) => d.mechanic === 'smallTrap')!;
+    const tf = doorFront(config, trap);
+    lobby.handle(b, { t: 'interact', seq: 2, doorId: trap.id, p: [tf.x, tf.y, tf.z] });
+    expect(a.last('trapped')).toEqual({ t: 'trapped', id: 'b', doorId: trap.id, from: 2, to: 1 });
+    // Une mine de a, armée, sur le trajet de b pendant sa scène : rien ne se passe.
+    const spot = findMineSpot(mirror, 1);
+    const at: [number, number, number] = [spot.x, spot.y, spot.z];
+    give(lobby, a, 'mine');
+    lobby.handle(a, { t: 'pos', p: at, ry: 0 });
+    lobby.handle(a, { t: 'power', seq: 1, power: 'mine', p: at });
+    advance(MINE_ARM_MS);
+    lobby.handle(b, { t: 'pos', p: [spot.x - 0.5, spot.y, spot.z], ry: 0 });
+    lobby.handle(b, { t: 'pos', p: [spot.x + 0.5, spot.y, spot.z], ry: 0 });
+    expect(b.last('boom')).toBeUndefined();
+    // Une fois la scène finie, la mine fonctionne de nouveau.
+    advance(TRAP_SCENE_MULTI_MS);
+    lobby.handle(b, { t: 'pos', p: [spot.x - 0.5, spot.y, spot.z], ry: 0 });
+    expect(b.last('boom')).toMatchObject({ target: 'b', owner: 'a' });
   });
 
   it('une mine ne se pose pas devant une porte (pouvoir conservé)', () => {

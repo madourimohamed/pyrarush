@@ -16,6 +16,8 @@ import {
   POWER_RESPAWN_MS,
   randomSeed,
   standing,
+  TRAP_FX,
+  TRAP_SCENE_MULTI_MS,
   TURBO_MS,
   type GameEvent,
   type Level,
@@ -72,6 +74,8 @@ interface Fighter {
   turboUntil: number;
   bootsUntil: number;
   immuneUntil: number;
+  /** Fin de la scène de piège en cours (gant, momie) : pas de mine pendant ce temps. */
+  sceneUntil: number;
   /** Dernière position reçue (pieds), pour les mines. */
   pos: Vec3 | null;
   /** Dernière action traitée (renvoyée dans `self`). */
@@ -212,7 +216,7 @@ export class Room {
     this.arrivals = [];
     for (const peer of this.peers) {
       this.game.addPlayer(peer.id);
-      this.fighters.set(peer.id, { name: peer.name, left: false, powers: emptyReserve(), turboUntil: 0, bootsUntil: 0, immuneUntil: 0, pos: null, seq: 0 });
+      this.fighters.set(peer.id, { name: peer.name, left: false, powers: emptyReserve(), turboUntil: 0, bootsUntil: 0, immuneUntil: 0, sceneUntil: 0, pos: null, seq: 0 });
     }
     this.state = 'countdown';
     this.startAt = this.clock.now() + COUNTDOWN_MS;
@@ -278,7 +282,7 @@ export class Room {
   /** Le joueur s'est déplacé : a-t-il marché sur une mine adverse armée ? */
   private checkMines(peer: Peer, fighter: Fighter, from: Vec3, to: Vec3): void {
     const now = this.raceTime();
-    if (this.game!.players.get(peer.id)!.finishedAt !== undefined) return;
+    if (this.game!.players.get(peer.id)!.finishedAt !== undefined || now < fighter.sceneUntil) return;
     for (const mine of this.mines.values()) {
       if (mine.owner === peer.id || now < mine.armedAt || !mineTriggered(mine.p, from, to)) continue;
       this.removeMine(mine.id, false);
@@ -299,7 +303,13 @@ export class Room {
 
   /** Ce que les autres joueurs doivent savoir des événements d'un joueur ; les pouvoirs cachés ; les arrivées. */
   private apply(peer: Peer, events: GameEvent[]): void {
+    const shielded = events.some((e) => e.type === 'shielded');
     for (const event of events) {
+      if (event.type === 'doorResult' && TRAP_FX.includes(event.fx) && !shielded) {
+        // Les autres rejouent la scène du piège ; pendant ce temps, pas de mine pour le joueur piégé.
+        this.fighters.get(peer.id)!.sceneUntil = this.raceTime() + TRAP_SCENE_MULTI_MS;
+        this.others(peer, { t: 'trapped', id: peer.id, doorId: event.doorId, from: event.from, to: event.to });
+      }
       if (event.type === 'publicReveal') {
         this.others(peer, { t: 'reveal', id: peer.id, doorId: event.doorId, ms: event.until - this.raceTime() });
       } else if (event.type === 'floorChanged') {

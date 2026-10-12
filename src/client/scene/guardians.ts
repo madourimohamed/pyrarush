@@ -9,6 +9,8 @@ import { easeOutCubic, type Tweens } from './fx';
  */
 export interface TrapGuardian {
   readonly root: THREE.Object3D;
+  /** Sorte de gardien (choisit la scène de piège, voir trapScenes.ts). */
+  readonly style: TrapStyle;
   /** Son joué quand le gardien surgit. */
   readonly cue: SfxName;
   /** Titre du message affiché (sinon celui de la mécanique). */
@@ -20,6 +22,7 @@ export interface TrapGuardian {
 /** Gant de boxe monté sur un ressort : il jaillit de la porte. Un seul gant, déplacé à la demande. */
 export class BoxingGlove implements TrapGuardian {
   readonly root = new THREE.Group();
+  readonly style = 'glove' as const;
   readonly cue = 'spring' as const;
   private readonly glove = new THREE.Group();
   private readonly spring: THREE.Mesh;
@@ -103,7 +106,7 @@ export class BoxingGlove implements TrapGuardian {
 }
 
 /** Bandelettes : tissu clair enroulé en diagonale, un peu sali. */
-function bandageTexture(): THREE.CanvasTexture {
+export function bandageTexture(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = c.height = 128;
   const ctx = c.getContext('2d')!;
@@ -130,6 +133,7 @@ function bandageTexture(): THREE.CanvasTexture {
 /** Momie gardienne : elle sort de la porte, bras tendus, et repousse le joueur (« BOUH ! »). */
 export class Mummy implements TrapGuardian {
   readonly root = new THREE.Group();
+  readonly style = 'mummy' as const;
   readonly cue = 'groan' as const;
   readonly title = 'Le gardien surgit !';
   private readonly body = new THREE.Group();
@@ -178,37 +182,47 @@ export class Mummy implements TrapGuardian {
   }
 
   strike(tweens: Tweens, doorObject: THREE.Object3D, big: boolean, onHit: () => void): void {
+    this.lunge(tweens, doorObject, 1, big ? 1.4 : 1.1, big ? 1.25 : 1, () => {
+      onHit();
+      this.showBoo(tweens, big ? 1.4 : 1.1, big);
+    });
+  }
+
+  /**
+   * La momie surgit de la porte (jusqu'à `reach` m), reste un instant bras tendus puis rentre, en `duration` s.
+   * `onPeak` est appelé quand elle est le plus loin (pour attraper, frapper ou relâcher le joueur).
+   */
+  lunge(tweens: Tweens, doorObject: THREE.Object3D, duration: number, reach: number, scale = 1, onPeak?: () => void): void {
     this.root.visible = true;
     this.root.position.copy(doorObject.position);
     this.root.quaternion.copy(doorObject.quaternion);
     this.body.position.y = -1.1;
-    this.body.scale.setScalar(big ? 1.25 : 1);
-    const reach = big ? 1.4 : 1.1;
-    let hit = false;
+    this.body.scale.setScalar(scale);
+    let peaked = false;
     tweens.add(
-      1,
+      duration,
       (t) => {
-        // Surgit en titubant, frappe, reste un instant menaçante puis rentre dans la porte.
+        // Surgit en titubant, reste un instant menaçante puis rentre dans la porte.
         const out = t < 0.3 ? easeOutCubic(t / 0.3) : t < 0.6 ? 1 : 1 - easeOutCubic((t - 0.6) / 0.4);
         this.body.position.z = -0.5 + out * (reach + 0.5);
         this.body.rotation.z = Math.sin(t * 22) * 0.07 * out;
         this.arms.forEach((arm, i) => (arm.rotation.x = -0.25 + Math.sin(t * 30 + i * 2) * 0.12 - out * 0.15));
-        if (!hit && t >= 0.27) {
-          hit = true;
-          onHit();
-          this.boo.visible = true;
-          this.boo.position.set(-0.5, 1.2, reach + 0.7);
-        }
-        if (hit) {
-          const k = Math.min(1, (t - 0.27) / 0.12);
-          const fade = t > 0.6 ? 1 - (t - 0.6) / 0.2 : 1;
-          this.boo.scale.setScalar((big ? 2.2 : 1.8) * easeOutCubic(k) * Math.max(0, fade));
+        if (!peaked && t >= 0.27) {
+          peaked = true;
+          onPeak?.();
         }
       },
-      () => {
-        this.root.visible = false;
-        this.boo.visible = false;
-      },
+      () => (this.root.visible = false),
+    );
+  }
+
+  private showBoo(tweens: Tweens, reach: number, big: boolean): void {
+    this.boo.visible = true;
+    this.boo.position.set(-0.5, 1.2, reach + 0.7);
+    tweens.add(
+      0.6,
+      (t) => this.boo.scale.setScalar((big ? 2.2 : 1.8) * easeOutCubic(Math.min(1, t / 0.2)) * (t > 0.55 ? 1 - (t - 0.55) / 0.45 : 1)),
+      () => (this.boo.visible = false),
     );
   }
 }
@@ -249,3 +263,32 @@ export function comicTexture(text: string, fill: string, edge: string, ink: stri
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
+
+/**
+ * Onomatopée qui surgit puis s'efface (« BOUM ! », « BIM ! »…) : sprite toujours visible, à l'échelle `size`,
+ * pendant `life` s. Partagée par les pièges et les mines.
+ */
+export function popComic(scene: THREE.Scene, tweens: Tweens, material: THREE.SpriteMaterial, at: THREE.Vector3, size: number, life = 0.8): void {
+  const sprite = new THREE.Sprite(material);
+  sprite.renderOrder = 10;
+  sprite.position.copy(at);
+  scene.add(sprite);
+  tweens.add(
+    life,
+    (t) => sprite.scale.setScalar(size * easeOutCubic(Math.min(1, t * 4)) * (t > 0.7 ? 1 - (t - 0.7) / 0.3 : 1)),
+    () => scene.remove(sprite),
+  );
+}
+
+/** Matériau d'onomatopée mis en cache (une texture par mot et par couleur). */
+const comicMaterials = new Map<string, THREE.SpriteMaterial>();
+export function comicMaterial(text: string, fill: string, edge: string, ink: string): THREE.SpriteMaterial {
+  const key = [text, fill, edge, ink].join('|');
+  let material = comicMaterials.get(key);
+  if (!material) {
+    material = new THREE.SpriteMaterial({ map: comicTexture(text, fill, edge, ink), transparent: true, depthTest: false });
+    comicMaterials.set(key, material);
+  }
+  return material;
+}
+

@@ -32,13 +32,16 @@ export class World {
   readonly doors: DoorsView;
   /** Gardiens des pièges, un par sorte, créés seulement si le thème les utilise. */
   private readonly guardians: TrapGuardian[];
+  /** Gardiens supplémentaires prêtés aux scènes de piège simultanées (plusieurs joueurs piégés en même temps). */
+  private readonly spareGuardians: TrapGuardian[] = [];
+  private readonly busyGuardians = new Set<TrapGuardian>();
   private readonly updateComponents: (dt: number, time: number) => void;
   private time = 0;
 
   constructor(
     readonly layout: Layout,
     readonly theme: Theme,
-    private readonly tweens: Tweens,
+    tweens: Tweens,
     lowQuality: boolean,
   ) {
     const { config } = layout;
@@ -198,12 +201,24 @@ export class World {
     return this.guardians[(door.floor * 3 + door.ring) % this.guardians.length];
   }
 
-  /** Piège : la porte s'ouvre et son gardien surgit. `onHit` est appelé à l'impact. */
-  punchDoor(door: Door, big: boolean, onHit: () => void): void {
-    const transform = this.doors.transform(door.id);
-    if (!transform) return onHit();
-    this.doors.open(door.id, 0.6);
-    this.guardianFor(door).strike(this.tweens, transform, big, onHit);
+  /**
+   * Prête un gardien de la sorte de cette porte pour une scène de piège (un autre si le premier est déjà en scène),
+   * à rendre avec releaseGuardian à la fin de la scène.
+   */
+  borrowGuardian(door: Door): TrapGuardian {
+    const style = this.guardianFor(door).style;
+    let guardian = [...this.guardians, ...this.spareGuardians].find((g) => g.style === style && !this.busyGuardians.has(g));
+    if (!guardian) {
+      guardian = GUARDIANS[style]();
+      this.spareGuardians.push(guardian);
+      this.scene.add(guardian.root);
+    }
+    this.busyGuardians.add(guardian);
+    return guardian;
+  }
+
+  releaseGuardian(guardian: TrapGuardian): void {
+    this.busyGuardians.delete(guardian);
   }
 
   /** Plus on monte, plus la lumière se réchauffe et s'intensifie (sensation d'ascension). */

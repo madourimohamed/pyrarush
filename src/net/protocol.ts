@@ -74,6 +74,8 @@ export type ServerMessage =
   | { t: 'mineGone'; id: number }
   /** La mine de `owner` a explosé sous `target` : projeté (étage `from` → `to`), protégé par son bouclier, ou encore immunisé. */
   | { t: 'boom'; mine: number; owner: string; target: string; result: 'knocked' | 'shielded' | 'immune'; p: Vec3Tuple; from: number; to: number }
+  /** Un joueur a été piégé (gant ou momie) à `doorId` : les autres rejouent la scène sur son personnage. */
+  | { t: 'trapped'; id: string; doorId: string; from: number; to: number }
   /** Un joueur demande une revanche (elle part quand tous les joueurs restants l'ont demandée). */
   | { t: 'rematch'; id: string }
   | { t: 'error'; message: string };
