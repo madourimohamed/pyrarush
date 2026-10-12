@@ -53,6 +53,8 @@ export interface Peer {
   name: string;
   /** Compte du joueur (exclusions temporaires, limites) ; absent dans certains tests. */
   readonly userId?: string;
+  /** Adresse IP (limite des codes de salle erronés) ; absente dans certains tests. */
+  readonly ip?: string;
   send(message: ServerMessage): void;
 }
 
@@ -515,6 +517,7 @@ export class Lobby {
   readonly rooms = new Map<string, Room>();
   private readonly roomOf = new Map<Peer, Room>();
   private readonly creations: RateLimiter;
+  private readonly joinFailures: RateLimiter;
 
   constructor(
     private readonly levels: Level[],
@@ -522,6 +525,7 @@ export class Lobby {
     private readonly random: () => number = Math.random,
   ) {
     this.creations = new RateLimiter(LIMITS.roomsPerAccount.max, LIMITS.roomsPerAccount.windowMs, () => clock.now());
+    this.joinFailures = new RateLimiter(LIMITS.joinFailuresPerIp.max, LIMITS.joinFailuresPerIp.windowMs, () => clock.now());
   }
 
   handle(peer: Peer, message: ClientMessage): void {
@@ -538,8 +542,14 @@ export class Lobby {
         return;
       }
       case 'join': {
+        // Contre la recherche de codes au hasard : après quelques codes erronés, les essais sont bloqués un moment.
+        const key = peer.ip ?? peer.userId ?? peer.id;
+        if (this.joinFailures.blocked(key)) return peer.send({ t: 'error', message: 'Trop de codes incorrects : réessaie dans une minute.' });
         const target = this.rooms.get(normalizeRoomCode(message.code));
-        if (!target) return peer.send({ t: 'error', message: 'Aucune salle avec ce code.' });
+        if (!target) {
+          this.joinFailures.hit(key);
+          return peer.send({ t: 'error', message: 'Aucune salle avec ce code.' });
+        }
         if (target === room) return;
         if (target.full) return peer.send({ t: 'error', message: 'Cette salle est déjà complète.' });
         if (!target.joinable) return peer.send({ t: 'error', message: 'La partie a déjà commencé : attends la fin de la course.' });

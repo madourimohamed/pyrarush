@@ -1828,9 +1828,9 @@ body.touch #btn-bonus .key,
   padding: 8px;
 }
 .room-code {
-  font-size: 54px;
+  font-size: 44px;
   font-weight: 700;
-  letter-spacing: 0.25em;
+  letter-spacing: 0.18em;
   color: var(--gold);
   text-shadow: 0 0 22px rgba(255, 207, 90, 0.55);
   user-select: all;

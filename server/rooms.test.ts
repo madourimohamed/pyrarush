@@ -3,6 +3,7 @@ import { BOOTS_MS, CLOUD_MS, TRAP_SCENE_MULTI_MS, doorFront, floorY, Game, POWER
 import { levels } from '../src/levels';
 import { COUNTDOWN_MS, FINISH_GRACE_MS, KICK_MS, MAX_PLAYERS, type ServerMessage } from '../src/net/protocol';
 import { Lobby, type Clock, type Peer } from './rooms';
+import { LIMITS } from './security';
 
 /** Horloge manuelle : le temps n'avance que quand le test le décide. */
 function manualClock() {
@@ -68,7 +69,7 @@ describe('multijoueur : salles', () => {
   it('crée une salle avec un code que les autres rejoignent ; à deux, on attend le lancement', () => {
     const { a, b, code } = room(2, { launch: false });
     expect(b.last('room')).toMatchObject({ code, host: 'a', you: 'b' });
-    expect(code).toMatch(/^[A-Z2-9]{4}$/);
+    expect(code).toMatch(/^[A-Z2-9]{6}$/);
     expect(a.last('room')).toMatchObject({ host: 'a', max: MAX_PLAYERS });
     expect(a.last('room')!.players.map((p) => p.name)).toEqual(['Alice', 'Bob']);
     expect(a.last('start')).toBeUndefined(); // à deux, on attend le lancement
@@ -94,7 +95,7 @@ describe('multijoueur : salles', () => {
   it('refuse un code inconnu, une salle complète et une partie déjà commencée', () => {
     const { lobby, code } = room(MAX_PLAYERS);
     const extra = peer('x');
-    lobby.handle(extra, { t: 'join', code: 'ZZZZ' });
+    lobby.handle(extra, { t: 'join', code: 'ZZZZZZ' });
     expect(extra.last('error')?.message).toMatch(/Aucune salle/);
     lobby.handle(extra, { t: 'join', code });
     expect(extra.last('error')?.message).toMatch(/complète/);
@@ -137,6 +138,18 @@ describe('multijoueur : salles', () => {
     const door = mirror.layout.doorsByFloor[1].find((d) => d.mechanic === 'passage')!;
     lobby.handle(a, { t: 'interact', seq: 1, doorId: door.id, p: [500, 0, 500] });
     expect(b.last('floor')).toBeUndefined();
+  });
+
+  it('anti-recherche de codes : après 5 codes erronés en une minute, même le bon code est refusé un moment', () => {
+    const { lobby, code, advance } = room(2, { launch: false });
+    const intruder = { ...peer('x'), ip: '6.6.6.6' };
+    for (let i = 0; i < LIMITS.joinFailuresPerIp.max; i++) lobby.handle(intruder, { t: 'join', code: `AAAAA${i}` });
+    lobby.handle(intruder, { t: 'join', code });
+    expect(intruder.last('error')?.message).toMatch(/Trop de codes/);
+    expect(intruder.last('room')).toBeUndefined();
+    advance(LIMITS.joinFailuresPerIp.windowMs);
+    lobby.handle(intruder, { t: 'join', code });
+    expect(intruder.last('room')?.players.map((p) => p.id)).toContain('x');
   });
 
   it('l’hôte exclut un joueur : il quitte la salle et ne peut revenir qu’après 10 minutes (pas de bannissement définitif)', () => {

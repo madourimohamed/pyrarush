@@ -96,6 +96,7 @@ wss.on('connection', (socket, req) => {
     id: `p${nextId++}`,
     name: account.name,
     userId: account.id,
+    ip,
     send: (message: ServerMessage) => {
       if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(message));
     },

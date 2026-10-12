@@ -104,7 +104,8 @@ export const arrivalsToFinish = (players: number) => Math.max(1, Math.min(PODIUM
 
 /** Codes de salle lisibles, sans caractères ambigus (0/O, 1/I/L). */
 export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-export const ROOM_CODE_LENGTH = 4;
+/** 6 caractères parmi 31 : environ 890 millions de codes (impossible à deviner avec la limite d'essais du serveur). */
+export const ROOM_CODE_LENGTH = 6;
 export const normalizeRoomCode = (code: string) => code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 /** Lecture prudente d'un message reçu (les clients ne sont jamais crus sur parole). */

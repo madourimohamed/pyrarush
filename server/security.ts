@@ -15,6 +15,8 @@ export const LIMITS = {
   apiPerAccount: { max: 60, windowMs: 60_000 },
   /** Sécurisation, changement de nom, par compte. */
   sensitivePerAccount: { max: 10, windowMs: 3600_000 },
+  /** Codes de salle erronés, par adresse IP : au-delà, les essais sont bloqués jusqu'à la fin de la fenêtre. */
+  joinFailuresPerIp: { max: 5, windowMs: 60_000 },
   /** Création de salles, par compte. */
   roomsPerAccount: { max: 15, windowMs: 600_000 },
   /** Connexions multijoueur simultanées par adresse IP. */
@@ -37,6 +39,12 @@ export class RateLimiter {
     private readonly windowMs: number,
     private readonly now: () => number = Date.now,
   ) {}
+
+  /** La limite est-elle déjà atteinte (sans compter de nouvelle action) ? */
+  blocked(key: string): boolean {
+    const entry = this.hits.get(key);
+    return !!entry && entry.until > this.now() && entry.count >= this.max;
+  }
 
   /** Compte une action ; renvoie false si la limite est atteinte (l'action doit être refusée). */
   hit(key: string): boolean {
