@@ -26,7 +26,6 @@ export interface MultiplayerHost {
 
 /** « 1ʳᵉ place », « 2ᵉ place »… */
 const place = (rank: number) => `${rank}${rank === 1 ? 'ʳᵉ' : 'ᵉ'} place`;
-const MEDALS = ['🥇', '🥈', '🥉'];
 
 /**
  * Partie entre amis côté navigateur, quel que soit le nombre de joueurs : salle (créer, rejoindre par code ou par lien,
@@ -335,7 +334,7 @@ export class MultiplayerController {
     $('res-list').innerHTML = ranking
       .map((r) => {
         const detail = r.left ? 'a quitté la partie' : r.time !== undefined ? formatTime(r.time) : `étage ${r.floor}`;
-        return `<li class="${r.rank === 1 ? 'winner' : ''}"><span>${MEDALS[r.rank - 1] ?? `${r.rank}.`} ${escape(r.name)}${r.id === this.me ? ' (toi)' : ''}</span><small>${detail} · ${r.falls} chute${r.falls > 1 ? 's' : ''}</small></li>`;
+        return `<li class="${r.rank === 1 ? 'winner' : ''}"><span><b class="rank r${Math.min(r.rank, 4)}">${r.rank}</b>${escape(r.name)}${r.id === this.me ? ' (toi)' : ''}</span><small>${detail} · ${r.falls} chute${r.falls > 1 ? 's' : ''}</small></li>`;
       })
       .join('');
     $('res-status').textContent = '';

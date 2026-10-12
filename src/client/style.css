@@ -2104,3 +2104,29 @@ body.touch #power-bar .power svg {
   height: 26px;
 }
 
+/* Classement : pastilles or, argent, bronze (dessinées en CSS, sans dépendre des emoji). */
+.results-list li span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.results-list .rank {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 13px;
+  color: #2a1a05;
+  background: rgba(255, 255, 255, 0.35);
+}
+.results-list .rank.r1 {
+  background: radial-gradient(circle at 35% 30%, #fff3b0, #f2b81e);
+}
+.results-list .rank.r2 {
+  background: radial-gradient(circle at 35% 30%, #ffffff, #b9c0c8);
+}
+.results-list .rank.r3 {
+  background: radial-gradient(circle at 35% 30%, #ffd6b0, #c47a3a);
+}
+
