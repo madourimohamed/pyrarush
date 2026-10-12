@@ -19,6 +19,8 @@ import {
   mineSpotValid,
   SEAL_WINDOW_MS,
   TURBO_SPEED,
+  TURBO_MS,
+  BOOTS_MS,
   BOOTS_JUMP,
   type PowerId,
   type BonusId,
@@ -312,6 +314,25 @@ export class GameSession {
 
   setOpponentState(id: string, shield: boolean, turboMs: number, bootsMs: number, immuneMs: number): void {
     this.opponents.get(id)?.setState(shield, turboMs, bootsMs, immuneMs);
+  }
+
+  /** Effets en cours, en fraction du temps restant (anneaux de la barre de pouvoirs) ; le bouclier reste plein tant qu'il tient. */
+  powerTimers(): Partial<Record<PowerId, number>> {
+    return {
+      turbo: Math.max(0, this.turboUntil - this.clock) / TURBO_MS,
+      boots: Math.max(0, this.bootsUntil - this.clock) / BOOTS_MS,
+      shield: this.player.shield ? 1 : 0,
+    };
+  }
+
+  /** Position à l'écran (pixels) du devant d'une porte, pour faire s'envoler l'icône d'un pouvoir gagné. */
+  doorScreenPoint(doorId: string): { x: number; y: number } | null {
+    const door = this.game.doorsById.get(doorId);
+    if (!door) return null;
+    const front = doorFront(this.config, door);
+    const p = new THREE.Vector3(front.x, front.y + 1.4, front.z).project(this.camera.camera);
+    if (p.z > 1) return null;
+    return { x: ((p.x + 1) / 2) * window.innerWidth, y: ((1 - p.y) / 2) * window.innerHeight };
   }
 
   /** Position des pieds (pour poser une mine). */

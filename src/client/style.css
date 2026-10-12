@@ -1950,99 +1950,9 @@ body.multi #btn-new {
   }
 }
 
-/* ---------- Barre de pouvoirs (multijoueur) ---------- */
-#power-bar {
-  position: absolute;
-  left: 50%;
-  bottom: calc(14px + var(--safe-b));
-  display: none;
-  gap: 10px;
-  transform: translateX(-50%);
-  pointer-events: auto;
-}
-body.multi #power-bar {
-  display: flex;
-}
-body.multi #btn-bonus {
-  display: none;
-}
-#power-bar .power {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  padding: 0;
-  border-radius: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.75);
-  color: white;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-  touch-action: none;
-  transition: transform 0.1s, opacity 0.15s, filter 0.15s;
-}
-#power-bar .power svg {
-  width: 30px;
-  height: 30px;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
-}
-#power-bar .turbo {
-  background: linear-gradient(150deg, #3ec6ff, #1b6fd6);
-}
-#power-bar .shield {
-  background: linear-gradient(150deg, #ffd84a, #e08a10);
-}
-#power-bar .seal {
-  background: linear-gradient(150deg, #c58cff, #6a2aa8);
-}
-#power-bar .mine {
-  background: linear-gradient(150deg, #ff7a5a, #b8261a);
-}
-#power-bar .count {
-  position: absolute;
-  right: -6px;
-  top: -6px;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 5px;
-  border-radius: 11px;
-  font-size: 13px;
-  line-height: 22px;
-  color: #2a1a05;
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-}
-#power-bar .key {
-  position: absolute;
-  bottom: -18px;
-  font-size: 11px;
-  color: var(--ink-soft);
-}
-body.touch #power-bar .key {
-  display: none;
-}
-#power-bar .power.empty {
-  opacity: 0.35;
-  filter: grayscale(0.8);
-}
-#power-bar .power.blocked {
-  opacity: 0.6;
-}
-#power-bar .power:active {
-  transform: scale(0.9);
-}
-body.touch #power-bar {
-  bottom: calc(10px + var(--safe-b));
-  gap: 8px;
-}
-body.touch #power-bar .power {
-  width: 50px;
-  height: 50px;
-}
-
-
 /* En multijoueur, le message « Ouvrir la porte » passe au-dessus de la barre de pouvoirs. */
 body.multi #prompt {
-  bottom: calc(96px + var(--safe-b));
+  bottom: calc(118px + var(--safe-b));
 }
 
 /* Nuage de confusion : brouille la vue sans toucher aux commandes (le voile est sous le HUD et les boutons). */
@@ -2086,23 +1996,6 @@ body.multi #prompt {
     transform: translate(6vmax, 3vmax) scale(1.15);
   }
 }
-#power-bar .cloud {
-  background: linear-gradient(150deg, #b9b2d6, #6c6496);
-}
-#power-bar .boots {
-  background: linear-gradient(150deg, #7ee06a, #2c9a3e);
-}
-body.touch #power-bar {
-  gap: 6px;
-}
-body.touch #power-bar .power {
-  width: 46px;
-  height: 46px;
-}
-body.touch #power-bar .power svg {
-  width: 26px;
-  height: 26px;
-}
 
 /* Classement : pastilles or, argent, bronze (dessinées en CSS, sans dépendre des emoji). */
 .results-list li span {
@@ -2129,7 +2022,278 @@ body.touch #power-bar .power svg {
 .results-list .rank.r3 {
   background: radial-gradient(circle at 35% 30%, #ffd6b0, #c47a3a);
 }
-#power-bar .car {
-  background: linear-gradient(150deg, #ffb84a, #e05a1a);
+
+/* ---------- Barre de pouvoirs (multijoueur) ----------
+ * Seuls les pouvoirs possédés (ou en cours d'effet) s'affichent : gros boutons colorés qui « respirent »,
+ * apparition en rebond quand on en gagne un, anneau de temps restant pour un effet actif.
+ * Ordinateur : en bas au centre, avec nom et touche. Mobile : en colonne à droite, sous le pouce, au-dessus du saut.
+ */
+#power-bar {
+  position: absolute;
+  left: 50%;
+  bottom: calc(16px + var(--safe-b));
+  display: none;
+  align-items: flex-end;
+  gap: 14px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+body.multi #power-bar {
+  display: flex;
+}
+#power-bar .power-hint {
+  padding: 8px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  color: var(--ink-soft);
+  background: var(--glass);
+  white-space: nowrap;
+}
+#power-bar.has-powers .power-hint {
+  display: none;
+}
+#power-bar .power {
+  --c1: #fff;
+  --c2: #888;
+  --progress: 0;
+  position: relative;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: white;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#power-bar .power.owned,
+#power-bar .power.running {
+  display: flex;
+}
+#power-bar .orb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  background: radial-gradient(circle at 35% 28%, color-mix(in srgb, var(--c1) 70%, white), var(--c1) 45%, var(--c2));
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--c1) 60%, transparent), 0 6px 18px rgba(0, 0, 0, 0.35);
+  animation: power-breathe 1.8s ease-in-out infinite;
+  transition: transform 0.12s, filter 0.2s, opacity 0.2s;
+}
+#power-bar .orb svg {
+  width: 38px;
+  height: 38px;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35));
+}
+/* Anneau de temps restant (turbo, bottes, bouclier actifs). */
+#power-bar .orb::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: conic-gradient(#fff calc(var(--progress) * 1turn), transparent 0);
+  -webkit-mask: radial-gradient(circle, transparent 41px, #000 42px);
+  mask: radial-gradient(circle, transparent 41px, #000 42px);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+#power-bar .power.running .orb::before {
+  opacity: 0.95;
+}
+#power-bar .count {
+  position: absolute;
+  right: -6px;
+  top: -6px;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 13px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 26px;
+  color: #2a1a05;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+#power-bar .power:not(.owned) .count {
+  display: none;
+}
+#power-bar .label {
+  font-size: 13px;
+  font-weight: 700;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+}
+#power-bar .key {
+  position: absolute;
+  left: -6px;
+  top: -6px;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  font-size: 12px;
+  line-height: 22px;
+  text-align: center;
+  color: var(--ink);
+  background: var(--glass-strong);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+#power-bar .key:empty {
+  display: none;
+}
+#power-bar .power:hover .orb {
+  transform: scale(1.08);
+}
+#power-bar .power:active .orb,
+#power-bar .power.pressed .orb {
+  transform: scale(0.88);
+}
+/* Pas utilisable maintenant (déjà actif, mauvais endroit…) : atténué, sans respiration. */
+#power-bar .power.blocked .orb {
+  animation: none;
+  filter: saturate(0.4) brightness(0.8);
+  opacity: 0.7;
+}
+#power-bar .power.running:not(.owned) .orb {
+  animation: none;
+}
+/* Pouvoir tout juste gagné : rebond, éclat, et « NOUVEAU ! ». */
+#power-bar .power.fresh .orb {
+  animation: power-pop 0.7s cubic-bezier(0.3, 1.8, 0.5, 1), power-breathe 1.8s ease-in-out 0.7s infinite;
+}
+#power-bar .power .new {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #2a1a05;
+  background: var(--gold);
+  transform: translateX(-50%) scale(0);
+  pointer-events: none;
+}
+#power-bar .power.fresh .new {
+  animation: power-new 1.6s ease-out forwards;
+}
+#power-bar .turbo { --c1: #3ec6ff; --c2: #1b6fd6; }
+#power-bar .shield { --c1: #ffd84a; --c2: #d98a10; }
+#power-bar .seal { --c1: #c58cff; --c2: #6a2aa8; }
+#power-bar .mine { --c1: #ff7a5a; --c2: #b8261a; }
+#power-bar .cloud { --c1: #c9c2e6; --c2: #6c6496; }
+#power-bar .boots { --c1: #7ee06a; --c2: #2c9a3e; }
+#power-bar .car { --c1: #ffb84a; --c2: #e05a1a; }
+
+/* Icône qui s'envole de la porte vers la barre quand on gagne un pouvoir. */
+.power-flyer {
+  position: fixed;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  color: white;
+  border: 3px solid #fff;
+  pointer-events: none;
+  box-shadow: 0 0 24px rgba(255, 255, 255, 0.8);
+  transition: transform 0.75s cubic-bezier(0.45, -0.3, 0.6, 1), opacity 0.75s;
+}
+.power-flyer svg {
+  width: 32px;
+  height: 32px;
+}
+
+@keyframes power-breathe {
+  50% {
+    box-shadow: 0 0 22px 4px color-mix(in srgb, var(--c1) 70%, transparent), 0 6px 18px rgba(0, 0, 0, 0.35);
+    transform: translateY(-3px);
+  }
+}
+@keyframes power-pop {
+  0% {
+    transform: scale(0.2);
+  }
+  60% {
+    transform: scale(1.25);
+    box-shadow: 0 0 36px 12px color-mix(in srgb, var(--c1) 80%, transparent);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes power-new {
+  0% {
+    transform: translateX(-50%) scale(0);
+  }
+  15% {
+    transform: translateX(-50%) scale(1.15);
+  }
+  25%,
+  80% {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) translateY(-8px) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Mobile : colonne à droite, sous le pouce, au-dessus des boutons d'action ; pas de touches ni de noms (place). */
+body.touch #power-bar {
+  left: auto;
+  right: calc(26px + var(--safe-r));
+  bottom: calc(132px + var(--safe-b));
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 10px;
+  transform: none;
+}
+body.touch #power-bar .orb {
+  width: 58px;
+  height: 58px;
+}
+body.touch #power-bar .orb svg {
+  width: 32px;
+  height: 32px;
+}
+body.touch #power-bar .orb::before {
+  -webkit-mask: radial-gradient(circle, transparent 35px, #000 36px);
+  mask: radial-gradient(circle, transparent 35px, #000 36px);
+}
+body.touch #power-bar .key,
+body.touch #power-bar .label {
+  display: none;
+}
+body.touch #power-bar .power-hint {
+  max-width: 150px;
+  white-space: normal;
+  text-align: center;
+  font-size: 12px;
+}
+/* Téléphone en paysage, peu de hauteur : deux colonnes au besoin. */
+@media (max-height: 420px) {
+  body.touch #power-bar {
+    bottom: calc(126px + var(--safe-b));
+    max-height: calc(100vh - 190px);
+    flex-wrap: wrap-reverse;
+    gap: 6px;
+  }
+  body.touch #power-bar .orb {
+    width: 50px;
+    height: 50px;
+  }
+  body.touch #power-bar .orb::before {
+    -webkit-mask: radial-gradient(circle, transparent 31px, #000 32px);
+    mask: radial-gradient(circle, transparent 31px, #000 32px);
+  }
 }
 

@@ -4,7 +4,7 @@ import type { SfxName } from '../audio/sfx';
 import type { GameSession } from '../session';
 import { formatTime } from '../ui/hud';
 import type { Hud } from '../ui/hud';
-import { POWER_INFO, renderPowerBar, setupPowerBar } from '../ui/powers';
+import { announcePower, POWER_INFO, renderPowerBar, setupPowerBar, visiblePowers } from '../ui/powers';
 import { RoomConnection } from './connection';
 import { opponentColor } from './opponent';
 
@@ -105,9 +105,9 @@ export class MultiplayerController {
     this.connection.send({ t: 'power', seq: ++this.seq, power, p: [round(p.x), round(p.y), round(p.z)] });
   }
 
-  /** Raccourci clavier : touche 1 = premier pouvoir de la barre, etc. */
+  /** Raccourci clavier : touche 1 = premier pouvoir affiché dans la barre, etc. */
   usePowerAt(index: number): void {
-    const power = POWER_IDS[index];
+    const power = visiblePowers()[index];
     if (power) this.usePower(power);
   }
 
@@ -125,7 +125,7 @@ export class MultiplayerController {
   private renderBar(): void {
     const session = this.session;
     const blockers = Object.fromEntries(POWER_IDS.map((id) => [id, session ? session.powerBlocker(id) : 'Pas maintenant'])) as Record<PowerId, string | null>;
-    renderPowerBar(this.reserve, blockers);
+    renderPowerBar(this.reserve, blockers, session?.powerTimers() ?? {});
   }
 
   private renderFloors(): void {
@@ -176,6 +176,7 @@ export class MultiplayerController {
         break;
       case 'gain':
         session?.powerGained(POWER_INFO[m.power].name, m.doorId);
+        announcePower(m.power, session?.doorScreenPoint(m.doorId) ?? null);
         break;
       case 'state':
         if (m.id !== this.me) session?.setOpponentState(m.id, m.shield, m.turboMs, m.bootsMs, m.immuneMs);
