@@ -4,3 +4,6 @@ dist
 shots/
 dist-server
 *.blend1
+data/
+*.sqlite
+*.sqlite-*
