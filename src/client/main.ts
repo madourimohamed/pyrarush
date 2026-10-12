@@ -15,7 +15,7 @@ import { enterFullscreen, setupFullscreen } from './ui/fullscreen';
 import { MoveTutorial } from './ui/tutorial';
 import { renderVictory } from './ui/victory';
 import { renderBonusButton, renderChests } from './ui/bonus';
-import { DuelController } from './duel/controller';
+import { MultiplayerController } from './multiplayer/controller';
 import { renderLevelCards, renderLevelInfo, renderRecords, showThumbnail, type MenuState } from './ui/menu';
 import { preloadComponents } from './scene/components';
 import { installDebugApi } from './debug/api';
@@ -146,7 +146,7 @@ $('controls-help').textContent = isTouch
   : 'ZQSD / WASD ou flèches : bouger · Espace : sauter · E : ouvrir · glisser la souris : caméra · molette ou C : zoom';
 
 // ---------- Écrans ----------
-const screens = ['screen-menu', 'screen-duel', 'screen-duel-result', 'screen-pause', 'screen-chests', 'screen-victory', 'screen-howto', 'screen-settings', 'screen-records'] as const;
+const screens = ['screen-menu', 'screen-room', 'screen-results', 'screen-pause', 'screen-chests', 'screen-victory', 'screen-howto', 'screen-settings', 'screen-records'] as const;
 type Screen = (typeof screens)[number];
 /** Écrans ouverts par-dessus un autre (menu ou pause), qui y reviennent à la fermeture. */
 const overlays: Screen[] = ['screen-howto', 'screen-settings', 'screen-records'];
@@ -156,7 +156,7 @@ let returnTo: Screen = 'screen-menu';
 function show(screen: Screen | null): void {
   current = screen;
   for (const id of screens) $(id).classList.toggle('show', id === screen);
-  const onMenu = screen === 'screen-menu' || screen === 'screen-duel' || (screen !== null && overlays.includes(screen) && returnTo === 'screen-menu');
+  const onMenu = screen === 'screen-menu' || screen === 'screen-room' || (screen !== null && overlays.includes(screen) && returnTo === 'screen-menu');
   $('hud').style.visibility = onMenu ? 'hidden' : 'visible';
   $('touch').style.visibility = onMenu ? 'hidden' : 'visible';
   if (session) session.attract = onMenu;
@@ -256,7 +256,7 @@ async function showBackground(): Promise<void> {
   session.attract = current === 'screen-menu' || (current !== null && overlays.includes(current));
 }
 
-/** Lance une partie ; `intro` = durée de l'introduction (en duel : le compte à rebours). */
+/** Lance une partie ; `intro` = durée de l'introduction (en multijoueur : le compte à rebours). */
 async function startGame(seed: number, level: Level = selected, intro?: number): Promise<GameSession | null> {
   performance.mark('pyrarush:level-start');
   playing = level;
@@ -275,8 +275,8 @@ async function startGame(seed: number, level: Level = selected, intro?: number):
 }
 
 function onVictory(result: SessionResult): void {
-  // En duel, c'est le serveur qui annonce le vainqueur (écran de résultat du duel, sans coffres ni étoiles).
-  if (duel.active) return;
+  // En multijoueur, c'est le serveur qui annonce le classement (sans coffres ni étoiles).
+  if (multi.active) return;
   const { isRecord, hadPrevious } = progress.recordTime(playing, result.time);
   const stars = starsFor(playing.goals, result.time, result.falls);
   progress.recordStars(playing, stars.stars);
@@ -324,8 +324,8 @@ function refreshBonusButton(): void {
 function useBonus(): void {
   const bonus = progress.bonus();
   if (!bonus) return;
-  // En duel, les bonus solo sont remplacés par les pouvoirs du duel.
-  if (duel.active) return;
+  // En multijoueur, les bonus solo sont remplacés par les pouvoirs.
+  if (multi.active) return;
   if (!session?.useBonus(bonus)) return;
   progress.setBonus(null);
   refreshBonusButton();
@@ -334,8 +334,8 @@ $('btn-bonus').addEventListener('click', useBonus);
 
 function pause(): void {
   if (!session || session.paused || current !== null) return;
-  // En duel la course continue : le menu s'affiche mais rien n'est figé.
-  session.paused = !duel.active;
+  // En multijoueur la course continue : le menu s'affiche mais rien n'est figé.
+  session.paused = !multi.active;
   show('screen-pause');
 }
 
@@ -353,8 +353,8 @@ function backToMenu(): void {
   show('screen-menu');
 }
 
-// ---------- Duel entre amis ----------
-const duel = new DuelController({
+// ---------- Multijoueur entre amis ----------
+const multi = new MultiplayerController({
   levels,
   hud,
   selected: () => selected,
@@ -365,7 +365,7 @@ const duel = new DuelController({
   backToMenu,
   play: (name) => audio.play(name),
 });
-$('btn-duel').addEventListener('click', () => duel.open());
+$('btn-multi').addEventListener('click', () => multi.open());
 
 // ---------- Boutons et raccourcis ----------
 $('btn-play').addEventListener('click', () => {
@@ -377,7 +377,7 @@ $('btn-pause').addEventListener('click', pause);
 $('btn-resume').addEventListener('click', resume);
 $('btn-restart').addEventListener('click', () => session && startGame(session.seed, playing));
 $('btn-new').addEventListener('click', () => startGame(randomSeed(), playing));
-$('btn-menu').addEventListener('click', () => (duel.active ? duel.quit() : backToMenu()));
+$('btn-menu').addEventListener('click', () => (multi.active ? multi.quit() : backToMenu()));
 $('btn-v-next').addEventListener('click', () => {
   const next = levels[playing.number];
   if (!next) return;
@@ -404,7 +404,7 @@ window.addEventListener('keydown', (e) => {
   if (current === null && !(e.target instanceof HTMLInputElement)) {
     if (e.code === 'KeyC') setZoom((zoom + 1) % 3, true);
     if (e.code === 'KeyB') useBonus();
-    if (duel.active && /^Digit[1-6]$/.test(e.code)) duel.usePowerAt(Number(e.code.slice(5)) - 1);
+    if (multi.active && /^Digit[1-6]$/.test(e.code)) multi.usePowerAt(Number(e.code.slice(5)) - 1);
     if (e.code === 'Equal' || e.code === 'NumpadAdd') setZoom(zoom - 1, true);
     if (e.code === 'Minus' || e.code === 'NumpadSubtract') setZoom(zoom + 1, true);
   }
@@ -451,9 +451,9 @@ void showBackground().then(() => performance.measure('pyrarush:menu-ready', 'pyr
 resize();
 setZoom(zoom);
 show('screen-menu');
-// Lien d'invitation à un duel : ?salle=CODE ouvre directement la salle.
+// Lien d'invitation : ?salle=CODE ouvre directement la salle.
 const invite = params.get('salle');
-if (invite) duel.open(invite);
+if (invite) multi.open(invite);
 
 let last = performance.now();
 renderer.renderer.setAnimationLoop((now) => {

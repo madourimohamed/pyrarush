@@ -27,7 +27,7 @@ import {
   type Vec3,
 } from '../core';
 import type { SfxName } from './audio/sfx';
-import { Rival } from './duel/rival';
+import { Opponent } from './multiplayer/opponent';
 import type { Vec3Tuple } from '../net/protocol';
 import { FollowCamera, menuCamera, type ZoomLevel } from './camera';
 import type { Input } from './input/input';
@@ -49,15 +49,15 @@ export interface SoundPlayer {
   setIntensity?(level: number): void;
 }
 /**
- * Liaison réseau d'un duel (absente en solo) : la session applique ses actions localement, tout de suite,
+ * Liaison réseau d'une partie multijoueur (absente en solo) : la session applique ses actions localement, tout de suite,
  * et les transmet au serveur qui les rejoue sur sa partie.
  */
-export interface DuelLink {
+export interface NetLink {
   interact(doorId: string, p: Vec3): void;
   floor(floor: number): void;
   pos(p: Vec3, ry: number): void;
 }
-/** Fréquence d'envoi de la position en duel. */
+/** Fréquence d'envoi de la position en multijoueur. */
 const POS_INTERVAL = 1 / 15;
 
 const TRAP_FX = new Set(['smallTrap', 'bigTrap', 'riskyLose']);
@@ -112,9 +112,9 @@ export class GameSession {
   private attractTime = 0;
   /** Étage le plus haut déjà atteint dans cette partie (pour la bannière de nouvel étage). */
   private highest = 1;
-  /** Duel : liaison au serveur, adversaire affiché, minuterie d'envoi de la position. */
-  net: DuelLink | null = null;
-  private rival: Rival | null = null;
+  /** Multijoueur : liaison au serveur, adversaires affichés (par identifiant), minuterie d'envoi de la position. */
+  net: NetLink | null = null;
+  private readonly opponents = new Map<string, Opponent>();
   private posTimer = 0;
   private mines: Mines | null = null;
   private trail: Trail | null = null;
@@ -126,7 +126,7 @@ export class GameSession {
   private pendingFloor: number | null = null;
   /** Mines posées par le joueur (pour la limite). */
   private ownMines = new Set<number>();
-  /** En duel, l'introduction sert de compte à rebours : on ne peut pas la passer. */
+  /** En multijoueur, l'introduction sert de compte à rebours : on ne peut pas la passer. */
   introSkippable = true;
   /** Passage montré par l'Œil de Râ, jusqu'à `until` (ms de jeu). */
   private eyeReveal: { doorId: string; until: number } | null = null;
@@ -270,28 +270,41 @@ export class GameSession {
     );
     // De loin, une flèche au-dessus du personnage aide à le repérer.
     this.character.setMarker(this.camera.zoomSmooth);
-    this.updateDuel(dt);
+    this.updateMultiplayer(dt);
   }
 
-  // ---------- Duel ----------
+  // ---------- Multijoueur ----------
 
-  /** Duel : chaque joueur part d'un côté du point de départ (x en mètres), pour ne pas apparaître l'un dans l'autre. */
+  /** Chaque joueur part à sa place, à côté du point de départ (x en mètres), pour ne pas apparaître l'un dans l'autre. */
   shiftStart(x: number): void {
     const p = spawnPoint(this.config);
     this.body.teleport({ ...p, x: p.x + x });
     this.syncCharacter();
   }
 
-  /** Duel : affiche l'adversaire et prépare les effets des pouvoirs (mines, traînée du turbo). */
-  addRival(name: string): void {
-    this.rival = new Rival(name, this.world.scene);
-    this.world.scene.add(this.rival.character.root);
-    this.mines = new Mines(this.world.scene, this.tweens, this.world.theme.top);
-    this.trail = new Trail(this.world.scene, 0x9ad8ff);
+  /** Prépare les effets des pouvoirs (mines, traînée du turbo et des bottes). */
+  enableMultiplayer(): void {
+    this.mines ??= new Mines(this.world.scene, this.tweens, this.world.theme.top);
+    this.trail ??= new Trail(this.world.scene, 0x9ad8ff);
   }
 
-  setRivalState(shield: boolean, turboMs: number, bootsMs: number, immuneMs: number): void {
-    this.rival?.setState(shield, turboMs, bootsMs, immuneMs);
+  /** Affiche un adversaire, avec la couleur de son écharpe. */
+  addOpponent(id: string, name: string, color: number): void {
+    const opponent = new Opponent(name, color, this.world.scene);
+    this.opponents.set(id, opponent);
+    this.world.scene.add(opponent.character.root);
+  }
+
+  /** Un adversaire a quitté la partie. */
+  removeOpponent(id: string): void {
+    const opponent = this.opponents.get(id);
+    if (!opponent) return;
+    this.world.scene.remove(opponent.character.root);
+    this.opponents.delete(id);
+  }
+
+  setOpponentState(id: string, shield: boolean, turboMs: number, bootsMs: number, immuneMs: number): void {
+    this.opponents.get(id)?.setState(shield, turboMs, bootsMs, immuneMs);
   }
 
   /** Position des pieds (pour poser une mine). */
@@ -311,7 +324,7 @@ export class GameSession {
       case 'boots':
         return this.clock < this.bootsUntil ? 'Bottes déjà actives' : null;
       case 'cloud':
-        return this.rival ? null : 'Pas d’adversaire';
+        return this.opponents.size > 0 ? null : 'Pas d’adversaire';
       case 'shield':
         return this.player.shield ? 'Bouclier déjà actif' : null;
       case 'seal': {
@@ -396,18 +409,18 @@ export class GameSession {
     this.handle(this.game.knockDown(PLAYER_ID, this.clock));
   }
 
-  /** Sceau annoncé par le serveur (le sien ou celui de l'adversaire). */
-  applySeal(doorId: string, own: boolean, ms: number): void {
-    this.handle(this.game.applySeal(doorId, own ? PLAYER_ID : 'rival', this.clock + ms));
-    if (own) this.hud.showToast('Porte scellée !', 'good', 1.8, 'Bloquée 10 s pour ton adversaire');
+  /** Sceau annoncé par le serveur (le sien ou celui d'un adversaire, `owner`). */
+  applySeal(doorId: string, own: boolean, owner: string, ms: number): void {
+    this.handle(this.game.applySeal(doorId, own ? PLAYER_ID : owner, this.clock + ms));
+    if (own) this.hud.showToast('Porte scellée !', 'good', 1.8, 'Bloquée 10 s pour tes adversaires');
   }
 
-  rivalMoved(p: Vec3Tuple, ry: number): void {
-    this.rival?.moveTo(p, ry);
+  opponentMoved(id: string, p: Vec3Tuple, ry: number): void {
+    this.opponents.get(id)?.moveTo(p, ry);
   }
 
   /** L'adversaire a trouvé un passage : on le voit aussi, quelques secondes (entraide indirecte). */
-  rivalReveal(doorId: string, ms: number, name: string): void {
+  opponentReveal(doorId: string, ms: number, name: string): void {
     if (!this.game.doorsById.has(doorId) || ms <= 0) return;
     this.game.reveals.set(doorId, this.clock + ms);
     this.world.setReveal(doorId, true);
@@ -428,15 +441,15 @@ export class GameSession {
     this.onAltitude(floor);
   }
 
-  /** Fin du duel décidée par le serveur : la partie s'arrête pour tout le monde. */
-  endDuel(): void {
+  /** Fin de la partie décidée par le serveur : elle s'arrête pour tout le monde. */
+  endRace(): void {
     this.finished = true;
     this.lock();
   }
 
-  private updateDuel(dt: number): void {
-    this.rival?.update(dt, this.camera.zoomSmooth, this.camera.camera);
-    if (this.rival) {
+  private updateMultiplayer(dt: number): void {
+    for (const opponent of this.opponents.values()) opponent.update(dt, this.camera.zoomSmooth, this.camera.camera);
+    if (this.trail) {
       const turbo = this.clock < this.turboUntil;
       const boots = this.clock < this.bootsUntil;
       this.body.speedScale = turbo ? TURBO_SPEED : 1;
@@ -823,7 +836,7 @@ export class GameSession {
     this.world.update(dt);
     this.character.animate(dt, 0, 0, 0, true);
     this.camera.update(dt, this.character.root.position, this.world.pyramidHalf, this.config.floors * FLOOR_HEIGHT, 0);
-    this.updateDuel(dt);
+    this.updateMultiplayer(dt);
   }
 
   /**

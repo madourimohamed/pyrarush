@@ -2,7 +2,8 @@ import { doorFront, floorAtY, floorY, holeTangent, sideCoords, terraceOuterHalf,
 import type { Layout } from './types';
 
 /**
- * Règles du duel (TypeScript pur, partagé par le navigateur et le serveur) : pouvoirs, réglages, mines.
+ * Règles du multijoueur (TypeScript pur, partagé par le navigateur et le serveur) : pouvoirs, réglages, mines,
+ * classement. Rien ne suppose un nombre de joueurs : chaque règle reçoit la liste des autres joueurs.
  * L'état (pouvoirs cachés derrière les portes, réserves, mines posées, immunités) est tenu par le serveur seul,
  * pour éviter la triche ; le moteur (Game) gère les sceaux et les coups. La pyramide est celle du solo.
  * Tous les réglages d'équilibrage sont ici.
@@ -59,14 +60,67 @@ export const POWER_DISPLAY_MAX = 9;
  * le joueur en retard reçoit plutôt de quoi revenir (turbo, bouclier), celui en tête de quoi ralentir l'autre.
  */
 export type Standing = 'behind' | 'tied' | 'ahead';
+
+/** Ce qu'une règle a besoin de savoir des autres joueurs. */
+export interface Contender {
+  id: string;
+  floor: number;
+}
 export const POWER_ODDS: Record<Standing, PowerReserve> = {
   behind: { turbo: 30, shield: 25, seal: 6, mine: 10, cloud: 9, boots: 20 },
   tied: { turbo: 17, shield: 17, seal: 16, mine: 17, cloud: 16, boots: 17 },
   ahead: { turbo: 10, shield: 15, seal: 22, mine: 25, cloud: 20, boots: 8 },
 };
 
-export function standing(myFloor: number, rivalFloor: number): Standing {
-  return myFloor < rivalFloor ? 'behind' : myFloor > rivalFloor ? 'ahead' : 'tied';
+/** Place relative d'un joueur : seul en tête = 'ahead', seul dernier = 'behind', sinon (au milieu, ou égalité) 'tied'. */
+export function standing(myFloor: number, otherFloors: number[]): Standing {
+  const above = otherFloors.filter((f) => f > myFloor).length;
+  const below = otherFloors.filter((f) => f < myFloor).length;
+  if (above === 0 && below > 0) return 'ahead';
+  if (below === 0 && above > 0) return 'behind';
+  return 'tied';
+}
+
+/**
+ * Cible du Nuage de confusion : le joueur juste devant soi (le plus bas parmi ceux qui sont plus haut) ;
+ * si l'on est en tête, le deuxième. Égalités départagées par `random` (dans [0, 1)).
+ */
+export function cloudTarget(myFloor: number, others: Contender[], random: number): string | null {
+  if (others.length === 0) return null;
+  const ahead = others.filter((o) => o.floor > myFloor);
+  const pool = ahead.length > 0 ? ahead : others;
+  const best = ahead.length > 0 ? Math.min(...pool.map((o) => o.floor)) : Math.max(...pool.map((o) => o.floor));
+  const candidates = pool.filter((o) => o.floor === best);
+  return candidates[Math.floor(random * candidates.length)].id;
+}
+
+/** Écarts (m) au point de départ pour `count` joueurs : côte à côte, centrés. */
+export function startOffsets(count: number, spacing = 1.4): number[] {
+  return Array.from({ length: count }, (_, i) => (i - (count - 1) / 2) * spacing);
+}
+
+/** Ce qu'il faut savoir d'un joueur pour le classer. */
+export interface Standings {
+  id: string;
+  /** Temps d'arrivée au sommet (absent s'il ne l'a pas atteint). */
+  time?: number;
+  floor: number;
+  falls: number;
+  left?: boolean;
+}
+
+/**
+ * Classement final : d'abord les arrivés (par temps), puis les autres par étage atteint (puis moins de chutes),
+ * ceux qui ont quitté la partie en dernier.
+ */
+export function rankPlayers<T extends Standings>(players: T[]): T[] {
+  const key = (p: T) => [p.left ? 1 : 0, p.time === undefined ? 1 : 0, p.time ?? 0, -p.floor, p.falls];
+  return [...players].sort((a, b) => {
+    const ka = key(a);
+    const kb = key(b);
+    for (let i = 0; i < ka.length; i++) if (ka[i] !== kb[i]) return ka[i] - kb[i];
+    return 0;
+  });
 }
 
 /** Tire un pouvoir ; `random` dans [0, 1). */

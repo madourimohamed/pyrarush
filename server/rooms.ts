@@ -9,8 +9,10 @@ import {
   MINE_ARM_MS,
   MINE_LIFETIME_MS,
   MINE_MAX_ACTIVE,
+  cloudTarget,
   pickPower,
   powerSpotCount,
+  rankPlayers,
   POWER_RESPAWN_MS,
   randomSeed,
   standing,
@@ -23,13 +25,16 @@ import {
   type Vec3,
 } from '../src/core';
 import {
-  DUEL_COUNTDOWN_MS,
-  DUEL_PLAYERS,
+  arrivalsToFinish,
+  COUNTDOWN_MS,
+  FINISH_GRACE_MS,
+  MAX_PLAYERS,
+  MIN_PLAYERS,
   ROOM_CODE_ALPHABET,
   ROOM_CODE_LENGTH,
   normalizeRoomCode,
   type ClientMessage,
-  type DuelResult,
+  type PlayerResult,
   type RoomPlayer,
   type ServerMessage,
   type Vec3Tuple,
@@ -58,8 +63,11 @@ export const realClock: Clock = {
 
 type RoomState = 'waiting' | 'countdown' | 'racing' | 'finished';
 
-/** État de duel d'un joueur, tenu par le serveur (fait foi). */
+/** État multijoueur d'un participant, tenu par le serveur (fait foi). */
 interface Fighter {
+  name: string;
+  /** A quitté la partie en cours de route (il reste au classement, en dernier). */
+  left: boolean;
   powers: PowerReserve;
   turboUntil: number;
   bootsUntil: number;
@@ -79,17 +87,23 @@ interface Mine {
 }
 
 /**
- * Une salle de duel : deux joueurs, une pyramide, une course. Le serveur rejoue les actions de chacun
- * sur sa propre partie (le même moteur que le navigateur) et fait autorité : pouvoirs, mines, sceaux, coups, vainqueur.
+ * Une salle multijoueur : de MIN_PLAYERS à MAX_PLAYERS joueurs, une pyramide, une course. Le serveur rejoue les actions
+ * de chacun sur sa propre partie (le même moteur que le navigateur) et fait autorité : pouvoirs, mines, sceaux, coups,
+ * arrivées et classement. Aucune règle ne suppose un nombre de joueurs.
  */
 export class Room {
+  /** Joueurs connectés à la salle ; le premier est l'hôte (il lance la partie). */
   readonly peers: Peer[] = [];
   state: RoomState = 'waiting';
   private game: Game | null = null;
   private startAt = 0;
   private rematch = new Set<string>();
   private cancelStart: (() => void) | null = null;
+  private cancelGrace: (() => void) | null = null;
+  /** Participants de la course en cours (ordre de départ), même ceux qui sont partis depuis. */
   private fighters = new Map<string, Fighter>();
+  /** Arrivées au sommet, dans l'ordre. */
+  private arrivals: string[] = [];
   private mines = new Map<number, Mine>();
   private nextMine = 1;
   /** Portes vides qui cachent un pouvoir en ce moment (secret : jamais envoyé aux navigateurs). */
@@ -106,13 +120,23 @@ export class Room {
   ) {}
 
   get full(): boolean {
-    return this.peers.length >= DUEL_PLAYERS;
+    return this.peers.length >= MAX_PLAYERS;
+  }
+
+  /** On rejoint une salle en attente, ou entre deux courses (on participera à la revanche). */
+  get joinable(): boolean {
+    return !this.full && (this.state === 'waiting' || this.state === 'finished');
+  }
+
+  get host(): Peer | undefined {
+    return this.peers[0];
   }
 
   add(peer: Peer): void {
     this.peers.push(peer);
     this.broadcastRoom();
-    if (this.full) this.start();
+    // Salle pleine : la partie part toute seule.
+    if (this.full && this.state === 'waiting') this.start();
   }
 
   remove(peer: Peer): void {
@@ -120,12 +144,12 @@ export class Room {
     if (index < 0) return;
     this.peers.splice(index, 1);
     this.rematch.delete(peer.id);
-    if ((this.state === 'countdown' || this.state === 'racing') && this.peers.length > 0) {
-      this.finish(this.peers[0].id, 'forfeit', [...this.peers, peer]);
-    } else if (this.state !== 'waiting') {
-      this.state = 'waiting';
+    const fighter = this.fighters.get(peer.id);
+    if (fighter && (this.state === 'countdown' || this.state === 'racing')) {
+      fighter.left = true;
+      for (const mine of [...this.mines.values()]) if (mine.owner === peer.id) this.removeMine(mine.id);
+      this.checkFinish();
     }
-    this.cancelStart?.();
     this.broadcastRoom();
   }
 
@@ -164,11 +188,14 @@ export class Room {
         if (fighter.powers[message.power] > 0 && this.usePower(peer, fighter, message.power, message.p)) fighter.powers[message.power]--;
         this.sendSelf(peer);
         return;
+      case 'launch':
+        if (peer === this.host && this.state === 'waiting' && this.peers.length >= MIN_PLAYERS) this.start();
+        return;
       case 'rematch':
         if (this.state !== 'finished') return;
         this.rematch.add(peer.id);
         this.others(peer, { t: 'rematch', id: peer.id });
-        if (this.full && this.peers.every((p) => this.rematch.has(p.id))) this.start();
+        if (this.peers.length >= MIN_PLAYERS && this.peers.every((p) => this.rematch.has(p.id))) this.start();
         return;
       default:
         return;
@@ -182,15 +209,16 @@ export class Room {
     this.game = new Game(this.level.config, seed);
     this.hidePowers(this.game);
     this.fighters.clear();
+    this.arrivals = [];
     for (const peer of this.peers) {
       this.game.addPlayer(peer.id);
-      this.fighters.set(peer.id, { powers: emptyReserve(), turboUntil: 0, bootsUntil: 0, immuneUntil: 0, pos: null, seq: 0 });
+      this.fighters.set(peer.id, { name: peer.name, left: false, powers: emptyReserve(), turboUntil: 0, bootsUntil: 0, immuneUntil: 0, pos: null, seq: 0 });
     }
     this.state = 'countdown';
-    this.startAt = this.clock.now() + DUEL_COUNTDOWN_MS;
-    this.broadcast({ t: 'start', seed, level: this.level.number, inMs: DUEL_COUNTDOWN_MS });
+    this.startAt = this.clock.now() + COUNTDOWN_MS;
+    this.broadcast({ t: 'start', seed, level: this.level.number, inMs: COUNTDOWN_MS, order: this.peers.map((p) => p.id) });
     this.cancelStart?.();
-    this.cancelStart = this.clock.later(DUEL_COUNTDOWN_MS, () => {
+    this.cancelStart = this.clock.later(COUNTDOWN_MS, () => {
       if (this.state === 'countdown') this.state = 'racing';
     });
   }
@@ -215,7 +243,11 @@ export class Room {
         this.broadcastState(peer);
         return true;
       case 'cloud': {
-        const target = this.peers.find((p) => p !== peer);
+        // Le joueur juste devant (ou le deuxième si l'on est en tête), parmi ceux encore en course.
+        const others = this.racing().filter((p) => p !== peer);
+        const contenders = others.map((p) => ({ id: p.id, floor: game.players.get(p.id)!.floor }));
+        const targetId = cloudTarget(game.players.get(peer.id)!.floor, contenders, this.random());
+        const target = others.find((p) => p.id === targetId);
         if (!target) return false;
         target.send({ t: 'cloud', from: peer.id, ms: CLOUD_MS });
         return true;
@@ -246,6 +278,7 @@ export class Room {
   /** Le joueur s'est déplacé : a-t-il marché sur une mine adverse armée ? */
   private checkMines(peer: Peer, fighter: Fighter, from: Vec3, to: Vec3): void {
     const now = this.raceTime();
+    if (this.game!.players.get(peer.id)!.finishedAt !== undefined) return;
     for (const mine of this.mines.values()) {
       if (mine.owner === peer.id || now < mine.armedAt || !mineTriggered(mine.p, from, to)) continue;
       this.removeMine(mine.id, false);
@@ -256,7 +289,7 @@ export class Room {
       const after = this.game!.players.get(peer.id)!.floor;
       if (!immune && !shielded) fighter.immuneUntil = now + IMMUNITY_MS;
       const result = immune ? 'immune' : shielded ? 'shielded' : 'knocked';
-      this.broadcast({ t: 'boom', mine: mine.id, target: peer.id, result, p: [mine.p.x, mine.p.y, mine.p.z], from: before, to: after });
+      this.broadcast({ t: 'boom', mine: mine.id, owner: mine.owner, target: peer.id, result, p: [mine.p.x, mine.p.y, mine.p.z], from: before, to: after });
       this.apply(peer, events);
       this.sendSelf(peer);
       this.broadcastState(peer);
@@ -264,7 +297,7 @@ export class Room {
     }
   }
 
-  /** Ce que l'adversaire doit savoir des événements d'un joueur ; le pouvoir des portes à pouvoir ; la victoire. */
+  /** Ce que les autres joueurs doivent savoir des événements d'un joueur ; les pouvoirs cachés ; les arrivées. */
   private apply(peer: Peer, events: GameEvent[]): void {
     for (const event of events) {
       if (event.type === 'publicReveal') {
@@ -276,7 +309,7 @@ export class Room {
       } else if (event.type === 'shielded') {
         this.broadcastState(peer);
       } else if (event.type === 'victory') {
-        this.finish(peer.id, 'summit', this.peers);
+        this.arrive(peer, event.time);
       }
     }
   }
@@ -313,13 +346,12 @@ export class Room {
     this.grant(peer, doorId);
   }
 
-  /** Tirage du pouvoir selon le classement (le joueur en retard reçoit plutôt de quoi revenir). */
+  /** Tirage du pouvoir selon le classement (le dernier reçoit plutôt de quoi revenir, le premier de quoi gêner). */
   private grant(peer: Peer, doorId: string): void {
     const fighter = this.fighters.get(peer.id)!;
-    const me = this.game!.players.get(peer.id)!.floor;
-    const rival = this.peers.find((p) => p !== peer);
-    const rivalFloor = rival ? (this.game!.players.get(rival.id)?.floor ?? me) : me;
-    const power = pickPower(standing(me, rivalFloor), this.random());
+    const game = this.game!;
+    const others = this.racing().filter((p) => p !== peer).map((p) => game.players.get(p.id)!.floor);
+    const power = pickPower(standing(game.players.get(peer.id)!.floor, others), this.random());
     fighter.powers[power]++;
     peer.send({ t: 'gain', power, doorId });
   }
@@ -364,34 +396,65 @@ export class Room {
     if (notify) this.broadcast({ t: 'mineGone', id });
   }
 
-  /** Mines posées et réapparitions de pouvoirs en attente. */
+  /** Participants encore en course : connectés, pas encore arrivés au sommet. */
+  private racing(): Peer[] {
+    return this.peers.filter((p) => this.fighters.has(p.id) && this.game?.players.get(p.id)?.finishedAt === undefined);
+  }
+
+  /** Un joueur atteint le sommet : sa place est annoncée ; la première arrivée lance le délai de fin. */
+  private arrive(peer: Peer, time: number): void {
+    this.arrivals.push(peer.id);
+    this.broadcast({ t: 'arrived', id: peer.id, rank: this.arrivals.length, time });
+    if (this.arrivals.length === 1) this.cancelGrace = this.clock.later(FINISH_GRACE_MS, () => this.finish('time'));
+    this.checkFinish();
+  }
+
+  /** Fin de partie : podium atteint, ou plus personne (ou plus qu'un joueur) pour disputer une place. */
+  private checkFinish(): void {
+    if (this.state !== 'countdown' && this.state !== 'racing') return;
+    const stillRacing = this.racing().length;
+    if (this.arrivals.length >= arrivalsToFinish(this.fighters.size)) this.finish('podium');
+    else if (stillRacing <= 1) this.finish(this.arrivals.length === 0 ? 'forfeit' : 'podium');
+  }
+
+  /** Mines posées, réapparitions de pouvoirs, départ et délai de fin en attente. */
   private clearTimers(): void {
+    this.cancelStart?.();
+    this.cancelGrace?.();
+    this.cancelStart = this.cancelGrace = null;
     for (const mine of this.mines.values()) mine.cancel();
     this.mines.clear();
     this.respawns.forEach((cancel) => cancel());
     this.respawns = [];
   }
 
-  private finish(winner: string, reason: 'summit' | 'forfeit', peers: Peer[]): void {
+  /** Classement final de tous les participants (ceux partis en cours de route en dernier). */
+  private finish(reason: 'podium' | 'time' | 'forfeit'): void {
+    if (this.state === 'finished') return;
     this.state = 'finished';
     this.clearTimers();
-    const results: DuelResult[] = peers.map((p) => {
-      const player = this.game?.players.get(p.id);
+    const results = [...this.fighters].map(([id, fighter]) => {
+      const player = this.game?.players.get(id);
       return {
-        id: p.id,
-        name: p.name,
+        id,
+        name: fighter.name,
         floor: player?.floor ?? 1,
         falls: player?.falls ?? 0,
         doorsTested: player?.doorsTested ?? 0,
         ...(player?.finishedAt !== undefined && { time: player.finishedAt }),
+        ...(fighter.left && { left: true }),
       };
     });
-    this.broadcast({ t: 'finish', winner, reason, results });
+    const ranking: PlayerResult[] = rankPlayers(results).map((r, i) => ({ ...r, rank: i + 1 }));
+    this.broadcast({ t: 'finish', reason, ranking });
   }
 
   private broadcastRoom(): void {
     const players: RoomPlayer[] = this.peers.map((p) => ({ id: p.id, name: p.name }));
-    for (const peer of this.peers) peer.send({ t: 'room', code: this.code, level: this.level.number, powers: this.density, you: peer.id, players });
+    const host = this.host?.id ?? '';
+    for (const peer of this.peers) {
+      peer.send({ t: 'room', code: this.code, level: this.level.number, powers: this.density, you: peer.id, host, max: MAX_PLAYERS, players });
+    }
   }
 
   private broadcast(message: ServerMessage): void {
@@ -432,6 +495,7 @@ export class Lobby {
         if (!target) return peer.send({ t: 'error', message: 'Aucune salle avec ce code.' });
         if (target === room) return;
         if (target.full) return peer.send({ t: 'error', message: 'Cette salle est déjà complète.' });
+        if (!target.joinable) return peer.send({ t: 'error', message: 'La partie a déjà commencé : attends la fin de la course.' });
         this.leave(peer);
         peer.name = cleanName(message.name);
         this.enter(peer, target);

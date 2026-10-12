@@ -1,7 +1,7 @@
 import type { ClientMessage, ServerMessage } from '../../net/protocol';
 
 /** Connexion WebSocket au serveur de salles (même adresse que le jeu, chemin /ws). */
-export class DuelConnection {
+export class RoomConnection {
   private socket: WebSocket | null = null;
   onMessage: (message: ServerMessage) => void = () => {};
   /** Connexion perdue (serveur arrêté, réseau coupé). */

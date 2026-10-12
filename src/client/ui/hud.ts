@@ -77,11 +77,17 @@ export class Hud {
     banner.classList.add('show');
   }
 
-  /** Duel : étage de l'adversaire sur l'échelle (null = pas d'adversaire). */
-  setRivalFloor(floor: number | null): void {
+  /** Multijoueur : une pastille de la couleur de chaque adversaire à son étage, sur l'échelle (liste vide = solo). */
+  setOpponentFloors(opponents: { floor: number; color: number }[]): void {
     for (const rung of Array.from(this.ladder.children) as HTMLElement[]) {
       const f = rung.classList.contains('summit') ? this.floors + 1 : Number(rung.dataset.floor);
-      rung.classList.toggle('rival', f === floor);
+      rung.querySelector('.opponents')?.remove();
+      const here = opponents.filter((o) => o.floor === f);
+      if (!here.length) continue;
+      const dots = document.createElement('span');
+      dots.className = 'opponents';
+      dots.innerHTML = here.map((o) => `<i style="background:#${o.color.toString(16).padStart(6, '0')}"></i>`).join('');
+      rung.appendChild(dots);
     }
   }
 

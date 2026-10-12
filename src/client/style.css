@@ -1775,8 +1775,8 @@ body.touch #btn-bonus .key,
   }
 }
 
-/* ---------- Duel ---------- */
-.duel-btn {
+/* ---------- Multijoueur : salle et classement ---------- */
+.multi-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1785,34 +1785,34 @@ body.touch #btn-bonus .key,
   padding: 10px;
   width: 100%;
 }
-.duel-btn .icon {
+.multi-btn .icon {
   width: 20px;
   height: 20px;
 }
-.duel-card {
+.room-card {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.duel-lead {
+.room-lead {
   margin: 0;
   color: var(--ink-soft);
 }
-#duel-home,
-#duel-wait {
+#room-home,
+#room-wait {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.duel-card.waiting #duel-home,
-.duel-card:not(.waiting) #duel-wait {
+.room-card.waiting #room-home,
+.room-card:not(.waiting) #room-wait {
   display: none;
 }
-.duel-join {
+.room-join {
   display: flex;
   gap: 8px;
 }
-#duel-code {
+#room-code-input {
   flex: 1;
   min-width: 0;
   font-family: var(--font);
@@ -1835,15 +1835,15 @@ body.touch #btn-bonus .key,
   text-shadow: 0 0 22px rgba(255, 207, 90, 0.55);
   user-select: all;
 }
-.duel-share {
+.room-share {
   display: flex;
   gap: 8px;
 }
-.duel-share button {
+.room-share button {
   flex: 1;
 }
-.duel-players,
-.duel-results {
+.room-players,
+.results-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1852,8 +1852,8 @@ body.touch #btn-bonus .key,
   gap: 6px;
   text-align: left;
 }
-.duel-players li,
-.duel-results li {
+.room-players li,
+.results-list li {
   display: flex;
   justify-content: space-between;
   gap: 10px;
@@ -1861,47 +1861,47 @@ body.touch #btn-bonus .key,
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.07);
 }
-.duel-players li.empty {
+.room-players li.empty {
   color: var(--ink-soft);
   font-style: italic;
 }
-.duel-results li.winner {
+.results-list li.winner {
   background: rgba(255, 207, 90, 0.18);
   color: var(--gold);
 }
-.duel-results small {
+.results-list small {
   color: var(--ink-soft);
 }
-.duel-status {
+.room-status {
   min-height: 22px;
   margin: 0;
   color: var(--gold);
   font-weight: 600;
 }
-.duel-status.error {
+.room-status.error {
   color: #ff8a7a;
 }
-#btn-dr-rematch:disabled {
+#btn-res-rematch:disabled {
   opacity: 0.7;
 }
 
-/* Repère de l'adversaire sur l'échelle des étages. */
-.rung.rival {
-  box-shadow: inset 0 0 0 2px #ff7a5f;
-}
-.rung.rival::after {
-  content: '';
+/* Multijoueur : pastilles de couleur des adversaires sur l'échelle des étages. */
+.rung .opponents {
   position: absolute;
-  right: -7px;
+  left: calc(100% + 4px);
   top: 50%;
+  display: flex;
+  gap: 2px;
+  transform: translateY(-50%);
+}
+.rung .opponents i {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #ff7a5f;
-  transform: translateY(-50%);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85);
 }
 
-/* Compte à rebours du duel. */
+/* Compte à rebours du départ (multijoueur). */
 #countdown {
   position: absolute;
   left: 50%;
@@ -1935,14 +1935,14 @@ body.touch #btn-bonus .key,
   }
 }
 
-/* En duel : pas de chrono à battre seul, la pause ne fige pas la course. */
-body.duel #btn-restart,
-body.duel #btn-new {
+/* En multijoueur : pas de chrono à battre seul, la pause ne fige pas la course. */
+body.multi #btn-restart,
+body.multi #btn-new {
   display: none;
 }
 
 @media (max-width: 760px) and (orientation: portrait) {
-  .level-info .duel-btn {
+  .level-info .multi-btn {
     grid-column: 1 / span 2;
     margin-top: 6px;
     padding: 8px;
@@ -1950,7 +1950,7 @@ body.duel #btn-new {
   }
 }
 
-/* ---------- Barre de pouvoirs (duel) ---------- */
+/* ---------- Barre de pouvoirs (multijoueur) ---------- */
 #power-bar {
   position: absolute;
   left: 50%;
@@ -1960,10 +1960,10 @@ body.duel #btn-new {
   transform: translateX(-50%);
   pointer-events: auto;
 }
-body.duel #power-bar {
+body.multi #power-bar {
   display: flex;
 }
-body.duel #btn-bonus {
+body.multi #btn-bonus {
   display: none;
 }
 #power-bar .power {
@@ -2040,8 +2040,8 @@ body.touch #power-bar .power {
 }
 
 
-/* En duel, le message « Ouvrir la porte » passe au-dessus de la barre de pouvoirs. */
-body.duel #prompt {
+/* En multijoueur, le message « Ouvrir la porte » passe au-dessus de la barre de pouvoirs. */
+body.multi #prompt {
   bottom: calc(96px + var(--safe-b));
 }
 

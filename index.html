@@ -17,7 +17,7 @@
   <body>
     <canvas id="game"></canvas>
 
-    <!-- Duel : voile du Nuage de confusion (sous les commandes, qui restent nettes) -->
+    <!-- Multijoueur : voile du Nuage de confusion (sous les commandes, qui restent nettes) -->
     <div id="cloud-overlay" aria-hidden="true"><span></span><span></span><span></span></div>
 
     <!-- Commandes tactiles -->
@@ -44,7 +44,7 @@
       </div>
       <div id="floor-banner"><b></b><small></small></div>
       <div id="countdown" aria-live="assertive"></div>
-      <div id="power-bar" aria-label="Pouvoirs du duel"></div>
+      <div id="power-bar" aria-label="Pouvoirs"></div>
       <div id="toast">
         <span class="toast-icon"></span>
         <div><b class="toast-title"></b><small class="toast-sub"></small></div>
@@ -109,7 +109,7 @@
         <p id="info-tagline"></p>
         <ul id="info-highlights" class="checklist"></ul>
         <button id="btn-play" class="play-btn"><span data-icon="play"></span>Jouer</button>
-        <button id="btn-duel" class="duel-btn"><span data-icon="users"></span>Défier un ami</button>
+        <button id="btn-multi" class="multi-btn"><span data-icon="users"></span>Jouer entre amis</button>
       </div>
     </div>
 
@@ -171,7 +171,7 @@
           <li>Après une chute, les passages que tu as déjà trouvés restent marqués en <b class="c-hint">doré</b>, pour toi seul.</li>
           <li>Les portes ne changent jamais pendant une partie : mémorise-les !</li>
           <li>Chaque niveau terminé débloque le suivant, avec un nouveau décor et de nouveaux pièges.</li>
-          <li><b>Duel entre amis</b> : des pouvoirs sont cachés derrière certaines portes vides (turbo, bouclier, sceau, mine, nuage de confusion, bottes rebondissantes). Garde-les dans ta barre de pouvoirs et utilise-les quand tu veux (touches 1 à 6 sur ordinateur). Un pouvoir ramassé réapparaît plus tard derrière une autre porte.</li>
+          <li><b>Entre amis</b> (2 à 4 joueurs) : des pouvoirs sont cachés derrière certaines portes vides (turbo, bouclier, sceau, mine, nuage de confusion, bottes rebondissantes). Garde-les dans ta barre de pouvoirs et utilise-les quand tu veux (touches 1 à 6 sur ordinateur). Un pouvoir ramassé réapparaît plus tard derrière une autre porte.</li>
           <li>Au sommet, ouvre un des <b class="c-hint">trois coffres</b> : il contient un bonus à utiliser une fois (bouton bonus ou touche B) — <b>Œil de Râ</b>, <b>Bouclier d'Anubis</b> ou <b>Sablier de Thot</b>.</li>
           <li>Le bouton <b>loupe</b> change le zoom : proche, moyen, ou large pour voir toute la pyramide.</li>
         </ul>
@@ -193,50 +193,51 @@
       </div>
     </div>
 
-    <!-- Duel : salle (créer, rejoindre, attendre) -->
-    <div id="screen-duel" class="screen">
-      <div class="card duel-card">
-        <div class="eyebrow">Duel entre amis</div>
-        <h2>Course à deux</h2>
-        <div id="duel-home">
-          <p class="duel-lead">Le premier au sommet gagne. Même pyramide pour vous deux, et des portes qui cachent des pouvoirs : turbo, bouclier, sceau, mine, nuage, bottes !</p>
+    <!-- Multijoueur : salle (créer, rejoindre, attendre, lancer) -->
+    <div id="screen-room" class="screen">
+      <div class="card room-card">
+        <div class="eyebrow">Entre amis</div>
+        <h2>Course multijoueur</h2>
+        <div id="room-home">
+          <p class="room-lead">Le premier au sommet gagne. Même pyramide pour tous, et des portes qui cachent des pouvoirs : turbo, bouclier, sceau, mine, nuage, bottes !</p>
           <div class="option-row">
             <span>Pouvoirs cachés</span>
-            <div id="duel-powers" class="segmented">
+            <div id="room-powers-choice" class="segmented">
               <button data-powers="few">Peu</button>
               <button data-powers="many">Beaucoup</button>
             </div>
           </div>
-          <button id="btn-duel-create" class="primary">Créer une salle · <span id="duel-level-name"></span></button>
-          <div class="duel-join">
-            <input id="duel-code" type="text" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" />
-            <button id="btn-duel-join">Rejoindre</button>
+          <button id="btn-room-create" class="primary">Créer une salle · <span id="room-level-name"></span></button>
+          <div class="room-join">
+            <input id="room-code-input" type="text" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+            <button id="btn-room-join">Rejoindre</button>
           </div>
         </div>
-        <div id="duel-wait">
-          <p class="duel-lead">Donne ce code à ton ami :</p>
-          <div id="duel-room-code" class="room-code">····</div>
-          <div class="duel-share">
-            <button id="btn-duel-copy">Copier le lien</button>
-            <button id="btn-duel-share">Partager</button>
+        <div id="room-wait">
+          <p class="room-lead">Donne ce code à tes amis :</p>
+          <div id="room-code-value" class="room-code">····</div>
+          <div class="room-share">
+            <button id="btn-room-copy">Copier le lien</button>
+            <button id="btn-room-share">Partager</button>
           </div>
-          <ul id="duel-players" class="duel-players"></ul>
-          <p id="duel-room-powers" class="duel-lead"></p>
+          <ul id="room-players" class="room-players"></ul>
+          <p id="room-powers" class="room-lead"></p>
+          <button id="btn-room-launch" class="primary">Lancer la partie</button>
         </div>
-        <p id="duel-status" class="duel-status" aria-live="polite"></p>
-        <button id="btn-duel-close">Retour</button>
+        <p id="room-status" class="room-status" aria-live="polite"></p>
+        <button id="btn-room-close">Retour</button>
       </div>
     </div>
 
-    <!-- Duel : résultat -->
-    <div id="screen-duel-result" class="screen">
+    <!-- Multijoueur : classement -->
+    <div id="screen-results" class="screen">
       <div class="card">
-        <h2 id="dr-title">Victoire !</h2>
-        <p id="dr-sub" class="duel-lead"></p>
-        <ul id="dr-results" class="duel-results"></ul>
-        <p id="dr-status" class="duel-status" aria-live="polite"></p>
-        <button id="btn-dr-rematch" class="primary">Revanche</button>
-        <button id="btn-dr-quit">Quitter le duel</button>
+        <h2 id="res-title">Victoire !</h2>
+        <p id="res-sub" class="room-lead"></p>
+        <ul id="res-list" class="results-list"></ul>
+        <p id="res-status" class="room-status" aria-live="polite"></p>
+        <button id="btn-res-rematch" class="primary">Revanche</button>
+        <button id="btn-res-quit">Quitter la partie</button>
       </div>
     </div>
 

@@ -8,8 +8,11 @@ import {
   landingPoint,
   mineSpotValid,
   mineTriggered,
+  cloudTarget,
   pickPower,
   POWER_IDS,
+  rankPlayers,
+  startOffsets,
   powerSpotCount,
   SEAL_COOLDOWN_MS,
   SEAL_MS,
@@ -27,7 +30,7 @@ function climb(game: Game, id: string, now: number) {
   return door;
 }
 
-describe('duel : règles du socle', () => {
+describe('multijoueur : règles du socle', () => {
   it('le nombre de pouvoirs cachés dépend du réglage et du nombre de portes de l’étage', () => {
     expect(powerSpotCount(16, 10, 'few')).toBe(1);
     expect(powerSpotCount(16, 10, 'many')).toBe(3);
@@ -80,7 +83,11 @@ describe('duel : règles du socle', () => {
   });
 
   it('les portes à pouvoir avantagent le joueur en retard (turbo, bouclier) et le joueur en tête (sceau, mine)', () => {
-    expect(standing(2, 4)).toBe('behind');
+    expect(standing(2, [4])).toBe('behind');
+    // À plusieurs : seul en tête, seul dernier, ou au milieu.
+    expect(standing(5, [2, 3, 4])).toBe('ahead');
+    expect(standing(1, [2, 3, 4])).toBe('behind');
+    expect(standing(3, [2, 4, 5])).toBe('tied');
     const count = (s: 'behind' | 'ahead') => {
       const c = Object.fromEntries(POWER_IDS.map((id) => [id, 0])) as Record<string, number>;
       for (let i = 0; i < 1000; i++) c[pickPower(s, i / 1000)]++;
@@ -107,5 +114,37 @@ describe('duel : règles du socle', () => {
     expect(mineTriggered(mine, { x: -3, y: mine.y, z: 10 }, { x: 3, y: mine.y, z: 10 })).toBe(true); // traversée rapide
     expect(mineTriggered(mine, { x: -3, y: mine.y + 1.2, z: 10 }, { x: 3, y: mine.y + 1.2, z: 10 })).toBe(false); // saut
     expect(mineTriggered(mine, { x: -3, y: mine.y, z: 11.5 }, { x: 3, y: mine.y, z: 11.5 })).toBe(false); // à côté
+  });
+
+  it('le Nuage vise le joueur juste devant ; en tête, il vise le deuxième', () => {
+    const others = [
+      { id: 'b', floor: 2 },
+      { id: 'c', floor: 5 },
+      { id: 'd', floor: 3 },
+    ];
+    expect(cloudTarget(1, others, 0)).toBe('b');
+    expect(cloudTarget(4, others, 0)).toBe('c');
+    expect(cloudTarget(6, others, 0)).toBe('c');
+    expect(cloudTarget(1, [], 0)).toBeNull();
+  });
+
+  it('les places de départ sont centrées et ne se chevauchent pas, quel que soit le nombre de joueurs', () => {
+    expect(startOffsets(2)).toEqual([-0.7, 0.7]);
+    for (const n of [1, 3, 4, 8]) {
+      const offsets = startOffsets(n);
+      expect(offsets).toHaveLength(n);
+      expect(offsets.reduce((a, b) => a + b, 0)).toBeCloseTo(0);
+    }
+  });
+
+  it('classement : arrivés par temps, puis par étage et chutes, ceux partis en dernier', () => {
+    const ranking = rankPlayers([
+      { id: 'parti', floor: 6, falls: 0, left: true },
+      { id: 'lent', time: 90000, floor: 7, falls: 3 },
+      { id: 'haut', floor: 5, falls: 4 },
+      { id: 'rapide', time: 60000, floor: 7, falls: 1 },
+      { id: 'haut-prudent', floor: 5, falls: 1 },
+    ]);
+    expect(ranking.map((r) => r.id)).toEqual(['rapide', 'lent', 'haut-prudent', 'haut', 'parti']);
   });
 });

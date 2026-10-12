@@ -3,16 +3,19 @@ import type { Vec3Tuple } from '../../net/protocol';
 import { Character } from '../scene/character';
 import { shieldBubble, Trail } from '../scene/fx';
 
-/** Écharpe de l'adversaire (le joueur local garde la bleue). */
-export const RIVAL_COLOR = 0xd8402e;
-const RIVAL_TRAIL = 0xff8a6a;
+/**
+ * Couleurs d'écharpe des adversaires, dans l'ordre de départ (le joueur local garde toujours la bleue).
+ * Autant de couleurs que de places possibles moins une : au-delà, les couleurs se répètent.
+ */
+const OPPONENT_COLORS = [0xd8402e, 0x2e9e4f, 0xe0a020, 0x8a3ad0, 0xe06aa8, 0x20a8b8, 0xf07a20];
+export const opponentColor = (index: number) => OPPONENT_COLORS[index % OPPONENT_COLORS.length];
 
 /**
- * L'adversaire d'un duel : un explorateur d'une autre couleur, avec son nom au-dessus de la tête.
+ * Un adversaire : un explorateur à l'écharpe de sa couleur, avec son nom au-dessus de la tête.
  * Les positions reçues (~15 par seconde) sont lissées ; l'animation de course est déduite du mouvement.
  */
-export class Rival {
-  readonly character = new Character(RIVAL_COLOR);
+export class Opponent {
+  readonly character: Character;
   private readonly target = new THREE.Vector3();
   private readonly velocity = new THREE.Vector3();
   private heading = 0;
@@ -25,10 +28,11 @@ export class Rival {
   private immune = 0;
   private time = 0;
 
-  constructor(name: string, scene: THREE.Scene) {
-    this.trail = new Trail(scene, RIVAL_TRAIL);
+  constructor(name: string, color: number, scene: THREE.Scene) {
+    this.character = new Character(color);
+    this.trail = new Trail(scene, new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.4).getHex());
     this.character.root.add(this.bubble);
-    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTexture(name), transparent: true, depthTest: false }));
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTexture(name, color), transparent: true, depthTest: false }));
     label.renderOrder = 9;
     label.scale.set(2.4, 0.6, 1);
     label.position.y = 2.35;
@@ -77,7 +81,7 @@ export class Rival {
   }
 }
 
-function nameTexture(name: string): THREE.CanvasTexture {
+function nameTexture(name: string, color: number): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = 256;
   c.height = 64;
@@ -90,7 +94,7 @@ function nameTexture(name: string): THREE.CanvasTexture {
   ctx.beginPath();
   ctx.roundRect(128 - width / 2, 10, width, 44, 22);
   ctx.fill();
-  ctx.fillStyle = '#ffb8a8';
+  ctx.fillStyle = `#${new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.55).getHexString()}`;
   ctx.fillText(name, 128, 33);
   const texture = new THREE.CanvasTexture(c);
   texture.colorSpace = THREE.SRGBColorSpace;

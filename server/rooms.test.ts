@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BOOTS_MS, CLOUD_MS, doorFront, floorY, Game, POWER_RESPAWN_MS, landingPoint, mineSpotValid, MINE_ARM_MS, IMMUNITY_MS, SEAL_MS, type Level, type PowerId, type Vec3 } from '../src/core';
 import { levels } from '../src/levels';
-import { DUEL_COUNTDOWN_MS, type ServerMessage } from '../src/net/protocol';
+import { COUNTDOWN_MS, FINISH_GRACE_MS, MAX_PLAYERS, type ServerMessage } from '../src/net/protocol';
 import { Lobby, type Clock, type Peer } from './rooms';
 
 /** Horloge manuelle : le temps n'avance que quand le test le décide. */
@@ -36,38 +36,75 @@ function peer(id: string): Peer & { inbox: ServerMessage[]; last<T extends Serve
   };
 }
 
-function duel(level: Level = levels[0]) {
+const NAMES = ['Alice', 'Bob', 'Chloé', 'Dina', 'Eli', 'Fanny', 'Gus', 'Hugo'];
+
+/**
+ * Une salle de `count` joueurs (a, b, c…) : a la crée, les autres la rejoignent, puis a lance la partie
+ * (si la salle n'est pas déjà partie toute seule en étant pleine).
+ */
+function room(count = 2, { launch = true, level = levels[0] as Level } = {}) {
   const { clock, advance } = manualClock();
   const lobby = new Lobby(levels, clock, () => 0.5);
-  const a = peer('a');
-  const b = peer('b');
-  lobby.handle(a, { t: 'create', level: level.number, name: 'Alice', powers: 'many' });
+  const peers = NAMES.slice(0, count).map((name) => peer(name[0].toLowerCase()));
+  const [a, b, c, d] = peers;
+  lobby.handle(a, { t: 'create', level: level.number, name: NAMES[0], powers: 'many' });
   const code = a.last('room')!.code;
-  lobby.handle(b, { t: 'join', code: code.toLowerCase(), name: 'Bob' });
-  return { lobby, a, b, code, advance };
+  peers.slice(1).forEach((p, i) => lobby.handle(p, { t: 'join', code: code.toLowerCase(), name: NAMES[i + 1] }));
+  if (launch && !a.last('start')) lobby.handle(a, { t: 'launch' });
+  return { lobby, peers, a, b, c, d, code, advance };
 }
 
-describe('duel : salles', () => {
-  it('crée une salle avec un code, le second joueur la rejoint et le départ est donné aux deux avec la même graine', () => {
-    const { a, b, code } = duel();
+/** Fait monter un joueur au sommet par les bonnes portes (avec la même graine que le serveur). */
+function climbAll(lobby: Lobby, who: Peer & { last: ReturnType<typeof peer>['last'] }, floors = levels[0].config.floors) {
+  const mirror = new Game(levels[0].config, who.last('start')!.seed);
+  for (let f = 1; f <= floors; f++) {
+    const door = mirror.layout.doorsByFloor[f].find((x) => x.mechanic === 'passage')!;
+    const p = doorFront(levels[0].config, door);
+    lobby.handle(who, { t: 'interact', seq: f, doorId: door.id, p: [p.x, p.y, p.z] });
+  }
+}
+
+describe('multijoueur : salles', () => {
+  it('crée une salle avec un code que les autres rejoignent ; à deux, on attend le lancement', () => {
+    const { a, b, code } = room(2, { launch: false });
+    expect(b.last('room')).toMatchObject({ code, host: 'a', you: 'b' });
     expect(code).toMatch(/^[A-Z2-9]{4}$/);
+    expect(a.last('room')).toMatchObject({ host: 'a', max: MAX_PLAYERS });
     expect(a.last('room')!.players.map((p) => p.name)).toEqual(['Alice', 'Bob']);
-    const startA = a.last('start')!;
-    expect(startA).toEqual(b.last('start'));
-    expect(startA.inMs).toBe(DUEL_COUNTDOWN_MS);
+    expect(a.last('start')).toBeUndefined(); // à deux, on attend le lancement
   });
 
-  it('refuse un code inconnu et une salle complète', () => {
-    const { lobby, code } = duel();
-    const c = peer('c');
-    lobby.handle(c, { t: 'join', code: 'ZZZZ', name: 'C' });
-    expect(c.last('error')?.message).toMatch(/Aucune salle/);
-    lobby.handle(c, { t: 'join', code, name: 'C' });
-    expect(c.last('error')?.message).toMatch(/complète/);
+  it('seul le créateur lance, à partir de deux joueurs ; une salle pleine part toute seule', () => {
+    const { lobby, a, b } = room(2, { launch: false });
+    lobby.handle(b, { t: 'launch' });
+    expect(a.last('start')).toBeUndefined();
+    lobby.handle(a, { t: 'launch' });
+    const start = a.last('start')!;
+    expect(start).toEqual(b.last('start'));
+    expect(start).toMatchObject({ inMs: COUNTDOWN_MS, order: ['a', 'b'] });
+
+    const full = room(MAX_PLAYERS, { launch: false });
+    expect(full.a.last('start')?.order).toHaveLength(MAX_PLAYERS);
+
+    const alone = room(1, { launch: false });
+    alone.lobby.handle(alone.a, { t: 'launch' });
+    expect(alone.a.last('start')).toBeUndefined();
+  });
+
+  it('refuse un code inconnu, une salle complète et une partie déjà commencée', () => {
+    const { lobby, code } = room(MAX_PLAYERS);
+    const extra = peer('x');
+    lobby.handle(extra, { t: 'join', code: 'ZZZZ', name: 'X' });
+    expect(extra.last('error')?.message).toMatch(/Aucune salle/);
+    lobby.handle(extra, { t: 'join', code, name: 'X' });
+    expect(extra.last('error')?.message).toMatch(/complète/);
+    const started = room(2);
+    started.lobby.handle(extra, { t: 'join', code: started.code, name: 'X' });
+    expect(extra.last('error')?.message).toMatch(/déjà commencé/);
   });
 
   it('ignore les actions pendant le compte à rebours, relaie les passages et désigne le premier au sommet', () => {
-    const { lobby, a, b, advance } = duel();
+    const { lobby, a, b, advance } = room();
     const level = levels[0];
     const seed = a.last('start')!.seed;
     // Le serveur et les clients génèrent la même pyramide à partir de la graine.
@@ -80,43 +117,108 @@ describe('duel : salles', () => {
 
     lobby.handle(a, { t: 'interact', seq: 1, doorId: passage(1).id, p: front(1) });
     expect(b.last('floor')).toBeUndefined();
-    advance(DUEL_COUNTDOWN_MS);
+    advance(COUNTDOWN_MS);
 
     for (let f = 1; f <= level.config.floors; f++) lobby.handle(a, { t: 'interact', seq: 1, doorId: passage(f).id, p: front(f) });
     expect(b.last('floor')).toEqual({ t: 'floor', id: 'a', floor: level.config.floors + 1 });
     expect(b.inbox.some((m) => m.t === 'reveal' && m.id === 'a')).toBe(true);
+    // À deux, la première arrivée termine la partie.
+    expect(b.last('arrived')).toMatchObject({ id: 'a', rank: 1 });
     const finish = b.last('finish')!;
-    expect(finish.winner).toBe('a');
-    expect(finish.reason).toBe('summit');
-    expect(finish.results.find((r) => r.id === 'a')!.time).toBeGreaterThanOrEqual(0);
+    expect(finish.reason).toBe('podium');
+    expect(finish.ranking.map((r) => [r.id, r.rank])).toEqual([['a', 1], ['b', 2]]);
+    expect(finish.ranking[0].time).toBeGreaterThanOrEqual(0);
   });
 
   it('une porte trop loin du joueur est refusée (anti-triche)', () => {
-    const { lobby, a, b, advance } = duel();
-    advance(DUEL_COUNTDOWN_MS);
+    const { lobby, a, b, advance } = room();
+    advance(COUNTDOWN_MS);
     const mirror = new Game(levels[0].config, a.last('start')!.seed);
     const door = mirror.layout.doorsByFloor[1].find((d) => d.mechanic === 'passage')!;
     lobby.handle(a, { t: 'interact', seq: 1, doorId: door.id, p: [500, 0, 500] });
     expect(b.last('floor')).toBeUndefined();
   });
 
-  it('un départ pendant la course donne la victoire par forfait', () => {
-    const { lobby, a, b, advance } = duel();
-    advance(DUEL_COUNTDOWN_MS);
+  it('à deux, un départ pendant la course donne la victoire par forfait', () => {
+    const { lobby, a, b, advance } = room();
+    advance(COUNTDOWN_MS);
     lobby.handle(b, { t: 'leave' });
-    expect(a.last('finish')).toMatchObject({ winner: 'a', reason: 'forfeit' });
+    const finish = a.last('finish')!;
+    expect(finish.reason).toBe('forfeit');
+    expect(finish.ranking.map((r) => [r.id, r.left ?? false])).toEqual([['a', false], ['b', true]]);
   });
 
-  it('la revanche ne repart que quand les deux joueurs la demandent, avec une nouvelle course', () => {
-    const { lobby, a, b, advance } = duel();
-    advance(DUEL_COUNTDOWN_MS);
+  it('à trois, la course continue après le premier arrivé et s’arrête au podium (tous sauf un)', () => {
+    const { lobby, a, b, c, advance } = room(3);
+    advance(COUNTDOWN_MS);
+    climbAll(lobby, b);
+    expect(a.last('arrived')).toMatchObject({ id: 'b', rank: 1 });
+    expect(a.last('finish')).toBeUndefined();
+    climbAll(lobby, a, 2); // a monte de deux étages : il est devant c au classement
+    climbAll(lobby, c, 1);
+    advance(1000);
+    // c ne finit pas : a termine 2e en arrivant au sommet
+    const mirror = new Game(levels[0].config, a.last('start')!.seed);
+    for (let f = 3; f <= levels[0].config.floors; f++) {
+      const door = mirror.layout.doorsByFloor[f].find((x) => x.mechanic === 'passage')!;
+      const p = doorFront(levels[0].config, door);
+      lobby.handle(a, { t: 'interact', seq: 10 + f, doorId: door.id, p: [p.x, p.y, p.z] });
+    }
+    const finish = c.last('finish')!;
+    expect(finish.reason).toBe('podium');
+    expect(finish.ranking.map((r) => r.id)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('à quatre, la partie se termine 45 s après la première arrivée ; les autres sont classés par étage', () => {
+    const { lobby, a, b, c, d, advance } = room(4);
+    advance(COUNTDOWN_MS);
+    climbAll(lobby, d);
+    climbAll(lobby, b, 3);
+    climbAll(lobby, a, 1);
+    advance(FINISH_GRACE_MS - 1);
+    expect(a.last('finish')).toBeUndefined();
+    advance(1);
+    const finish = c.last('finish')!;
+    expect(finish.reason).toBe('time');
+    expect(finish.ranking.map((r) => r.id)).toEqual(['d', 'b', 'a', 'c']);
+  });
+
+  it('à trois, un joueur qui part ne termine pas la partie ; il est classé dernier', () => {
+    const { lobby, a, b, c, advance } = room(3);
+    advance(COUNTDOWN_MS);
+    lobby.handle(b, { t: 'leave' });
+    expect(a.last('finish')).toBeUndefined();
+    expect(a.last('room')!.players.map((p) => p.id)).toEqual(['a', 'c']);
+    climbAll(lobby, c);
+    const finish = a.last('finish')!;
+    expect(finish.ranking.map((r) => r.id)).toEqual(['c', 'a', 'b']);
+    expect(finish.ranking[2].left).toBe(true);
+  });
+
+  it('le Nuage vise le joueur juste devant, ou le deuxième si l’on est en tête', () => {
+    const { lobby, a, b, c, advance } = room(3);
+    advance(COUNTDOWN_MS);
+    climbAll(lobby, b, 1); // b étage 2
+    climbAll(lobby, c, 3); // c étage 4
+    give(lobby, a, 'cloud');
+    lobby.handle(a, { t: 'power', seq: 1, power: 'cloud', p: [0, 0, 0] });
+    expect(b.last('cloud')).toMatchObject({ from: 'a' });
+    expect(c.last('cloud')).toBeUndefined();
+    give(lobby, c, 'cloud');
+    lobby.handle(c, { t: 'power', seq: 9, power: 'cloud', p: [0, 0, 0] });
+    expect(b.inbox.filter((m) => m.t === 'cloud')).toHaveLength(2);
+  });
+
+  it('la revanche ne repart que quand tous les joueurs la demandent, avec une nouvelle course', () => {
+    const { lobby, a, b, advance } = room();
+    advance(COUNTDOWN_MS);
     const mirror = new Game(levels[0].config, a.last('start')!.seed);
     for (let f = 1; f <= levels[0].config.floors; f++) {
       const door = mirror.layout.doorsByFloor[f].find((d) => d.mechanic === 'passage')!;
       const p = doorFront(levels[0].config, door);
       lobby.handle(b, { t: 'interact', seq: 1, doorId: door.id, p: [p.x, p.y, p.z] });
     }
-    expect(a.last('finish')?.winner).toBe('b');
+    expect(a.last('finish')?.ranking[0].id).toBe('b');
     const starts = () => a.inbox.filter((m) => m.t === 'start').length;
     lobby.handle(a, { t: 'rematch' });
     expect(b.last('rematch')).toEqual({ t: 'rematch', id: 'a' });
@@ -126,15 +228,15 @@ describe('duel : salles', () => {
   });
 
   it('un pouvoir caché derrière une porte vide revient à celui qui l’ouvre, puis réapparaît ailleurs 15 s plus tard', () => {
-    const { lobby, a, b, advance } = duel();
-    advance(DUEL_COUNTDOWN_MS);
-    const room = [...lobby.rooms.values()][0];
+    const { lobby, a, b, advance } = room();
+    advance(COUNTDOWN_MS);
+    const server = [...lobby.rooms.values()][0];
     const config = levels[0].config;
     const mirror = new Game(config, a.last('start')!.seed);
-    const hiddenOn = (floor: number) => [...room.hidden].filter((id) => mirror.doorsById.get(id)!.floor === floor);
+    const hiddenOn = (floor: number) => [...server.hidden].filter((id) => mirror.doorsById.get(id)!.floor === floor);
     // « Beaucoup » : 3 pouvoirs à l'étage 1 (16 portes), toujours derrière des portes vides.
     expect(hiddenOn(1)).toHaveLength(3);
-    expect([...room.hidden].every((id) => mirror.doorsById.get(id)!.mechanic === 'wall')).toBe(true);
+    expect([...server.hidden].every((id) => mirror.doorsById.get(id)!.mechanic === 'wall')).toBe(true);
     const doorId = hiddenOn(1)[0];
     const p = doorFront(config, mirror.doorsById.get(doorId)!);
     lobby.handle(a, { t: 'interact', seq: 7, doorId, p: [p.x, p.y, p.z] });
@@ -147,7 +249,7 @@ describe('duel : salles', () => {
     expect(hiddenOn(1)).toHaveLength(2);
     advance(POWER_RESPAWN_MS);
     expect(hiddenOn(1)).toHaveLength(3);
-    expect(room.hidden.has(doorId)).toBe(false);
+    expect(server.hidden.has(doorId)).toBe(false);
   });
 
   it('« peu de pouvoirs » en cache moins, et jamais aucun à un étage', () => {
@@ -157,15 +259,16 @@ describe('duel : salles', () => {
     const b = peer('b');
     lobby.handle(a, { t: 'create', level: 1, name: 'A', powers: 'few' });
     lobby.handle(b, { t: 'join', code: a.last('room')!.code, name: 'B' });
-    advance(DUEL_COUNTDOWN_MS);
-    const room = [...lobby.rooms.values()][0];
+    lobby.handle(a, { t: 'launch' });
+    advance(COUNTDOWN_MS);
+    const server = [...lobby.rooms.values()][0];
     expect(a.last('room')!.powers).toBe('few');
-    expect(room.hidden.size).toBe(levels[0].config.floors); // un par étage au niveau 1
+    expect(server.hidden.size).toBe(levels[0].config.floors); // un par étage au niveau 1
   });
 
   it('un pouvoir que l’on ne possède pas est refusé ; un pouvoir inutilisable n’est pas consommé', () => {
-    const { lobby, a, advance } = duel();
-    advance(DUEL_COUNTDOWN_MS);
+    const { lobby, a, advance } = room();
+    advance(COUNTDOWN_MS);
     lobby.handle(a, { t: 'power', seq: 1, power: 'turbo', p: [0, 0, 0] });
     expect(a.last('self')!.turboMs).toBe(0);
     give(lobby, a, 'seal');
@@ -174,8 +277,8 @@ describe('duel : salles', () => {
   });
 
   it('turbo et bouclier sont visibles par l’adversaire ; un second bouclier n’est pas consommé', () => {
-    const { lobby, a, b, advance } = duel();
-    advance(DUEL_COUNTDOWN_MS);
+    const { lobby, a, b, advance } = room();
+    advance(COUNTDOWN_MS);
     give(lobby, a, 'turbo');
     give(lobby, a, 'shield');
     give(lobby, a, 'shield');
@@ -188,8 +291,8 @@ describe('duel : salles', () => {
   });
 
   it('une mine armée explose sous l’adversaire : il perd un étage, puis il est immunisé ; le bouclier l’absorbe', () => {
-    const { lobby, a, b, advance } = duel();
-    advance(DUEL_COUNTDOWN_MS);
+    const { lobby, a, b, advance } = room();
+    advance(COUNTDOWN_MS);
     const config = levels[0].config;
     const mirror = new Game(config, a.last('start')!.seed);
     // b monte à l'étage 2 ; a y pose des mines au milieu de la terrasse.
@@ -222,8 +325,8 @@ describe('duel : salles', () => {
   });
 
   it('le nuage de confusion arrive chez l’adversaire ; les bottes sont visibles et pas consommées deux fois', () => {
-    const { lobby, a, b, advance } = duel();
-    advance(DUEL_COUNTDOWN_MS);
+    const { lobby, a, b, advance } = room();
+    advance(COUNTDOWN_MS);
     give(lobby, a, 'cloud');
     lobby.handle(a, { t: 'power', seq: 1, power: 'cloud', p: [0, 0, 0] });
     expect(b.last('cloud')).toEqual({ t: 'cloud', from: 'a', ms: CLOUD_MS });
@@ -237,8 +340,8 @@ describe('duel : salles', () => {
   });
 
   it('une mine ne se pose pas devant une porte (pouvoir conservé)', () => {
-    const { lobby, a, advance } = duel();
-    advance(DUEL_COUNTDOWN_MS);
+    const { lobby, a, advance } = room();
+    advance(COUNTDOWN_MS);
     const config = levels[0].config;
     const mirror = new Game(config, a.last('start')!.seed);
     const p = doorFront(config, mirror.layout.doorsByFloor[1][0]);
@@ -249,8 +352,8 @@ describe('duel : salles', () => {
   });
 
   it('le sceau est annoncé aux deux joueurs et bloque la porte pour l’adversaire', () => {
-    const { lobby, a, b, advance } = duel();
-    advance(DUEL_COUNTDOWN_MS);
+    const { lobby, a, b, advance } = room();
+    advance(COUNTDOWN_MS);
     const config = levels[0].config;
     const mirror = new Game(config, a.last('start')!.seed);
     const door = mirror.layout.doorsByFloor[1].find((d) => d.mechanic === 'passage')!;
@@ -271,8 +374,8 @@ describe('duel : salles', () => {
 
 /** Raccourci de test : ajoute directement un pouvoir à la réserve d'un joueur (normalement gagné derrière une porte à pouvoir). */
 function give(lobby: Lobby, who: Peer, power: PowerId) {
-  const room = [...lobby.rooms.values()][0] as unknown as { fighters: Map<string, { powers: Record<string, number> }> };
-  room.fighters.get(who.id)!.powers[power]++;
+  const server = [...lobby.rooms.values()][0] as unknown as { fighters: Map<string, { powers: Record<string, number> }> };
+  server.fighters.get(who.id)!.powers[power]++;
 }
 
 /** Un point de la terrasse `floor` où l'on peut poser une mine. */

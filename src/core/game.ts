@@ -2,7 +2,7 @@ import { generateLayout } from './layout';
 import { doorFront, INTERACT_RANGE, type Vec3 } from './geometry';
 import { getMechanic } from './mechanics/registry';
 import { wall } from './mechanics/basic';
-import { SEAL_COOLDOWN_MS, SEAL_MS, SEAL_WINDOW_MS } from './duel';
+import { SEAL_COOLDOWN_MS, SEAL_MS, SEAL_WINDOW_MS } from './multiplayer';
 import { summitFloor, BONUS_EYE_MS, BONUS_HOURGLASS_MS, type BonusId, type Door, type GameEvent, type Layout, type PlayerState, type PyramidConfig } from './types';
 
 /**
