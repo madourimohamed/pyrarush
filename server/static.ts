@@ -1,5 +1,11 @@
 import { existsSync, statSync } from 'node:fs';
-import { join, normalize } from 'node:path';
+import { isAbsolute, join, normalize, relative } from 'node:path';
+
+/** `file` est-il bien à l'intérieur du dossier `dir` ? (« dist-server » ne doit pas passer pour « dist ».) */
+export function inside(dir: string, file: string): boolean {
+  const rel = relative(dir, file);
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+}
 
 /**
  * Fichier du jeu compilé correspondant à une adresse demandée, ou null si l'adresse est invalide (réponse 400).
@@ -16,6 +22,6 @@ export function resolveStatic(dist: string, url: string): string | null {
   if (decoded.includes('\0')) return null;
   const path = normalize(decoded).replace(/^(\.\.[/\\])+/, '');
   const file = join(dist, path);
-  if (!file.startsWith(dist) || !existsSync(file) || statSync(file).isDirectory()) return join(dist, 'index.html');
+  if (!inside(dist, file) || !existsSync(file) || statSync(file).isDirectory()) return join(dist, 'index.html');
   return file;
 }
