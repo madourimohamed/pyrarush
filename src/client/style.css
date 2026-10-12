@@ -2129,4 +2129,7 @@ body.touch #power-bar .power svg {
 .results-list .rank.r3 {
   background: radial-gradient(circle at 35% 30%, #ffd6b0, #c47a3a);
 }
+#power-bar .car {
+  background: linear-gradient(150deg, #ffb84a, #e05a1a);
+}
 

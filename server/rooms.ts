@@ -11,6 +11,8 @@ import {
   MINE_MAX_ACTIVE,
   cloudTarget,
   pickPower,
+  rideMs,
+  rideTarget,
   powerSpotCount,
   rankPlayers,
   POWER_RESPAWN_MS,
@@ -254,6 +256,21 @@ export class Room {
         const target = others.find((p) => p.id === targetId);
         if (!target) return false;
         target.send({ t: 'cloud', from: peer.id, ms: CLOUD_MS });
+        return true;
+      }
+      case 'car': {
+        // Le serveur choisit le passage (le plus proche, en évitant les portes scellées par un autre) et la durée.
+        const player = game.players.get(peer.id)!;
+        if (player.floor > game.config.floors || now < fighter.sceneUntil) return false;
+        const sealedByOther = (door: { id: string }) => {
+          const seal = game.seals.get(door.id);
+          return !!seal && seal.active && seal.owner !== peer.id && now < seal.until;
+        };
+        const ride = rideTarget(game.layout, { x, y, z }, player.floor, sealedByOther);
+        if (!ride) return false;
+        const ms = rideMs(ride.distance);
+        fighter.sceneUntil = now + ms;
+        this.broadcast({ t: 'ride', id: peer.id, doorId: ride.door.id, dir: ride.dir, ms });
         return true;
       }
       case 'shield':

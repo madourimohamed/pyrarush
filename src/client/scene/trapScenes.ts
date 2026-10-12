@@ -15,7 +15,8 @@ import { comicMaterial, popComic, type Mummy, type TrapGuardian } from './guardi
  * joueurs sur son personnage (sans toucher à leur caméra). `finish()` amène toujours à l'état final
  * (personnage posé à l'arrivée, effets retirés, caméra rendue) : fin normale, fin de partie ou déconnexion.
  */
-export interface TrapScene {
+/** Cinématique (scène de piège, trajet en voiture…) : le joueur n'a pas la main, l'état final est garanti. */
+export interface Cutscene {
   /** Avance la scène ; renvoie true quand elle est terminée. */
   update(dt: number): boolean;
   /** Termine la scène immédiatement dans son état final (sans danger si déjà terminée). */
@@ -53,7 +54,7 @@ export function trapLanding(config: PyramidConfig, door: Door, from: number, to:
   return { x: c.x + f.outX * 4, y: c.y, z: c.z + f.outZ * 4 };
 }
 
-export function createTrapScene(ctx: TrapSceneContext): TrapScene {
+export function createTrapScene(ctx: TrapSceneContext): Cutscene {
   return ctx.guardian.style === 'mummy' ? new MummyScene(ctx) : new GloveScene(ctx);
 }
 
@@ -64,7 +65,7 @@ const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
 const span = (f: number, a: number, b: number) => clamp01((f - a) / (b - a));
 
 /** Base commune : horloge, temps forts déclenchés une seule fois, état final garanti. */
-abstract class BaseScene implements TrapScene {
+abstract class BaseScene implements Cutscene {
   protected t = 0;
   private fired = new Set<string>();
   private done = false;

@@ -368,6 +368,27 @@ describe('multijoueur : salles', () => {
     expect(b.last('boom')).toMatchObject({ target: 'b', owner: 'a' });
   });
 
+  it('la Voiture emmène le joueur vers le passage le plus proche : trajet annoncé à tous, pouvoir conservé si inutile', () => {
+    const { lobby, a, b, advance } = room();
+    advance(COUNTDOWN_MS);
+    const config = levels[0].config;
+    const mirror = new Game(config, a.last('start')!.seed);
+    give(lobby, a, 'car');
+    // Devant le passage : la voiture ne sert à rien, elle reste dans la réserve.
+    const passage = mirror.layout.doorsByFloor[1].find((d) => d.mechanic === 'passage')!;
+    const pf = doorFront(config, passage);
+    lobby.handle(a, { t: 'power', seq: 1, power: 'car', p: [pf.x, pf.y, pf.z] });
+    expect(a.last('self')!.powers.car).toBe(1);
+    // Ailleurs sur la terrasse : départ annoncé aux deux joueurs.
+    const far = findMineSpot(mirror, 1);
+    lobby.handle(a, { t: 'power', seq: 2, power: 'car', p: [far.x, far.y, far.z] });
+    const ride = b.last('ride')!;
+    expect(ride).toMatchObject({ id: 'a' });
+    expect(mirror.doorsById.get(ride.doorId)!.mechanic).toBe('passage');
+    expect(a.last('ride')).toEqual(ride);
+    expect(a.last('self')!.powers.car).toBe(0);
+  });
+
   it('une mine ne se pose pas devant une porte (pouvoir conservé)', () => {
     const { lobby, a, advance } = room();
     advance(COUNTDOWN_MS);

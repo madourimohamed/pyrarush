@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Vec3Tuple } from '../../net/protocol';
 import { Character } from '../scene/character';
 import { shieldBubble, Trail } from '../scene/fx';
-import type { TrapScene } from '../scene/trapScenes';
+import type { Cutscene } from '../scene/trapScenes';
 
 /**
  * Couleurs d'écharpe des adversaires, dans l'ordre de départ (le joueur local garde toujours la bleue).
@@ -28,8 +28,8 @@ export class Opponent {
   private boots = 0;
   private immune = 0;
   private time = 0;
-  /** Scène de piège rejouée sur ce personnage : les positions reçues sont ignorées pendant ce temps. */
-  private scene: TrapScene | null = null;
+  /** Cinématique rejouée sur ce personnage (piège, voiture) : les positions reçues sont ignorées pendant ce temps. */
+  private scene: Cutscene | null = null;
 
   constructor(name: string, color: number, scene: THREE.Scene) {
     this.character = new Character(color);
@@ -53,7 +53,7 @@ export class Opponent {
     }
   }
 
-  playScene(scene: TrapScene): void {
+  playScene(scene: Cutscene): void {
     this.scene?.finish();
     this.scene = scene;
   }
@@ -80,7 +80,7 @@ export class Opponent {
     this.trail.update(dt, this.character.root.position, this.seen && (this.turbo > 0 || (this.boots > 0 && airborne)), camera);
     if (!this.seen) return;
     if (this.scene) {
-      // La scène anime le personnage ; ensuite, il rejoint en douceur sa position reçue.
+      // La cinématique anime le personnage ; ensuite, il rejoint en douceur sa position reçue.
       if (this.scene.update(dt)) this.scene = null;
       this.character.setMarker(zoom);
       return;

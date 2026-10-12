@@ -9,7 +9,12 @@ import {
   mineSpotValid,
   mineTriggered,
   cloudTarget,
+  CAR_MAX_MS,
+  CAR_MIN_DISTANCE,
+  CAR_MIN_MS,
   pickPower,
+  rideMs,
+  rideTarget,
   POWER_IDS,
   rankPlayers,
   startOffsets,
@@ -147,4 +152,19 @@ describe('multijoueur : règles du socle', () => {
     ]);
     expect(ranking.map((r) => r.id)).toEqual(['rapide', 'lent', 'haut-prudent', 'haut', 'parti']);
   });
+
+  it('la Voiture vise le passage le plus proche le long de la terrasse, évite une porte scellée, et ne sert à rien si on y est déjà', () => {
+    const layout = generateLayout(config, 5);
+    const floor = 2;
+    const passages = layout.doorsByFloor[floor].filter((d) => d.mechanic === 'passage');
+    const start = landingPoint(config, floor, (passages[0].side + 2) % 4, 0); // face opposée
+    const ride = rideTarget(layout, start, floor)!;
+    expect(ride.door.mechanic).toBe('passage');
+    expect(ride.distance).toBeGreaterThan(CAR_MIN_DISTANCE);
+    expect(rideMs(ride.distance)).toBeGreaterThanOrEqual(CAR_MIN_MS);
+    expect(rideMs(ride.distance)).toBeLessThanOrEqual(CAR_MAX_MS);
+    if (passages.length > 1) expect(rideTarget(layout, start, floor, (d) => d.id === ride.door.id)!.door.id).not.toBe(ride.door.id);
+    expect(rideTarget(layout, doorFront(config, ride.door), floor)).toBeNull();
+  });
 });
+

@@ -112,6 +112,13 @@ export const SFX = {
   },
   /** Saut avec les Bottes rebondissantes : « boing ». */
   boing: (ctx, out, t) => tone(ctx, out, t, 180, 0.3, { type: 'sine', to: 700, gain: 0.14, vibrato: [30, 20] }),
+  /** Voiture : klaxon cartoon « pouet-pouet ». */
+  honk: (ctx, out, t) => [0, 0.16].forEach((d) => tone(ctx, out, t + d, 466, 0.12, { type: 'square', gain: 0.08, lowpass: 2200 })),
+  /** Voiture : le moteur s'emballe. */
+  vroom: (ctx, out, t) => {
+    tone(ctx, out, t, 90, 0.9, { type: 'sawtooth', to: 260, gain: 0.09, lowpass: 900, vibrato: [18, 22] });
+    noise(ctx, out, t, 0.6, { filter: 'lowpass', freq: 500, gain: 0.06 });
+  },
   /** Sceau magique : accord mystérieux. */
   seal: (ctx, out, t) => {
     [62, 66, 69, 73].forEach((n, i) => tone(ctx, out, t + i * 0.04, midiToFreq(n), 0.8, { type: 'sine', gain: 0.07, vibrato: [6, 5] }));

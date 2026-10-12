@@ -1,5 +1,5 @@
-import { doorFront, floorAtY, floorY, holeTangent, sideCoords, terraceOuterHalf, wallHalf, HOLE_WIDTH, type Vec3 } from './geometry';
-import type { Layout } from './types';
+import { doorFront, doorTangent, floorAtY, floorY, holeTangent, sideCoords, terraceDistance, terraceOuterHalf, wallHalf, HOLE_WIDTH, type Vec3 } from './geometry';
+import type { Door, Layout } from './types';
 
 /**
  * Règles du multijoueur (TypeScript pur, partagé par le navigateur et le serveur) : pouvoirs, réglages, mines,
@@ -9,10 +9,10 @@ import type { Layout } from './types';
  * Tous les réglages d'équilibrage sont ici.
  */
 
-export const POWER_IDS = ['turbo', 'shield', 'seal', 'mine', 'cloud', 'boots'] as const;
+export const POWER_IDS = ['turbo', 'shield', 'seal', 'mine', 'cloud', 'boots', 'car'] as const;
 export type PowerId = (typeof POWER_IDS)[number];
 export type PowerReserve = Record<PowerId, number>;
-export const emptyReserve = (): PowerReserve => ({ turbo: 0, shield: 0, seal: 0, mine: 0, cloud: 0, boots: 0 });
+export const emptyReserve = (): PowerReserve => ({ turbo: 0, shield: 0, seal: 0, mine: 0, cloud: 0, boots: 0, car: 0 });
 
 /**
  * Pouvoirs cachés derrière les portes vides (murs). Le créateur de la salle choisit « peu » ou « beaucoup » ;
@@ -55,6 +55,15 @@ export const BOOTS_JUMP = 1.15;
  * ne déclenche pas de mine (pas de second coup absurde en plein vol).
  */
 export const TRAP_SCENE_MULTI_MS = 2000;
+/**
+ * Voiture : surgit, embarque le joueur et le dépose devant le passage le plus proche de son étage (puissant : rare,
+ * surtout pour le joueur en retard). Vitesse le long de la terrasse et bornes de la durée du trajet (ms).
+ */
+export const CAR_SPEED = 16;
+export const CAR_MIN_MS = 1400;
+export const CAR_MAX_MS = 3500;
+/** Plus près que ça (m) du passage, la voiture ne sert à rien. */
+export const CAR_MIN_DISTANCE = 2;
 /** Immunité après une attaque subie (pas d'attaques en chaîne). */
 export const IMMUNITY_MS = 4000;
 /** Affichage des compteurs (pas une limite de jeu). */
@@ -72,9 +81,9 @@ export interface Contender {
   floor: number;
 }
 export const POWER_ODDS: Record<Standing, PowerReserve> = {
-  behind: { turbo: 30, shield: 25, seal: 6, mine: 10, cloud: 9, boots: 20 },
-  tied: { turbo: 17, shield: 17, seal: 16, mine: 17, cloud: 16, boots: 17 },
-  ahead: { turbo: 10, shield: 15, seal: 22, mine: 25, cloud: 20, boots: 8 },
+  behind: { turbo: 27, shield: 23, seal: 6, mine: 9, cloud: 8, boots: 17, car: 10 },
+  tied: { turbo: 17, shield: 17, seal: 16, mine: 17, cloud: 16, boots: 13, car: 4 },
+  ahead: { turbo: 10, shield: 15, seal: 22, mine: 25, cloud: 20, boots: 7, car: 1 },
 };
 
 /** Place relative d'un joueur : seul en tête = 'ahead', seul dernier = 'behind', sinon (au milieu, ou égalité) 'tied'. */
@@ -172,3 +181,32 @@ export function mineTriggered(mine: Vec3, from: Vec3, to: Vec3): boolean {
   const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((mine.x - from.x) * dx + (mine.z - from.z) * dz) / len2));
   return Math.hypot(from.x + dx * t - mine.x, from.z + dz * t - mine.z) < MINE_RADIUS;
 }
+
+/**
+ * Trajet de la Voiture : le passage de l'étage le plus proche en suivant la terrasse (dans un sens ou dans l'autre),
+ * en évitant si possible les portes bloquées (sceau d'un adversaire). Null si le joueur est déjà devant.
+ */
+export function rideTarget(layout: Layout, p: Vec3, floor: number, blocked: (door: Door) => boolean = () => false): { door: Door; dir: 1 | -1; distance: number } | null {
+  const { config } = layout;
+  const passages = (layout.doorsByFloor[floor] ?? []).filter((d) => d.mechanic === 'passage');
+  if (passages.length === 0) return null;
+  const from = sideCoords(p);
+  const options = passages.flatMap((door) =>
+    ([1, -1] as const).map((dir) => ({
+      door,
+      dir,
+      distance: terraceDistance(config, floor, from, { side: door.side, tangent: doorTangent(config, floor, door.slot) }, dir),
+      blocked: blocked(door),
+    })),
+  );
+  options.sort((a, b) => Number(a.blocked) - Number(b.blocked) || a.distance - b.distance);
+  const best = options[0];
+  if (best.distance < CAR_MIN_DISTANCE) return null;
+  return { door: best.door, dir: best.dir, distance: best.distance };
+}
+
+/** Durée du trajet en voiture (ms) : montée, course, dépose. */
+export function rideMs(distance: number): number {
+  return Math.round(Math.min(CAR_MAX_MS, Math.max(CAR_MIN_MS, (distance / CAR_SPEED) * 1000 + 700)));
+}
+

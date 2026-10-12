@@ -125,6 +125,14 @@ export class Trail {
     }
   }
 
+  /** Retire les bouffées de la scène (traînée temporaire, par exemple celle d'une voiture). */
+  dispose(): void {
+    for (const puff of this.puffs) {
+      puff.mesh.removeFromParent();
+      (puff.mesh.material as THREE.Material).dispose();
+    }
+  }
+
   /** `at` = pieds du personnage ; `active` = turbo en cours (sinon les bouffées finissent de s'estomper). */
   update(dt: number, at: THREE.Vector3, active: boolean, camera: THREE.Camera): void {
     this.timer -= dt;

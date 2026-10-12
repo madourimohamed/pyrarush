@@ -13,6 +13,7 @@ import {
   INTERACT_RANGE,
   FLOOR_HEIGHT,
   MINE_MAX_ACTIVE,
+  rideTarget,
   TRAP_FX,
   TRAP_SCENE_MULTI_MS,
   mineSpotValid,
@@ -36,7 +37,8 @@ import { CharacterBody } from './physics';
 import { Character } from './scene/character';
 import { burst, easeInOut, shieldBubble, Trail, Tweens } from './scene/fx';
 import { Mines } from './scene/mines';
-import { createTrapScene, trapLanding, TRAP_SCENE_SOLO_S, type TrapScene } from './scene/trapScenes';
+import { createTrapScene, trapLanding, TRAP_SCENE_SOLO_S, type Cutscene } from './scene/trapScenes';
+import { RideScene } from './scene/rideScene';
 import { releaseScarab } from './scene/props';
 import { HINT_COLORS, World } from './scene/world';
 import { BONUS_INFO } from './ui/bonus';
@@ -125,8 +127,8 @@ export class GameSession {
   private immuneUntil = 0;
   /** Étage imposé par le serveur pendant une animation : appliqué dès qu'elle se termine. */
   private pendingFloor: number | null = null;
-  /** Scène de piège en cours (gant, momie) et point d'arrivée du joueur à la fin. */
-  private trapScene: { scene: TrapScene; target: Vec3 } | null = null;
+  /** Cinématique en cours (scène de piège, trajet en voiture) et point d'arrivée du joueur à la fin. */
+  private cutscene: { scene: Cutscene; target: Vec3 } | null = null;
   /** Mines posées par le joueur (pour la limite). */
   private ownMines = new Set<number>();
   /** En multijoueur, l'introduction sert de compte à rebours : on ne peut pas la passer. */
@@ -251,7 +253,7 @@ export class GameSession {
     }
 
     this.handle(this.game.update(this.clock));
-    if (this.trapScene?.scene.update(dt)) this.endTrapScene();
+    if (this.cutscene?.scene.update(dt)) this.endCutscene();
     if (this.eyeReveal && this.clock >= this.eyeReveal.until) {
       if (!this.game.reveals.has(this.eyeReveal.doorId)) this.world.setReveal(this.eyeReveal.doorId, false);
       this.eyeReveal = null;
@@ -336,6 +338,10 @@ export class GameSession {
         const last = this.player.lastPassage;
         if (!last || this.clock - last.at > SEAL_WINDOW_MS) return 'Franchis d’abord une bonne porte';
         return this.game.seals.has(last.doorId) ? 'Porte déjà scellée' : null;
+      }
+      case 'car': {
+        if (this.locked || this.player.floor > this.config.floors) return 'Pas maintenant';
+        return rideTarget(this.game.layout, this.body.pos, this.player.floor) ? null : 'Tu es déjà devant la bonne porte';
       }
       case 'mine':
         if (this.ownMines.size >= MINE_MAX_ACTIVE) return `${MINE_MAX_ACTIVE} mines déjà posées`;
@@ -449,9 +455,9 @@ export class GameSession {
   /** Fin de la partie décidée par le serveur : elle s'arrête pour tout le monde. */
   endRace(): void {
     this.finished = true;
-    if (this.trapScene) {
-      this.trapScene.scene.finish();
-      this.trapScene = null;
+    if (this.cutscene) {
+      this.cutscene.scene.finish();
+      this.cutscene = null;
     }
     this.lock();
   }
@@ -698,7 +704,7 @@ export class GameSession {
   }
 
   /**
-   * Scène de piège cartoon (voir trapScenes.ts) : 3 s en solo, 2 s en multijoueur, gros plan de la caméra du joueur touché.
+   * Scène de piège cartoon (voir cutscenes.ts) : 3 s en solo, 2 s en multijoueur, gros plan de la caméra du joueur touché.
    * Le moteur a déjà appliqué les conséquences ; la scène ne fait que les montrer, puis rend les commandes.
    */
   private startTrapScene(door: Door, from: number, to: number): void {
@@ -707,11 +713,11 @@ export class GameSession {
     const target = trapLanding(this.config, door, from, to);
     const scene = this.makeTrapScene(door, this.character, target, from - to > 1, true);
     if (!scene) return this.unlock(target, this.player.floor);
-    this.trapScene = { scene, target };
+    this.cutscene = { scene, target };
   }
 
   /** Construit une scène de piège pour un personnage (le sien, ou un adversaire qui la rejoue sans caméra ni son). */
-  private makeTrapScene(door: Door, character: Character, target: Vec3, big: boolean, local: boolean): TrapScene | null {
+  private makeTrapScene(door: Door, character: Character, target: Vec3, big: boolean, local: boolean): Cutscene | null {
     const transform = this.world.doors.transform(door.id);
     if (!transform) return null;
     const guardian = this.world.borrowGuardian(door);
@@ -743,13 +749,53 @@ export class GameSession {
     return scene;
   }
 
-  /** Fin de la scène de piège (normale ou forcée) : personnage posé à l'arrivée, commandes et caméra rendues. */
-  private endTrapScene(): void {
-    const current = this.trapScene;
+  /** Fin de la cinématique (normale ou forcée) : personnage posé à l'arrivée, commandes et caméra rendues. */
+  private endCutscene(): void {
+    const current = this.cutscene;
     if (!current) return;
-    this.trapScene = null;
+    this.cutscene = null;
     current.scene.finish();
     this.unlock(current.target, this.player.floor);
+  }
+
+  /** Voiture (pouvoir) : trajet décidé par le serveur, jusqu'au passage `doorId` ; le joueur arrive devant la porte. */
+  startRide(doorId: string, dir: 1 | -1, ms: number): void {
+    const door = this.game.doorsById.get(doorId);
+    if (!door || this.cutscene) return;
+    this.lock();
+    const scene = this.makeRide(door, this.character, dir, ms, true);
+    const front = doorFront(this.config, door);
+    this.cutscene = { scene, target: front };
+    this.hud.showToast('Voiture !', 'good', 2, 'Direction : le passage le plus proche');
+  }
+
+  /** Un adversaire part en voiture : on rejoue son trajet sur son personnage. */
+  opponentRide(id: string, doorId: string, dir: 1 | -1, ms: number): void {
+    const opponent = this.opponents.get(id);
+    const door = this.game.doorsById.get(doorId);
+    if (opponent && door) opponent.playScene(this.makeRide(door, opponent.character, dir, ms, false));
+  }
+
+  private makeRide(door: Door, character: Character, dir: 1 | -1, ms: number, local: boolean): Cutscene {
+    const ride = new RideScene({
+      scene: this.world.scene,
+      tweens: this.tweens,
+      config: this.config,
+      character,
+      door,
+      dir,
+      duration: ms / 1000,
+      view: this.camera.camera,
+      ...(local && { camera: this.camera, sound: (name: SfxName) => this.sound.play(name) }),
+    });
+    if (!local) return ride;
+    // À l'arrivée, la bonne porte brille un instant : il n'y a plus qu'à l'ouvrir.
+    const finish = ride.finish.bind(ride);
+    ride.finish = () => {
+      finish();
+      this.world.flashDoor(door.id, GOLD, 2);
+    };
+    return ride;
   }
 
   /** Un adversaire a été piégé : on rejoue la même scène sur son personnage (sans toucher à notre caméra). */
@@ -844,8 +890,8 @@ export class GameSession {
   }
 
   private unlock(at: Vec3, floor: number): void {
-    // Une scène de piège garde la main jusqu'à sa fin (endTrapScene la retire avant de rendre les commandes).
-    if (this.trapScene) return;
+    // Une cinématique garde la main jusqu'à sa fin (endCutscene la retire avant de rendre les commandes).
+    if (this.cutscene) return;
     this.character.root.scale.setScalar(1);
     this.body.teleport(at);
     this.locked = false;
@@ -916,8 +962,8 @@ export class GameSession {
   }
 
   dispose(): void {
-    this.trapScene?.scene.finish();
-    this.trapScene = null;
+    this.cutscene?.scene.finish();
+    this.cutscene = null;
     for (const opponent of this.opponents.values()) opponent.stopScene();
     this.tweens.clear();
     this.world.dispose();

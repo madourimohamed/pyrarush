@@ -207,6 +207,10 @@ export class MultiplayerController {
         this.floors.set(m.id, m.floor);
         this.renderFloors();
         break;
+      case 'ride':
+        if (m.id === this.me) session?.startRide(m.doorId, m.dir, m.ms);
+        else session?.opponentRide(m.id, m.doorId, m.dir, m.ms);
+        break;
       case 'trapped':
         session?.opponentTrapped(m.id, m.doorId, m.from, m.to);
         break;
