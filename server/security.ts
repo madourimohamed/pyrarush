@@ -21,6 +21,8 @@ export const LIMITS = {
   roomsPerAccount: { max: 15, windowMs: 600_000 },
   /** Connexions multijoueur simultanées par adresse IP. */
   socketsPerIp: 8,
+  /** Positions relayées par seconde et par joueur (le jeu en envoie 15) : au-delà, ignorées (ni relayées ni utilisées). */
+  positionsPerSecond: 20,
   /** Messages multijoueur par seconde et par connexion (positions ~15/s + actions) ; au-delà, ignorés. */
   messagesPerSecond: 40,
   /** Au-delà de ce nombre de messages en une seconde, la connexion est fermée (client malveillant). */

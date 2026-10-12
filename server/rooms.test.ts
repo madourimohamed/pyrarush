@@ -140,6 +140,16 @@ describe('multijoueur : salles', () => {
     expect(b.last('floor')).toBeUndefined();
   });
 
+  it('un joueur ne peut pas inonder les autres de positions : au plus 20 par seconde sont relayées', () => {
+    const { lobby, a, b, advance } = room();
+    advance(COUNTDOWN_MS);
+    for (let i = 0; i < 50; i++) lobby.handle(a, { t: 'pos', p: [i, 0, 0], ry: 0 });
+    expect(b.inbox.filter((m) => m.t === 'pos')).toHaveLength(LIMITS.positionsPerSecond);
+    advance(1000);
+    lobby.handle(a, { t: 'pos', p: [0, 0, 0], ry: 0 });
+    expect(b.inbox.filter((m) => m.t === 'pos')).toHaveLength(LIMITS.positionsPerSecond + 1);
+  });
+
   it('anti-recherche de codes : après 5 codes erronés en une minute, même le bon code est refusé un moment', () => {
     const { lobby, code, advance } = room(2, { launch: false });
     const intruder = { ...peer('x'), ip: '6.6.6.6' };

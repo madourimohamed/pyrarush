@@ -89,6 +89,9 @@ interface Fighter {
   pos: Vec3 | null;
   /** Dernière action traitée (renvoyée dans `self`). */
   seq: number;
+  /** Positions reçues dans la seconde en cours (limite de débit relayé aux autres). */
+  posSecond: number;
+  posCount: number;
 }
 
 interface Mine {
@@ -185,6 +188,7 @@ export class Room {
     switch (message.t) {
       case 'pos': {
         if (this.state !== 'racing' && this.state !== 'countdown') return;
+        if (fighter && !this.positionAllowed(fighter)) return;
         this.others(peer, { t: 'pos', id: peer.id, p: message.p, ry: message.ry });
         if (!fighter) return;
         const [x, y, z] = message.p;
@@ -227,6 +231,16 @@ export class Room {
     }
   }
 
+  /** Pas plus de LIMITS.positionsPerSecond positions par seconde et par joueur (protège la bande passante des autres). */
+  private positionAllowed(fighter: Fighter): boolean {
+    const second = Math.floor(this.clock.now() / 1000);
+    if (second !== fighter.posSecond) {
+      fighter.posSecond = second;
+      fighter.posCount = 0;
+    }
+    return ++fighter.posCount <= LIMITS.positionsPerSecond;
+  }
+
   private start(): void {
     this.rematch.clear();
     this.clearTimers();
@@ -237,7 +251,7 @@ export class Room {
     this.arrivals = [];
     for (const peer of this.peers) {
       this.game.addPlayer(peer.id);
-      this.fighters.set(peer.id, { name: peer.name, left: false, powers: emptyReserve(), turboUntil: 0, bootsUntil: 0, immuneUntil: 0, sceneUntil: 0, pos: null, seq: 0 });
+      this.fighters.set(peer.id, { name: peer.name, left: false, powers: emptyReserve(), turboUntil: 0, bootsUntil: 0, immuneUntil: 0, sceneUntil: 0, pos: null, seq: 0, posSecond: 0, posCount: 0 });
     }
     this.state = 'countdown';
     this.startAt = this.clock.now() + COUNTDOWN_MS;
