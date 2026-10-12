@@ -166,5 +166,15 @@ describe('multijoueur : règles du socle', () => {
     if (passages.length > 1) expect(rideTarget(layout, start, floor, (d) => d.id === ride.door.id)!.door.id).not.toBe(ride.door.id);
     expect(rideTarget(layout, doorFront(config, ride.door), floor)).toBeNull();
   });
+
+  it('un étage signalé doit être un entier entre 1 et l’étage actuel (0, négatif ou décimal ignorés)', () => {
+    const game = new Game(config, 5);
+    const p = game.addPlayer('a');
+    p.floor = 4;
+    for (const bad of [0, -3, 1.5, 5, Number.NaN]) expect(game.reportFloor('a', bad, 0)).toEqual([]);
+    expect(p.floor).toBe(4);
+    game.reportFloor('a', 3, 0);
+    expect(p.floor).toBe(3);
+  });
 });
 

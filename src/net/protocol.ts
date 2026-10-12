@@ -121,9 +121,11 @@ export function parseClientMessage(raw: string): ClientMessage | null {
   const str = (v: unknown, max = 40) => typeof v === 'string' && v.length <= max;
   const num = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
   const vec = (v: unknown) => Array.isArray(v) && v.length === 3 && v.every(num);
+  /** Entier positif (étage, numéro d'action, niveau). */
+  const count = (v: unknown) => Number.isInteger(v) && (v as number) >= 0 && (v as number) < 1e9;
   switch (msg.t) {
     case 'create':
-      return num(msg.level) && (msg.powers === 'few' || msg.powers === 'many') ? (msg as ClientMessage) : null;
+      return count(msg.level) && (msg.powers === 'few' || msg.powers === 'many') ? (msg as ClientMessage) : null;
     case 'join':
       return str(msg.code, 12) ? (msg as ClientMessage) : null;
     case 'kick':
@@ -131,11 +133,11 @@ export function parseClientMessage(raw: string): ClientMessage | null {
     case 'pos':
       return vec(msg.p) && num(msg.ry) ? (msg as ClientMessage) : null;
     case 'interact':
-      return num(msg.seq) && str(msg.doorId) && vec(msg.p) ? (msg as ClientMessage) : null;
+      return count(msg.seq) && str(msg.doorId) && vec(msg.p) ? (msg as ClientMessage) : null;
     case 'floor':
-      return num(msg.seq) && num(msg.floor) ? (msg as ClientMessage) : null;
+      return count(msg.seq) && count(msg.floor) && (msg.floor as number) >= 1 ? (msg as ClientMessage) : null;
     case 'power':
-      return num(msg.seq) && POWER_IDS.includes(msg.power as PowerId) && vec(msg.p) ? (msg as ClientMessage) : null;
+      return count(msg.seq) && POWER_IDS.includes(msg.power as PowerId) && vec(msg.p) ? (msg as ClientMessage) : null;
     case 'launch':
     case 'rematch':
     case 'leave':

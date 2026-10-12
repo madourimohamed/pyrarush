@@ -108,8 +108,8 @@ export class Game {
   reportFloor(playerId: string, floor: number, now: number): GameEvent[] {
     const player = this.players.get(playerId);
     if (!player || player.finishedAt !== undefined || floor === player.floor) return [];
-    // On ne monte jamais physiquement : seules les portes font monter.
-    if (floor > player.floor) return [];
+    // Étage entier, au moins 1 ; on ne monte jamais physiquement : seules les portes font monter.
+    if (!Number.isInteger(floor) || floor < 1 || floor > player.floor) return [];
     if (player.shield) {
       player.shield = false;
       return [{ type: 'shielded', playerId, cause: 'fall', floor: player.floor }];
