@@ -91,25 +91,33 @@ const wss = new WebSocketServer({
 const socketsPerIp = new Map<string, number>();
 let nextId = 1;
 
+/** Délai pour se présenter (message « hello » avec le jeton du compte) après l'ouverture de la connexion. */
+const HELLO_TIMEOUT_MS = 5000;
+
 wss.on('connection', (socket, req) => {
-  // Connexion authentifiée : le jeton du compte (invité ou sécurisé) est passé dans l'adresse (/ws?token=…).
   const ip = clientIp(req, TRUST_CLOUDFLARE);
-  const token = new URL(req.url ?? '/', 'http://localhost').searchParams.get('token') ?? '';
-  const account = token ? accounts.authenticate(token) : null;
-  if (!account) return socket.close(4001, 'Session invalide');
   const open = socketsPerIp.get(ip) ?? 0;
   if (open >= LIMITS.socketsPerIp) return socket.close(4029, 'Trop de connexions');
   socketsPerIp.set(ip, open + 1);
 
-  const peer: Peer = {
-    id: `p${nextId++}`,
-    name: account.name,
-    userId: account.id,
-    ip,
-    send: (message: ServerMessage) => {
-      if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(message));
-    },
+  // Le joueur se présente d'abord avec le jeton de son compte (invité ou sécurisé) ; sans cela, connexion fermée.
+  let peer: Peer | null = null;
+  const helloTimer = setTimeout(() => socket.close(4001, 'Session invalide'), HELLO_TIMEOUT_MS);
+  const welcome = (token: string) => {
+    const account = accounts.authenticate(token);
+    if (!account) return socket.close(4001, 'Session invalide');
+    clearTimeout(helloTimer);
+    peer = {
+      id: `p${nextId++}`,
+      name: account.name,
+      userId: account.id,
+      ip,
+      send: (message: ServerMessage) => {
+        if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(message));
+      },
+    };
   };
+
   // Les connexions mortes (téléphone en veille, réseau coupé) sont fermées par le battement de cœur.
   let alive = true;
   socket.on('pong', () => (alive = true));
@@ -127,7 +135,8 @@ wss.on('connection', (socket, req) => {
     const message = parseClientMessage(String(data));
     if (!message) return;
     try {
-      lobby.handle(peer, message);
+      if (!peer) return message.t === 'hello' ? welcome(message.token) : socket.close(4001, 'Session invalide');
+      if (message.t !== 'hello') lobby.handle(peer, message);
     } catch (error) {
       // Un bug du moteur ne doit faire tomber que cette connexion, jamais le serveur.
       console.error('Message en erreur :', message.t, error);
@@ -135,11 +144,12 @@ wss.on('connection', (socket, req) => {
     }
   });
   socket.on('close', () => {
+    clearTimeout(helloTimer);
     clearInterval(heartbeat);
     socketsPerIp.set(ip, Math.max(0, (socketsPerIp.get(ip) ?? 1) - 1));
     if (socketsPerIp.get(ip) === 0) socketsPerIp.delete(ip);
     try {
-      lobby.leave(peer);
+      if (peer) lobby.leave(peer);
     } catch (error) {
       console.error('Départ en erreur :', error);
     }

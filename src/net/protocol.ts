@@ -13,6 +13,8 @@ import { POWER_IDS, type PowerDensity, type PowerId, type PowerReserve } from '.
 export type Vec3Tuple = [number, number, number];
 
 export type ClientMessage =
+  /** Premier message après la connexion : le jeton du compte (jamais dans l'adresse, qui peut finir dans des journaux). */
+  | { t: 'hello'; token: string }
   /** Créer une salle : niveau et quantité de pouvoirs cachés (le jeu en déduit le nombre par étage). Le nom vient du compte. */
   | { t: 'create'; level: number; powers: PowerDensity }
   | { t: 'join'; code: string }
@@ -124,6 +126,8 @@ export function parseClientMessage(raw: string): ClientMessage | null {
   /** Entier positif (étage, numéro d'action, niveau). */
   const count = (v: unknown) => Number.isInteger(v) && (v as number) >= 0 && (v as number) < 1e9;
   switch (msg.t) {
+    case 'hello':
+      return str(msg.token, 200) ? (msg as ClientMessage) : null;
     case 'create':
       return count(msg.level) && (msg.powers === 'few' || msg.powers === 'many') ? (msg as ClientMessage) : null;
     case 'join':
