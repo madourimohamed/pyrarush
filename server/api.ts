@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { AccountError, type Account, type AccountService } from './accounts';
-import { LIMITS, LoginGuard, RateLimiter, verifyTurnstile } from './security';
+import { LIMITS, LoginGuard, RateLimiter, SECURITY_HEADERS, verifyTurnstile } from './security';
 import { nameKey } from '../src/net/account';
 
 /**
@@ -143,7 +143,7 @@ export function createApi(accounts: AccountService, options: ApiOptions = {}) {
       response = error instanceof BodyError ? fail(400, error.message) : fail(500, 'Erreur du serveur.');
       if (!(error instanceof BodyError)) console.error(error);
     }
-    res.writeHead(response.status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.writeHead(response.status, { ...SECURITY_HEADERS, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(response.json));
     return true;
   }

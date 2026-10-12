@@ -151,3 +151,28 @@ export function originAllowed(origin: string | undefined, host: string | undefin
   }
 }
 
+/**
+ * En-têtes de sécurité de toutes les réponses : seuls nos scripts (et Turnstile) s'exécutent, la page ne peut pas
+ * être affichée dans un cadre d'un autre site, pas de devinette de type de fichier, pas de caméra ni de micro.
+ * Les styles en ligne restent permis (couleurs posées par le jeu) ; images et textures peuvent venir de data:/blob:.
+ */
+export const SECURITY_HEADERS: Record<string, string> = {
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "script-src 'self' https://challenges.cloudflare.com",
+    "frame-src https://challenges.cloudflare.com",
+    "connect-src 'self' blob: data:",
+    "img-src 'self' data: blob:",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; '),
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+};
+

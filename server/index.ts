@@ -8,7 +8,7 @@ import { AccountService } from './accounts';
 import { createApi } from './api';
 import { openDatabase } from './db';
 import { Lobby, type Peer } from './rooms';
-import { clientIp, LIMITS, MessageBudget, originAllowed } from './security';
+import { clientIp, LIMITS, MessageBudget, originAllowed, SECURITY_HEADERS } from './security';
 import { resolveStatic } from './static';
 
 /**
@@ -64,15 +64,16 @@ const server = createServer((req, res) => {
 function serveStatic(url: string, res: import('node:http').ServerResponse): void {
   const file = resolveStatic(DIST, url);
   if (!file) {
-    res.writeHead(400).end('Adresse invalide.');
+    res.writeHead(400, SECURITY_HEADERS).end('Adresse invalide.');
     return;
   }
   if (!existsSync(file)) {
-    res.writeHead(404).end('Jeu non compilé : lancer « npm run build ».');
+    res.writeHead(404, SECURITY_HEADERS).end('Jeu non compilé : lancer « npm run build ».');
     return;
   }
   const hashed = file.includes(`${join(DIST, 'assets')}`);
   res.writeHead(200, {
+    ...SECURITY_HEADERS,
     'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream',
     'Cache-Control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache',
   });
