@@ -121,6 +121,8 @@
           <span>Ton nom</span>
           <input id="opt-name" type="text" maxlength="16" placeholder="Explorateur" autocomplete="off" />
         </label>
+        <small id="opt-name-status" class="opt-status"></small>
+        <button type="button" id="btn-account">Mon compte : sauvegarde et connexion</button>
         <div class="option-row">
           <span>Indices</span>
           <div id="opt-hints" class="segmented">
@@ -147,6 +149,62 @@
     </div>
 
     <!-- Records -->
+    <!-- Mon compte -->
+    <div id="screen-account" class="screen">
+      <div class="card account-card">
+        <div class="eyebrow">Mon compte</div>
+        <h2 id="acc-name">Explorateur</h2>
+        <p id="acc-badge" class="acc-badge"></p>
+
+        <div class="acc-panel" data-panel="guest">
+          <p class="room-lead">Ta progression est sauvegardée. <b>Sécurise ton compte</b> pour la retrouver sur un autre appareil.</p>
+          <form id="acc-secure-form" class="acc-form">
+            <input name="name" placeholder="Pseudo" maxlength="16" autocomplete="username" required />
+            <input name="password" type="password" placeholder="Mot de passe (8 caractères minimum)" autocomplete="new-password" required />
+            <button class="primary" type="submit">Sécuriser mon compte</button>
+          </form>
+          <button type="button" class="link" data-show="login">J'ai déjà un compte</button>
+        </div>
+
+        <div class="acc-panel" data-panel="login">
+          <form id="acc-login-form" class="acc-form">
+            <input name="name" placeholder="Pseudo" maxlength="16" autocomplete="username" required />
+            <input name="password" type="password" placeholder="Mot de passe" autocomplete="current-password" required />
+            <button class="primary" type="submit">Se connecter</button>
+          </form>
+          <button type="button" class="link" data-show="recover">Mot de passe oublié ?</button>
+          <button type="button" class="link" data-show="home">Retour</button>
+        </div>
+
+        <div class="acc-panel" data-panel="recover">
+          <p class="room-lead">Entre ton pseudo et ton <b>code de secours</b> pour choisir un nouveau mot de passe.</p>
+          <form id="acc-recover-form" class="acc-form">
+            <input name="name" placeholder="Pseudo" maxlength="16" autocomplete="username" required />
+            <input name="code" placeholder="Code de secours (XXXX-XXXX-XXXX-XXXX)" autocomplete="off" autocapitalize="characters" required />
+            <input name="password" type="password" placeholder="Nouveau mot de passe" autocomplete="new-password" required />
+            <button class="primary" type="submit">Changer de mot de passe</button>
+          </form>
+          <button type="button" class="link" data-show="login">Retour</button>
+        </div>
+
+        <div class="acc-panel" data-panel="code">
+          <p class="room-lead">Note ce <b>code de secours</b> en lieu sûr : c'est le seul moyen de retrouver ton compte si tu oublies ton mot de passe. Il ne sera plus affiché.</p>
+          <div id="acc-code" class="room-code acc-code"></div>
+          <button type="button" id="acc-code-copy">Copier le code</button>
+          <button type="button" class="primary" data-show="home">J'ai noté mon code</button>
+        </div>
+
+        <div class="acc-panel" data-panel="secured">
+          <p class="room-lead">Ton compte est sécurisé : connecte-toi avec ton pseudo sur n'importe quel appareil, ta progression te suit.</p>
+          <button type="button" id="acc-logout">Se déconnecter</button>
+        </div>
+
+        <p id="acc-status" class="room-status" aria-live="polite"></p>
+        <button type="button" id="acc-delete" class="danger">Supprimer mon compte</button>
+        <button class="primary" data-close>Fermer</button>
+      </div>
+    </div>
+
     <div id="screen-records" class="screen">
       <div class="card">
         <h2>Records</h2>

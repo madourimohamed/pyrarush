@@ -15,7 +15,8 @@ export interface MultiplayerHost {
   levels: Level[];
   hud: Hud;
   selected(): Level;
-  playerName(): string;
+  /** Jeton du compte du joueur (null hors connexion). */
+  token(): string | null;
   storage: { get(key: string): string | null; set(key: string, value: string): void };
   show(screen: 'screen-room' | 'screen-results' | null): void;
   /** Lance la course : session créée avec la graine commune, introduction de `seconds` (compte à rebours). */
@@ -145,9 +146,14 @@ export class MultiplayerController {
   }
 
   private async connect(): Promise<boolean> {
+    const token = this.host.token();
+    if (!token) {
+      this.status('Connexion au compte impossible : vérifie ta connexion internet.', true);
+      return false;
+    }
     this.status('Connexion…');
     try {
-      await this.connection.connect();
+      await this.connection.connect(token);
       this.status('');
       return true;
     } catch {
@@ -226,6 +232,9 @@ export class MultiplayerController {
         this.rematchReady.add(m.id);
         $('res-status').textContent = `${this.name(m.id)} veut une revanche ! (${this.rematchReady.size}/${this.players.length})`;
         break;
+      case 'kicked':
+        this.onKicked();
+        break;
       case 'error':
         this.status(m.message, true);
         break;
@@ -258,12 +267,18 @@ export class MultiplayerController {
   private renderRoom(): void {
     this.setWaiting(true);
     $('room-code-value').textContent = this.code;
-    const rows = this.players.map(
-      (p) => `<li><span>${escape(p.name)}${p.id === this.me ? ' (toi)' : ''}</span><span>${p.id === this.hostId ? 'a créé la salle' : 'prêt'}</span></li>`,
-    );
+    const isHost = this.me === this.hostId;
+    const rows = this.players.map((p) => {
+      const role = p.id === this.hostId ? 'a créé la salle' : 'prêt';
+      // L'hôte peut exclure un joueur (il ne pourra pas revenir pendant 10 minutes).
+      const kick = isHost && p.id !== this.me ? `<button type="button" class="kick" data-kick="${escape(p.id)}">Exclure</button>` : `<span>${role}</span>`;
+      return `<li><span>${escape(p.name)}${p.id === this.me ? ' (toi)' : ''}</span>${kick}</li>`;
+    });
     for (let i = this.players.length; i < this.maxPlayers; i++) rows.push('<li class="empty">Place libre…</li>');
     $('room-players').innerHTML = rows.join('');
-    const isHost = this.me === this.hostId;
+    for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>('#room-players [data-kick]'))) {
+      button.addEventListener('click', () => this.connection.send({ t: 'kick', id: button.dataset.kick! }));
+    }
     const enough = this.players.length >= MIN_PLAYERS;
     const launch = $<HTMLButtonElement>('btn-room-launch');
     launch.style.display = isHost ? '' : 'none';
@@ -361,6 +376,15 @@ export class MultiplayerController {
     button.disabled = true;
     button.textContent = 'En attente…';
     $('res-status').textContent = `En attente des autres joueurs (${this.rematchReady.size}/${this.players.length})…`;
+  }
+
+  /** Exclu par l'hôte : retour à l'écran de salle (on peut rejoindre une autre salle, ou celle-ci plus tard). */
+  private onKicked(): void {
+    const wasRacing = this.active;
+    this.reset();
+    if (wasRacing) this.host.backToMenu();
+    this.open();
+    this.status('L’hôte t’a exclu de la salle. Tu pourras y revenir dans 10 minutes.', true);
   }
 
   private onConnectionLost(): void {

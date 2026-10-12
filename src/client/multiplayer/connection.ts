@@ -11,10 +11,11 @@ export class RoomConnection {
     return this.socket?.readyState === WebSocket.OPEN;
   }
 
-  connect(): Promise<void> {
+  /** Se connecte avec le jeton du compte du joueur (le serveur en tire son nom ; sans compte valide, il refuse). */
+  connect(token: string): Promise<void> {
     if (this.open) return Promise.resolve();
     return new Promise((resolve, reject) => {
-      const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+      const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?token=${encodeURIComponent(token)}`);
       this.socket = socket;
       socket.onopen = () => resolve();
       socket.onerror = () => reject(new Error('Serveur de duel injoignable.'));

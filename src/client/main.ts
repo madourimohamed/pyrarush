@@ -1,4 +1,5 @@
 import '@fontsource-variable/fredoka';
+import { nameProblem } from '../net/account';
 import { randomSeed, starsFor, type HintMode, type Level, type PyramidConfig } from '../core';
 import { levels } from '../levels';
 import { AudioEngine } from './audio/audio';
@@ -16,6 +17,8 @@ import { MoveTutorial } from './ui/tutorial';
 import { renderVictory } from './ui/victory';
 import { renderBonusButton, renderChests } from './ui/bonus';
 import { MultiplayerController } from './multiplayer/controller';
+import { AccountManager } from './account/account';
+import { AccountScreen } from './ui/accountScreen';
 import { renderLevelCards, renderLevelInfo, renderRecords, showThumbnail, type MenuState } from './ui/menu';
 import { preloadComponents } from './scene/components';
 import { installDebugApi } from './debug/api';
@@ -134,22 +137,55 @@ $('touch').addEventListener(
   { passive: false },
 );
 
+// ---------- Compte (invité automatique, sécurisable) ----------
+const account = new AccountManager(levels);
+const accountScreen = new AccountScreen(account);
+account.onUpdate = () => {
+  // Progression synchronisée (autre appareil, connexion) : menu et profil à jour.
+  unlocked = progress.unlocked(levels.length, Number(params.get('debloquer') ?? 1));
+  renderMenu();
+  accountScreen.render();
+  if (document.activeElement !== nameInput) nameInput.value = account.account?.name ?? '';
+};
 const nameInput = $<HTMLInputElement>('opt-name');
-nameInput.value = storage.get('name') ?? '';
-nameInput.addEventListener('input', () => {
-  storage.set('name', nameInput.value.trim());
-  renderProfile();
+const nameStatus = $('opt-name-status');
+nameInput.addEventListener('change', () => {
+  const name = nameInput.value.trim();
+  if (!account.account || name === account.account.name) return;
+  const problem = nameProblem(name);
+  if (problem) {
+    nameStatus.textContent = problem;
+    nameStatus.classList.add('error');
+    return;
+  }
+  account
+    .rename(name)
+    .then(() => {
+      nameStatus.textContent = 'Nom enregistré.';
+      nameStatus.classList.remove('error');
+    })
+    .catch((error: Error) => {
+      nameStatus.textContent = error.message;
+      nameStatus.classList.add('error');
+      nameInput.value = account.account?.name ?? '';
+    });
 });
+const openAccount = () => {
+  accountScreen.open();
+  openOverlay('screen-account');
+};
+document.querySelector('.profile')!.addEventListener('click', openAccount);
+$('btn-account').addEventListener('click', openAccount);
 
 $('controls-help').textContent = isTouch
   ? 'Joystick à gauche · boutons sauter et ouvrir à droite · glisse pour tourner la caméra · loupe pour zoomer'
   : 'ZQSD / WASD ou flèches : bouger · Espace : sauter · E : ouvrir · glisser la souris : caméra · molette ou C : zoom';
 
 // ---------- Écrans ----------
-const screens = ['screen-menu', 'screen-room', 'screen-results', 'screen-pause', 'screen-chests', 'screen-victory', 'screen-howto', 'screen-settings', 'screen-records'] as const;
+const screens = ['screen-menu', 'screen-room', 'screen-results', 'screen-pause', 'screen-chests', 'screen-victory', 'screen-howto', 'screen-settings', 'screen-records', 'screen-account'] as const;
 type Screen = (typeof screens)[number];
 /** Écrans ouverts par-dessus un autre (menu ou pause), qui y reviennent à la fermeture. */
-const overlays: Screen[] = ['screen-howto', 'screen-settings', 'screen-records'];
+const overlays: Screen[] = ['screen-howto', 'screen-settings', 'screen-records', 'screen-account'];
 let current: Screen | null = null;
 let returnTo: Screen = 'screen-menu';
 
@@ -211,7 +247,7 @@ function refreshThumbnails(): void {
 }
 
 function renderProfile(): void {
-  $('profile-name').textContent = storage.get('name') || 'Explorateur';
+  $('profile-name').textContent = account.account?.name ?? 'Explorateur';
   $('profile-level').textContent = String(unlocked);
   $('unlock-count').textContent = `${unlocked} / ${levels.length}`;
 }
@@ -358,7 +394,7 @@ const multi = new MultiplayerController({
   levels,
   hud,
   selected: () => selected,
-  playerName: () => storage.get('name') || 'Explorateur',
+  token: () => account.token,
   storage,
   show,
   startRace: (level, seed, seconds) => startGame(seed, level, seconds),
@@ -449,6 +485,7 @@ performance.mark('pyrarush:start');
 applyUiTheme(selected);
 renderMenu();
 void showBackground().then(() => performance.measure('pyrarush:menu-ready', 'pyrarush:start'));
+void account.start();
 resize();
 setZoom(zoom);
 show('screen-menu');

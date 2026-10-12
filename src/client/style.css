@@ -2297,3 +2297,80 @@ body.touch #power-bar .power-hint {
   }
 }
 
+/* ---------- Mon compte ---------- */
+.profile {
+  cursor: pointer;
+}
+.account-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.acc-badge {
+  margin: -6px 0 0;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.acc-badge.secured {
+  color: var(--good);
+}
+.acc-panel {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+.acc-panel.show {
+  display: flex;
+}
+.acc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.acc-form input {
+  font-family: var(--font);
+  font-size: 16px;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.acc-code {
+  font-size: 26px;
+  letter-spacing: 0.12em;
+  word-break: break-all;
+}
+button.link {
+  border: none;
+  background: none;
+  padding: 4px;
+  color: var(--gold);
+  text-decoration: underline;
+}
+button.danger {
+  border-color: rgba(255, 120, 100, 0.5);
+  color: #ffb3a6;
+  background: rgba(255, 74, 61, 0.12);
+}
+button.danger.confirm {
+  background: var(--bad);
+  color: #fff;
+}
+.opt-status {
+  min-height: 16px;
+  color: var(--ink-soft);
+  text-align: left;
+}
+.opt-status.error {
+  color: #ff8a7a;
+}
+.room-players .kick {
+  padding: 4px 10px;
+  font-size: 13px;
+  border-radius: 10px;
+  color: #ffb3a6;
+  border-color: rgba(255, 120, 100, 0.5);
+  background: rgba(255, 74, 61, 0.12);
+}
+
