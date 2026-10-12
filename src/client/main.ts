@@ -1,6 +1,6 @@
 import '@fontsource-variable/fredoka';
 import { nameProblem } from '../net/account';
-import { randomSeed, starsFor, type HintMode, type Level, type PyramidConfig } from '../core';
+import { generateLayout, randomSeed, starsFor, type HintMode, type Level, type PyramidConfig } from '../core';
 import { levels } from '../levels';
 import { AudioEngine } from './audio/audio';
 import { ZOOM_LABELS, type ZoomLevel } from './camera';
@@ -14,6 +14,7 @@ import { Hud } from './ui/hud';
 import { applyIcons } from './ui/icons';
 import { enterFullscreen, setupFullscreen } from './ui/fullscreen';
 import { MoveTutorial } from './ui/tutorial';
+import { Onboarding } from './ui/onboarding';
 import { renderVictory } from './ui/victory';
 import { renderBonusButton, renderChests } from './ui/bonus';
 import { MultiplayerController } from './multiplayer/controller';
@@ -383,6 +384,7 @@ function resume(): void {
 
 /** Retour à l'accueil : après une victoire, le niveau suivant (s'il est débloqué) est présélectionné. */
 function backToMenu(): void {
+  onboarding.stop();
   const next = levels[playing.number];
   selectLevel(current === 'screen-victory' && next && next.number <= unlocked ? next : playing);
   showBackground();
@@ -467,6 +469,35 @@ window.addEventListener('resize', resize);
 // ---------- Tutoriel de déplacement (première partie) ----------
 const tutorial = new MoveTutorial(isTouch, storage);
 
+// ---------- Démo de prise en main (premier lancement) ----------
+/**
+ * Pyramide de la démo : toujours la même, choisie pour qu'un passage de l'étage 1 soit sur la face de départ,
+ * bien en vue (le joueur trouve la porte dorée sans chercher).
+ */
+const DEMO_SEED = (() => {
+  for (let seed = 2026; seed < 2126; seed++) {
+    const doors = generateLayout(levels[0].config, seed).doorsByFloor[1];
+    const perSide = doors.filter((d) => d.side === 0).length;
+    // Un passage parmi les portes centrales de la face de départ : à quelques pas, bien en vue.
+    if (doors.some((d) => d.mechanic === 'passage' && d.side === 0 && Math.abs(d.slot - (perSide - 1) / 2) <= 0.5)) return seed;
+  }
+  return 2026;
+})();
+const onboarding = new Onboarding(isTouch, (name) => audio.play(name));
+onboarding.onDone = () => {
+  progress.setTutorialDone();
+  storage.set('tutorial-move', 'done');
+  backToMenu();
+};
+async function startOnboarding(): Promise<void> {
+  const created = await startGame(DEMO_SEED, levels[0]);
+  if (created) created.onIntroEnd = () => onboarding.start(created);
+}
+$('btn-replay-demo').addEventListener('click', () => {
+  show(null);
+  void startOnboarding();
+});
+
 // ---------- Mesures (étape 0 de la bible graphique) ----------
 /** ?stats=1 affiche le compteur ; en développement ou avec ?debug=1, window.__debug expose les outils de mesure. */
 const stats = new PerfStats(renderer.renderer, params.has('stats'));
@@ -485,7 +516,11 @@ performance.mark('pyrarush:start');
 applyUiTheme(selected);
 renderMenu();
 void showBackground().then(() => performance.measure('pyrarush:menu-ready', 'pyrarush:start'));
-void account.start();
+// Au premier lancement (et pas en arrivant par une invitation), la démo de prise en main démarre toute seule,
+// une fois le compte prêt (au plus 3 s d'attente : hors connexion, on n'attend pas le serveur).
+void Promise.race([account.start(), new Promise((r) => setTimeout(r, 3000))]).then(() => {
+  if (!progress.tutorialDone() && !params.get('salle') && current === 'screen-menu') void startOnboarding();
+});
 resize();
 setZoom(zoom);
 show('screen-menu');

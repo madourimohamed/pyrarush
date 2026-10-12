@@ -133,6 +133,14 @@ export class GameSession {
   private cutscene: { scene: Cutscene; target: Vec3 } | null = null;
   /** Mines posées par le joueur (pour la limite). */
   private ownMines = new Set<number>();
+  /** Démo de prise en main : observe les gestes du joueur (déplacement, saut, portes). */
+  guide: {
+    move(x: number, dt: number): void;
+    jump(): void;
+    door(e: Extract<GameEvent, { type: 'doorResult' }>): void;
+  } | null = null;
+  /** Ouvrir les portes est-il permis ? (la démo l'interdit avant sa dernière étape) */
+  canInteract = true;
   /** En multijoueur, l'introduction sert de compte à rebours : on ne peut pas la passer. */
   introSkippable = true;
   /** Passage montré par l'Œil de Râ, jusqu'à `until` (ms de jeu). */
@@ -225,12 +233,16 @@ export class GameSession {
         jumpPressed: frame.jump,
       };
       if (Math.hypot(frame.moveX, frame.moveY) > 0.3) this.movedTime += dt;
+      this.guide?.move(frame.moveX, dt);
       this.accumulator += dt;
       let steps = 0;
       while (this.accumulator >= STEP && steps < 5) {
         this.body.step(STEP, intent);
         if (this.body.landedSpeed > 4) this.character.land(this.body.landedSpeed);
-        if (this.body.jumped) this.sound.play(this.body.jumpScale > 1 ? 'boing' : 'jump');
+        if (this.body.jumped) {
+          this.sound.play(this.body.jumpScale > 1 ? 'boing' : 'jump');
+          this.guide?.jump();
+        }
         if (this.body.landedSpeed > 9) this.sound.play('land');
         intent.jumpPressed = false;
         this.accumulator -= STEP;
@@ -246,7 +258,7 @@ export class GameSession {
         this.handle(events);
       }
       this.updateNearestDoor();
-      if (frame.interact && this.nearestDoor && this.body.grounded) {
+      if (frame.interact && this.nearestDoor && this.body.grounded && this.canInteract) {
         const door = this.nearestDoor;
         const events = this.game.interact(PLAYER_ID, door.id, this.clock, this.body.pos);
         if (events.length) this.net?.interact(door.id, this.body.pos);
@@ -333,6 +345,25 @@ export class GameSession {
     const p = new THREE.Vector3(front.x, front.y + 1.4, front.z).project(this.camera.camera);
     if (p.z > 1) return null;
     return { x: ((p.x + 1) / 2) * window.innerWidth, y: ((1 - p.y) / 2) * window.innerHeight };
+  }
+
+  /** Démo : la bonne porte la plus proche du départ, signalée par le repère doré (on est sûr de réussir). */
+  showGuideDoor(): string | null {
+    const spawn = spawnPoint(this.config);
+    // Un passage de la face de départ si possible (en vue), sinon le plus proche.
+    const all = this.game.layout.doorsByFloor[1].filter((d) => d.mechanic === 'passage');
+    const facing = all.filter((d) => d.side === sideCoords(spawn).side);
+    const passages = facing.length ? facing : all;
+    const nearest = passages.sort((a, b) => {
+      const fa = doorFront(this.config, a);
+      const fb = doorFront(this.config, b);
+      return Math.hypot(fa.x - spawn.x, fa.z - spawn.z) - Math.hypot(fb.x - spawn.x, fb.z - spawn.z);
+    })[0];
+    if (!nearest) return null;
+    // Repère doré + faisceau lumineux, visible de loin même si la porte est hors champ.
+    this.world.setPrivateHints(new Set([nearest.id]), 1);
+    this.world.setReveal(nearest.id, true);
+    return nearest.id;
   }
 
   /** Position des pieds (pour poser une mine). */
@@ -536,6 +567,7 @@ export class GameSession {
       switch (event.type) {
         case 'doorResult':
           this.onDoorResult(event, shielded);
+          this.guide?.door(event);
           break;
         case 'bonusUsed':
           this.onBonusUsed(event.bonus, event.timeBonusMs);

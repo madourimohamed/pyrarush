@@ -2374,3 +2374,200 @@ button.danger.confirm {
   background: rgba(255, 74, 61, 0.12);
 }
 
+/* ---------- Démo de prise en main ---------- */
+#onboarding {
+  position: absolute;
+  inset: 0;
+  display: none;
+  pointer-events: none;
+}
+#onboarding.show {
+  display: block;
+}
+.onb-card {
+  position: absolute;
+  left: 50%;
+  top: calc(64px + var(--safe-t));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 280px;
+  max-width: min(92vw, 440px);
+  padding: 14px 22px 16px;
+  border-radius: 20px;
+  text-align: center;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  transform: translateX(-50%);
+  transition: background 0.25s, transform 0.25s;
+}
+.onb-card.success {
+  background: rgba(30, 120, 70, 0.85);
+  transform: translateX(-50%) scale(1.06);
+}
+.onb-dots {
+  display: flex;
+  gap: 6px;
+}
+.onb-dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+}
+.onb-dots i.done {
+  background: var(--good);
+}
+.onb-dots i.current {
+  background: var(--gold);
+  box-shadow: 0 0 8px var(--gold);
+}
+.onb-title {
+  font-size: 24px;
+  color: var(--gold);
+}
+.onb-sub {
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+.onb-keys {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.onb-keys kbd {
+  min-width: 38px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  font-family: var(--font);
+  font-size: 18px;
+  font-weight: 700;
+  color: #2a1a05;
+  background: linear-gradient(180deg, #fff, #e9e2d6);
+  box-shadow: 0 3px 0 #b9ad98;
+  animation: onb-press 1s ease-in-out infinite;
+}
+body.touch .onb-keys {
+  display: none;
+}
+.onb-go {
+  display: none;
+  margin-top: 6px;
+  pointer-events: auto;
+}
+#onboarding.done .onb-go {
+  display: block;
+}
+/* Mobile : le pouce montre la direction dans la zone du joystick. */
+.onb-pad {
+  position: absolute;
+  left: calc(10% + var(--safe-l));
+  bottom: calc(20% + var(--safe-b));
+  display: none;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.12);
+}
+body.touch #onboarding[data-step='right'] .onb-pad,
+body.touch #onboarding[data-step='left'] .onb-pad {
+  display: block;
+}
+#onboarding[data-step='right'] .onb-pad .tuto-thumb {
+  animation: onb-swipe-right 1.2s ease-in-out infinite;
+}
+#onboarding[data-step='left'] .onb-pad .tuto-thumb {
+  animation: onb-swipe-left 1.2s ease-in-out infinite;
+}
+.onb-point {
+  position: absolute;
+  display: none;
+  padding: 8px 14px;
+  border-radius: 14px;
+  font-weight: 700;
+  color: #2a1a05;
+  background: var(--gold);
+  animation: tuto-bob 1s ease-in-out infinite;
+}
+.onb-point::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  border: 9px solid transparent;
+  border-bottom: none;
+  border-top-color: var(--gold);
+  transform: translateX(-50%);
+}
+.onb-point-jump {
+  right: calc(26px + var(--safe-r));
+  bottom: calc(132px + var(--safe-b));
+}
+.onb-point-act {
+  right: calc(122px + var(--safe-r));
+  bottom: calc(128px + var(--safe-b));
+}
+body.touch #onboarding[data-step='jump'] .onb-point-jump,
+body.touch #onboarding[data-step='door'] .onb-point-act {
+  display: block;
+}
+@keyframes onb-swipe-right {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    transform: translateX(44px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(44px);
+    opacity: 0;
+  }
+}
+@keyframes onb-swipe-left {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    transform: translateX(-44px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-44px);
+    opacity: 0;
+  }
+}
+@keyframes onb-press {
+  50% {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 #b9ad98;
+  }
+}
+/* Mobile : carte plus compacte, en haut, loin du joystick et des boutons. */
+body.touch .onb-card {
+  top: calc(58px + var(--safe-t));
+  min-width: 0;
+  max-width: min(56vw, 360px);
+  padding: 8px 16px 10px;
+  gap: 3px;
+}
+body.touch .onb-title {
+  font-size: 19px;
+}
+body.touch .onb-sub {
+  font-size: 13px;
+}
+

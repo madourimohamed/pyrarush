@@ -102,5 +102,8 @@ describe('règles partagées', () => {
     expect(normalizeProgress({ unlocked: 99 }, ids).unlocked).toBe(ids.length);
     expect(normalizeProgress('n’importe quoi', ids)).toEqual({ unlocked: 1, levels: {}, bonus: null });
     expect(mergeProgress({ unlocked: 2, levels: {}, bonus: 'eye' }, { unlocked: 1, levels: {}, bonus: null }).bonus).toBeNull();
+    // La démo faite sur un appareil reste faite après fusion (elle n'est montrée qu'une fois).
+    expect(mergeProgress({ unlocked: 1, levels: {}, tutorial: true }, { unlocked: 1, levels: {} }).tutorial).toBe(true);
+    expect(normalizeProgress({ tutorial: 'oui' }, ids).tutorial).toBeUndefined();
   });
 });

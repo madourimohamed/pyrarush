@@ -10,6 +10,8 @@ export interface Progress {
   unlocked: number;
   levels: Record<string, { best?: number; stars?: number }>;
   bonus?: BonusId | null;
+  /** Démo de prise en main terminée (montrée au premier lancement seulement). */
+  tutorial?: boolean;
 }
 
 export const emptyProgress = (): Progress => ({ unlocked: 1, levels: {} });
@@ -37,7 +39,7 @@ export function normalizeProgress(raw: unknown, levelIds: string[]): Progress {
     if (clean.best !== undefined || clean.stars !== undefined) levels[id] = clean;
   }
   const bonus = BONUS_IDS.find((b) => b === p.bonus) ?? null;
-  return { unlocked, levels, bonus };
+  return { unlocked, levels, bonus, ...(p.tutorial === true && { tutorial: true }) };
 }
 
 /**
@@ -53,7 +55,8 @@ export function mergeProgress(a: Progress, b: Progress): Progress {
     const stars = Math.max(x.stars ?? 0, y.stars ?? 0);
     levels[id] = { ...(best.length && { best: Math.min(...best) }), ...(stars > 0 && { stars }) };
   }
-  return { unlocked: Math.max(a.unlocked, b.unlocked), levels, bonus: b.bonus ?? null };
+  const tutorial = a.tutorial === true || b.tutorial === true;
+  return { unlocked: Math.max(a.unlocked, b.unlocked), levels, bonus: b.bonus ?? null, ...(tutorial && { tutorial }) };
 }
 
 // ---------- Pseudos et mots de passe ----------

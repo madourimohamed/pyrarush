@@ -51,6 +51,19 @@
       </div>
       <button id="btn-bonus" aria-label="Bonus"><span class="bonus-icon"></span><span class="key">B</span></button>
       <div id="prompt"><span class="key">E</span> Ouvrir la porte</div>
+      <!-- Démo de prise en main (premier lancement) -->
+      <div id="onboarding" aria-live="polite">
+        <div class="onb-card">
+          <div class="onb-dots"><i></i><i></i><i></i><i></i></div>
+          <b class="onb-title"></b>
+          <span class="onb-sub"></span>
+          <div class="onb-keys"></div>
+          <button type="button" class="primary onb-go">C'est parti !</button>
+        </div>
+        <div class="onb-pad"><span class="tuto-thumb"></span></div>
+        <div class="onb-point onb-point-jump">Touche ici !</div>
+        <div class="onb-point onb-point-act">Ouvre ici !</div>
+      </div>
       <div id="tutorial" aria-live="polite">
         <div class="tuto-move">
           <div class="tuto-pad"><span class="tuto-thumb"></span></div>
@@ -229,6 +242,7 @@
           <li>Après une chute, les passages que tu as déjà trouvés restent marqués en <b class="c-hint">doré</b>, pour toi seul.</li>
           <li>Les portes ne changent jamais pendant une partie : mémorise-les !</li>
           <li>Chaque niveau terminé débloque le suivant, avec un nouveau décor et de nouveaux pièges.</li>
+          <li>Besoin d'un rappel ? <button type="button" id="btn-replay-demo" class="link">Rejouer la démo</button></li>
           <li><b>Entre amis</b> (2 à 4 joueurs) : des pouvoirs sont cachés derrière certaines portes vides (turbo, bouclier, sceau, mine, nuage de confusion, bottes rebondissantes, voiture). Garde-les dans ta barre de pouvoirs et utilise-les quand tu veux (touches 1, 2, 3… sur ordinateur). Un pouvoir ramassé réapparaît plus tard derrière une autre porte.</li>
           <li>Au sommet, ouvre un des <b class="c-hint">trois coffres</b> : il contient un bonus à utiliser une fois (bouton bonus ou touche B) — <b>Œil de Râ</b>, <b>Bouclier d'Anubis</b> ou <b>Sablier de Thot</b>.</li>
           <li>Le bouton <b>loupe</b> change le zoom : proche, moyen, ou large pour voir toute la pyramide.</li>

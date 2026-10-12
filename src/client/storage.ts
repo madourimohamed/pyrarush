@@ -79,9 +79,18 @@ export const progress = {
     return { isRecord, hadPrevious: previous !== null };
   },
 
+  /** Démo de prise en main déjà faite (sur cet appareil ou sur le compte). */
+  tutorialDone(): boolean {
+    return storage.get('tutorial-done') === '1';
+  },
+  setTutorialDone(): void {
+    storage.set('tutorial-done', '1');
+    changed();
+  },
+
   /** Toute la progression locale, au format partagé avec le serveur. */
   snapshot(levels: Level[]): Progress {
-    const result: Progress = { unlocked: this.unlocked(levels.length), levels: {}, bonus: this.bonus() };
+    const result: Progress = { unlocked: this.unlocked(levels.length), levels: {}, bonus: this.bonus(), ...(this.tutorialDone() && { tutorial: true }) };
     for (const level of levels) {
       const best = this.best(level);
       const stars = this.stars(level);
@@ -94,6 +103,8 @@ export const progress = {
   apply(p: Progress, levels: Level[]): void {
     storage.set('unlocked', String(p.unlocked));
     storage.set('bonus', p.bonus ?? '');
+    if (p.tutorial) storage.set('tutorial-done', '1');
+    else storage.remove('tutorial-done');
     for (const level of levels) {
       const entry = p.levels[level.config.id];
       for (const [key, value] of [['best', entry?.best], ['stars', entry?.stars]] as const) {
