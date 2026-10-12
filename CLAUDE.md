@@ -14,6 +14,7 @@ Node 22 est requis. Dans ce WSL, `npm` pointe vers le npm Windows : utiliser le 
 
 - `npm run dev` : serveur de développement (http://localhost:5173, accessible aussi depuis le réseau local pour tester sur téléphone)
 - `npm test` : tests du moteur de règles (Vitest)
+- Modifier les dépendances : utiliser `npx -y npm@11 install …` (le npm 10.9 fourni avec Node 22 plante sur l'arbre de dépendances de Vitest 4, erreur `edgesOut`).
 - `npm run build` : vérification des types + build statique dans `dist/`
 - `npm run build:server` puis `npm run server` : serveur du jeu (`server/`) : jeu compilé (`dist/`), API des comptes (`/api`) et multijoueur (`/ws`). Variables : `PORT` (défaut 8787), `DATABASE` (défaut `data/pyrarush.sqlite`, dossier ignoré par git), `TURNSTILE_SECRET` (anti-robot, absent en local), `TRUST_CLOUDFLARE=1` (derrière Cloudflare : vraie adresse IP des joueurs). Côté jeu : `VITE_TURNSTILE_SITE_KEY` à la compilation. `npm start` fait tout (builds + serveur). En dev, Vite relaie `/ws` vers le port 8787.
 - Intégration continue : `.github/workflows/ci.yml` (types, tests, build du jeu et du serveur) à chaque push sur `master` et à chaque pull request.
