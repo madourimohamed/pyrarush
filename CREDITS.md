@@ -12,7 +12,7 @@
 
 | Image | Auteur | Licence | Dossier |
 |---|---|---|---|
-| Panorama du niveau 1 | fourni par le porteur du projet (`design/panoramique/`) | à compléter (outil et licence d'origine) | `public/textures/panoramas/` |
+| Panorama du niveau 1 | porteur du projet, généré avec ChatGPT (OpenAI), source dans `design/panoramique/` | appartient au porteur du projet (conditions d'utilisation d'OpenAI : usage commercial autorisé) | `public/textures/panoramas/` |
 | Aerial Beach 01 (rides de sable) | Rob Tuytel, [Poly Haven](https://polyhaven.com/a/aerial_beach_01) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | `public/textures/sand/` |
 
 ## Polices

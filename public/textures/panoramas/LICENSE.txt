@@ -3,4 +3,6 @@ Panoramas d'horizon (sables.jpg, sables-mobile.jpg)
 Image source fournie par le porteur du projet : design/panoramique/
 « Panorama désertique égyptien au coucher du soleil.png ».
 Préparée pour le jeu par art/panoramas/prepare_panorama.py (raccord des bords, tailles ordinateur/mobile).
-Origine et licence de l'image source : à compléter par le porteur du projet (outil, formule, usage commercial).
+Origine : générée par le porteur du projet avec ChatGPT (OpenAI), 2026-10-13.
+Droits : selon les conditions d'utilisation d'OpenAI, l'image appartient à l'utilisateur qui l'a générée,
+usage commercial autorisé (sous réserve des règles d'usage d'OpenAI).
