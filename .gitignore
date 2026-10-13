@@ -7,3 +7,4 @@ dist-server
 data/
 *.sqlite
 *.sqlite-*
+__pycache__/

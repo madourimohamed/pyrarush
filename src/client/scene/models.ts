@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 /**
  * Bibliothèque de modèles 3D (fichiers GLB dans public/models/<pack>/<nom>.glb).
@@ -8,6 +9,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
  *
  * Packs disponibles :
  * - nature : Kenney « Nature Kit » (CC0, https://kenney.nl) — palmiers, buissons, rochers, statues, pots…
+ * - explorer : le personnage animé, créé pour le jeu (script Blender art/explorer/build_explorer.py) — voir preloadCharacter.
  */
 export const DEFAULT_PACK = 'nature';
 
@@ -77,6 +79,41 @@ export async function preloadModels(names: Iterable<string>): Promise<void> {
 }
 
 export const isModelReady = (name: string) => ready.has(name);
+
+/** Personnage animé (squelette + animations nommées) : public/models/explorer/explorer.glb, source dans art/explorer/. */
+const CHARACTER_MODEL = 'explorer/explorer';
+let characterSource: { scene: THREE.Object3D; clips: THREE.AnimationClip[] } | null = null;
+let characterLoading: Promise<void> | null = null;
+
+/** Charge le personnage une seule fois ; en cas d'échec, les personnages gardent leur version en formes simples. */
+export function preloadCharacter(): Promise<void> {
+  characterLoading ??= loader
+    .loadAsync(modelUrl(CHARACTER_MODEL))
+    .then((gltf) => {
+      gltf.scene.traverse((obj) => {
+        if (!(obj instanceof THREE.Mesh)) return;
+        // Or : moins métallique (pas de carte d'environnement dans les scènes du jeu) et légèrement lumineux.
+        const material = obj.material as THREE.MeshStandardMaterial;
+        if (material.name === 'gold') {
+          material.metalness = 0.6;
+          material.roughness = 0.3;
+          material.emissive.set(0x3a2500);
+        }
+      });
+      characterSource = { scene: gltf.scene, clips: gltf.animations };
+    })
+    .catch((error) => {
+      characterLoading = null;
+      console.warn('Personnage animé introuvable :', error);
+    });
+  return characterLoading;
+}
+
+/** Un exemplaire indépendant du personnage (squelette propre, matériaux partagés), ou null s'il n'est pas chargé. */
+export function characterModel(): { scene: THREE.Object3D; clips: THREE.AnimationClip[] } | null {
+  if (!characterSource) return null;
+  return { scene: cloneSkinned(characterSource.scene), clips: characterSource.clips };
+}
 
 /** Hauteur d'origine d'un modèle préchargé. */
 export function modelHeight(name: string): number {

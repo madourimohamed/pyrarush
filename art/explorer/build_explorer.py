@@ -3,8 +3,9 @@
 Usage (Blender 4.5, sans interface) :
     blender -b --factory-startup --python art/explorer/build_explorer.py -- [--no-render]
 
-Produit, à côté de ce script :
-    explorer.glb      modèle + squelette + animations (fiche technique : ART_DIRECTION.md § 7.3)
+Produit :
+    public/models/explorer/explorer.glb   modèle + squelette + animations (fiche technique : ART_DIRECTION.md § 7.3)
+et, à côté de ce script :
     explorer.blend    fichier source Blender
     previews/*.png    rendus d'aperçu (vues de face/profil/dos, planche des animations)
 
@@ -21,6 +22,7 @@ import bpy
 from mathutils import Matrix, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+GLB = os.path.join(HERE, "..", "..", "public", "models", "explorer", "explorer.glb")
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 FPS = 30
 
@@ -603,8 +605,9 @@ def export(rig, body):
     for ob in bpy.context.scene.objects:
         ob.select_set(ob in (rig, body))
     bpy.context.view_layer.objects.active = rig
+    os.makedirs(os.path.dirname(GLB), exist_ok=True)
     bpy.ops.export_scene.gltf(
-        filepath=os.path.join(HERE, "explorer.glb"), export_format="GLB", use_selection=True,
+        filepath=os.path.normpath(GLB), export_format="GLB", use_selection=True,
         export_yup=True, export_apply=False, export_animations=True, export_animation_mode="ACTIONS",
         export_skins=True, export_all_influences=False, export_def_bones=False, export_optimize_animation_size=True,
         export_extras=False, export_cameras=False, export_lights=False,

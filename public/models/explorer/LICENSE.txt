@@ -1,0 +1,7 @@
+Explorateur encapuchonné (explorer.glb)
+
+Créé pour PyraRush : modèle, squelette et animations générés par le script
+art/explorer/build_explorer.py avec Blender 4.5 (logiciel GPL ; les créations
+appartiennent à leur auteur). Aucun asset tiers.
+
+© PyraRush. Tous droits réservés.

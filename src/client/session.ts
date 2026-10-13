@@ -954,6 +954,7 @@ export class GameSession {
 
   private celebrate(): void {
     this.sound.play('victory');
+    this.character.celebrate();
     const root = this.character.root;
     const colors = [0xff6b5a, 0xffc93c, 0x3ce0ff, 0x7ddc5a, 0xb04dff];
     for (let i = 0; i < 5; i++) {

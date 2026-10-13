@@ -4,6 +4,7 @@ import { Character } from './scene/character';
 import { Tweens } from './scene/fx';
 import { World } from './scene/world';
 import { preloadComponents } from './scene/components';
+import { preloadCharacter } from './scene/models';
 
 /**
  * Miniatures des niveaux (cartes du menu) et portrait du joueur, rendues avec le vrai moteur 3D.
@@ -13,6 +14,8 @@ import { preloadComponents } from './scene/components';
 const CACHE_VERSION = 'v2';
 const WIDTH = 400;
 const HEIGHT = 250;
+/** Clé du portrait : à changer quand le personnage change. */
+const PORTRAIT = 'portrait-explorer-1';
 
 function cacheGet(key: string): string | null {
   try {
@@ -68,10 +71,11 @@ function renderLevel(level: Level): string {
   return url;
 }
 
-/** Portrait de l'explorateur (avatar du profil). */
-export function renderPortrait(): string {
-  const cached = cacheGet('portrait');
+/** Portrait de l'explorateur (avatar du profil), avec le modèle animé une fois chargé. */
+export async function renderPortrait(): Promise<string> {
+  const cached = cacheGet(PORTRAIT);
   if (cached) return cached;
+  await preloadCharacter();
   const r = getRenderer();
   r.setSize(160, 160, false);
   r.toneMappingExposure = 1;
@@ -83,13 +87,14 @@ export function renderPortrait(): string {
   scene.add(sun);
   const character = new Character();
   character.animate(0.016, 0, 0, 0, true);
+  const modelLoaded = character.animated;
   scene.add(character.root);
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 20);
   camera.position.set(0.9, 1.35, 2.4);
   camera.lookAt(0, 1.0, 0);
   r.render(scene, camera);
   const url = r.domElement.toDataURL('image/jpeg', 0.85);
-  cacheSet('portrait', url);
+  if (modelLoaded) cacheSet(PORTRAIT, url);
   return url;
 }
 

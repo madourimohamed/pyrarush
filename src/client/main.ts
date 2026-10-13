@@ -22,6 +22,7 @@ import { AccountManager } from './account/account';
 import { AccountScreen } from './ui/accountScreen';
 import { renderLevelCards, renderLevelInfo, renderRecords, showThumbnail, type MenuState } from './ui/menu';
 import { preloadComponents } from './scene/components';
+import { preloadCharacter } from './scene/models';
 import { installDebugApi } from './debug/api';
 import { PerfStats } from './debug/stats';
 
@@ -272,7 +273,7 @@ function selectLevel(level: Level): boolean {
 let sessionRequest = 0;
 async function createSession(config: PyramidConfig, level: Level, seed: number): Promise<GameSession | null> {
   const request = ++sessionRequest;
-  await preloadComponents(level.theme.components);
+  await Promise.all([preloadComponents(level.theme.components), preloadCharacter()]);
   if (request !== sessionRequest) return null;
   session?.dispose();
   const { theme } = level;
@@ -543,9 +544,10 @@ renderer.renderer.setAnimationLoop((now) => {
 
 // Miniatures et portrait : après le premier affichage, pour ne pas retarder l'arrivée sur l'accueil.
 setTimeout(() => {
-  const portrait = renderPortrait();
-  $<HTMLImageElement>('profile-avatar').src = portrait;
-  $<HTMLImageElement>('promo-avatar').src = portrait;
+  void renderPortrait().then((portrait) => {
+    $<HTMLImageElement>('profile-avatar').src = portrait;
+    $<HTMLImageElement>('promo-avatar').src = portrait;
+  });
   refreshThumbnails();
 }, 400);
 
