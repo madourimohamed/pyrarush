@@ -255,7 +255,7 @@ export class Room {
     }
     this.state = 'countdown';
     this.startAt = this.clock.now() + COUNTDOWN_MS;
-    this.broadcast({ t: 'start', seed, level: this.level.number, inMs: COUNTDOWN_MS, order: this.peers.map((p) => p.id) });
+    this.broadcast({ t: 'start', seed, level: this.level.id, inMs: COUNTDOWN_MS, order: this.peers.map((p) => p.id) });
     this.cancelStart?.();
     this.cancelStart = this.clock.later(COUNTDOWN_MS, () => {
       if (this.state === 'countdown') this.state = 'racing';
@@ -513,7 +513,7 @@ export class Room {
     const players: RoomPlayer[] = this.peers.map((p) => ({ id: p.id, name: p.name }));
     const host = this.host?.id ?? '';
     for (const peer of this.peers) {
-      peer.send({ t: 'room', code: this.code, level: this.level.number, powers: this.density, you: peer.id, host, max: MAX_PLAYERS, players });
+      peer.send({ t: 'room', code: this.code, level: this.level.id, powers: this.density, you: peer.id, host, max: MAX_PLAYERS, players });
     }
   }
 
@@ -546,8 +546,8 @@ export class Lobby {
     const room = this.roomOf.get(peer);
     switch (message.t) {
       case 'create': {
-        const level = this.levels[Math.round(message.level) - 1];
-        if (!level) return peer.send({ t: 'error', message: 'Niveau inconnu.' });
+        const level = this.levels.find((l) => l.id === message.level);
+        if (!level) return peer.send({ t: 'error', message: 'Niveau inconnu : recharge la page pour mettre le jeu à jour.' });
         if (!this.creations.hit(peer.userId ?? peer.id)) return peer.send({ t: 'error', message: 'Trop de salles créées : patiente quelques minutes.' });
         this.leave(peer);
         const created = new Room(this.newCode(), level, message.powers, this.clock, randomSeed, this.random);

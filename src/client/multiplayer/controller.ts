@@ -135,7 +135,7 @@ export class MultiplayerController {
 
   private async create(): Promise<void> {
     if (!(await this.connect())) return;
-    this.connection.send({ t: 'create', level: this.host.selected().number, powers: this.density });
+    this.connection.send({ t: 'create', level: this.host.selected().id, powers: this.density });
   }
 
   private async join(raw: string): Promise<void> {
@@ -293,9 +293,10 @@ export class MultiplayerController {
     );
   }
 
-  private async start(seed: number, levelNumber: number, inMs: number, order: string[]): Promise<void> {
-    const level = this.host.levels[levelNumber - 1];
-    if (!level) return;
+  private async start(seed: number, levelId: string, inMs: number, order: string[]): Promise<void> {
+    const level = this.host.levels.find((l) => l.id === levelId);
+    // Serveur plus récent que la page (niveau ajouté) : on ne lance pas un autre niveau que celui des amis.
+    if (!level) return this.status('Ce niveau est absent de ta version du jeu : recharge la page.', true);
     this.active = true;
     document.body.classList.add('multi');
     this.clearTimers();

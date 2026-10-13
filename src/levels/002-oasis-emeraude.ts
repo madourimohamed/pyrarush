@@ -23,4 +23,6 @@ export default defineLevel({
     settings: { riskyDoor: { amount: 2 } },
   },
   theme: themes.oasis,
+  // Identifiant d'avant le 2026-10-13 (rangé par position) : la progression déjà enregistrée suit le niveau.
+  formerIds: ['level-2'],
 });

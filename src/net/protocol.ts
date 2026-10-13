@@ -16,7 +16,7 @@ export type ClientMessage =
   /** Premier message après la connexion : le jeton du compte (jamais dans l'adresse, qui peut finir dans des journaux). */
   | { t: 'hello'; token: string }
   /** Créer une salle : niveau et quantité de pouvoirs cachés (le jeu en déduit le nombre par étage). Le nom vient du compte. */
-  | { t: 'create'; level: number; powers: PowerDensity }
+  | { t: 'create'; /** Identifiant permanent du niveau (jamais sa position). */ level: string; powers: PowerDensity }
   | { t: 'join'; code: string }
   /** L'hôte exclut un joueur de sa salle (il ne peut pas revenir pendant KICK_MS ; jamais de bannissement définitif). */
   | { t: 'kick'; id: string }
@@ -54,9 +54,9 @@ export type ServerMessage =
    * État de la salle (à la création, à chaque arrivée ou départ). `you` = identifiant du destinataire ;
    * `host` = le créateur (ou son remplaçant s'il est parti), seul à pouvoir lancer ; `max` = places.
    */
-  | { t: 'room'; code: string; level: number; powers: PowerDensity; you: string; host: string; max: number; players: RoomPlayer[] }
+  | { t: 'room'; code: string; level: string; powers: PowerDensity; you: string; host: string; max: number; players: RoomPlayer[] }
   /** Départ : même graine pour tous, la course démarre dans `inMs` ; `order` = ordre des joueurs (places de départ, couleurs). */
-  | { t: 'start'; seed: number; level: number; inMs: number; order: string[] }
+  | { t: 'start'; seed: number; level: string; inMs: number; order: string[] }
   /** Un joueur a atteint le sommet : sa place et son temps (la course continue jusqu'au podium). */
   | { t: 'arrived'; id: string; rank: number; time: number }
   | { t: 'pos'; id: string; p: Vec3Tuple; ry: number }
@@ -123,13 +123,13 @@ export function parseClientMessage(raw: string): ClientMessage | null {
   const str = (v: unknown, max = 40) => typeof v === 'string' && v.length <= max;
   const num = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
   const vec = (v: unknown) => Array.isArray(v) && v.length === 3 && v.every(num);
-  /** Entier positif (étage, numéro d'action, niveau). */
+  /** Entier positif (étage, numéro d'action). */
   const count = (v: unknown) => Number.isInteger(v) && (v as number) >= 0 && (v as number) < 1e9;
   switch (msg.t) {
     case 'hello':
       return str(msg.token, 200) ? (msg as ClientMessage) : null;
     case 'create':
-      return count(msg.level) && (msg.powers === 'few' || msg.powers === 'many') ? (msg as ClientMessage) : null;
+      return str(msg.level, 64) && (msg.powers === 'few' || msg.powers === 'many') ? (msg as ClientMessage) : null;
     case 'join':
       return str(msg.code, 12) ? (msg as ClientMessage) : null;
     case 'kick':

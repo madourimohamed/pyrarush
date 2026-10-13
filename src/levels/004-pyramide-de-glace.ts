@@ -22,4 +22,6 @@ export default defineLevel({
     settings: { teleportUp: { min: 2, max: 3 }, teleportDown: { min: 2, max: 2 }, riskyDoor: { amount: 3 } },
   },
   theme: themes.glace,
+  // Identifiant d'avant le 2026-10-13 (rangé par position) : la progression déjà enregistrée suit le niveau.
+  formerIds: ['level-4'],
 });

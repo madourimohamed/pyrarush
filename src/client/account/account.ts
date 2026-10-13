@@ -1,5 +1,5 @@
-import type { Level } from '../../core';
-import { mergeProgress, type Progress } from '../../net/account';
+import { levelCatalog } from '../../levels';
+import { mergeProgress, normalizeProgress, type Progress } from '../../net/account';
 import { progress, storage } from '../storage';
 import { turnstileToken } from './turnstile';
 
@@ -30,7 +30,7 @@ export class AccountManager {
   onUpdate: () => void = () => {};
   private syncTimer = 0;
 
-  constructor(private readonly levels: Level[]) {
+  constructor() {
     progress.onChange(() => this.scheduleSync());
   }
 
@@ -111,7 +111,7 @@ export class AccountManager {
   private forget(): void {
     window.clearTimeout(this.syncTimer);
     storage.remove(TOKEN_KEY);
-    progress.clear(this.levels);
+    progress.clear();
     this.account = null;
   }
 
@@ -125,7 +125,7 @@ export class AccountManager {
   private async adopt(account: AccountView & { progress: Progress }): Promise<void> {
     this.account = { id: account.id, name: account.name, secured: account.secured };
     this.online = true;
-    progress.apply(mergeProgress(account.progress, progress.snapshot(this.levels)), this.levels);
+    progress.apply(mergeProgress(normalizeProgress(account.progress, levelCatalog), progress.snapshot(), levelCatalog));
     this.onUpdate();
     await this.sync();
   }
@@ -139,8 +139,8 @@ export class AccountManager {
   private async sync(): Promise<void> {
     if (!this.token) return;
     try {
-      const res = await this.request<{ progress: Progress }>('PUT', '/api/me/progress', { progress: progress.snapshot(this.levels) });
-      progress.apply(res.progress, this.levels);
+      const res = await this.request<{ progress: Progress }>('PUT', '/api/me/progress', { progress: progress.snapshot() });
+      progress.apply(res.progress);
       this.online = true;
     } catch {
       this.online = false; // hors connexion : on réessaiera au prochain changement

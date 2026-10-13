@@ -1,15 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { levels } from '../src/levels';
+import { levelCatalog } from '../src/levels';
 import { AccountService } from './accounts';
 import { createApi, type ApiRequest } from './api';
 import { openDatabase } from './db';
 import { LIMITS, LOGIN_FAILURES } from './security';
 
-const ids = levels.map((l) => l.config.id);
 
 function setup(options: Parameters<typeof createApi>[1] = {}) {
   const now = { t: 1_000_000 };
-  const api = createApi(new AccountService(openDatabase(':memory:'), ids, () => now.t), { now: () => now.t, ...options });
+  const api = createApi(new AccountService(openDatabase(':memory:'), levelCatalog, () => now.t), { now: () => now.t, ...options });
   const call = (method: string, path: string, body: Record<string, unknown> = {}, token: string | null = null, ip = '1.2.3.4') =>
     api.handle({ method, path, body, token, ip } satisfies ApiRequest);
   return { call, now };
@@ -20,12 +19,12 @@ describe('API des comptes', () => {
     const { call } = setup();
     const guest = (await call('POST', '/api/guest')).json as { token: string; account: { id: string; secured: boolean } };
     expect(guest.account.secured).toBe(false);
-    expect((await call('PUT', '/api/me/progress', { progress: { unlocked: 2 } }, guest.token)).json).toMatchObject({ progress: { unlocked: 2 } });
+    expect((await call('PUT', '/api/me/progress', { progress: { reached: levelCatalog.ids[1] } }, guest.token)).json).toMatchObject({ progress: { reached: levelCatalog.ids[1] } });
     const secured = await call('POST', '/api/me/secure', { name: 'Yasmine', password: 'oasis-emeraude' }, guest.token);
     expect(secured.status).toBe(200);
     expect(JSON.stringify(secured.json)).not.toContain('scrypt'); // aucun secret ne sort du serveur
-    const login = (await call('POST', '/api/login', { name: 'yasmine', password: 'oasis-emeraude' })).json as { token: string; account: { progress: { unlocked: number } } };
-    expect(login.account.progress.unlocked).toBe(2);
+    const login = (await call('POST', '/api/login', { name: 'yasmine', password: 'oasis-emeraude' })).json as { token: string; account: { progress: { reached: string } } };
+    expect(login.account.progress.reached).toBe(levelCatalog.ids[1]);
     expect((await call('DELETE', '/api/me', {}, login.token)).status).toBe(200);
     expect((await call('GET', '/api/me', {}, login.token)).status).toBe(401);
     expect((await call('POST', '/api/login', { name: 'Yasmine', password: 'oasis-emeraude' })).status).toBe(401);

@@ -19,4 +19,6 @@ export default defineLevel({
     settings: { teleportUp: { min: 3, max: 3 }, teleportDown: { min: 2, max: 3 } },
   },
   theme: themes.lave,
+  // Identifiant d'avant le 2026-10-13 (rangé par position) : la progression déjà enregistrée suit le niveau.
+  formerIds: ['level-5'],
 });

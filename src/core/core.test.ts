@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { starsFor, defineTheme, editComponents, terraceDistance, doorTangents, holeTangents, DOOR_WIDTH, getMechanic, Game, generateLayout, walkTerrace, doorTangent, terraceMidHalf, buildColliders, landingPoint, holeTangent, HOLE_WIDTH, sideFrame, doorsPerSide } from './index';
+import { LEVEL_ID_PATTERN, starsFor, defineTheme, editComponents, terraceDistance, doorTangents, holeTangents, DOOR_WIDTH, getMechanic, Game, generateLayout, walkTerrace, doorTangent, terraceMidHalf, buildColliders, landingPoint, holeTangent, HOLE_WIDTH, sideFrame, doorsPerSide } from './index';
 import { levelFiles, levels, levelConfigs } from '../levels';
 
 const pyramid1 = levels[0].config;
@@ -213,6 +213,18 @@ describe('niveaux', () => {
       expect(level.theme.music.drums).toHaveLength(16);
     });
     expect(new Set(levels.map((l) => l.config.id)).size).toBe(levels.length);
+  });
+
+  it('ont un identifiant permanent (nom du fichier) ; un ancien nom ne désigne jamais un autre niveau', () => {
+    levels.forEach((level, i) => {
+      expect(level.id).toBe(levelFiles[i].id);
+      expect(level.id).toMatch(LEVEL_ID_PATTERN);
+      expect(level.config.id).toBe(level.id);
+    });
+    const all = levels.flatMap((l) => [l.id, ...l.formerIds]);
+    expect(new Set(all).size).toBe(all.length);
+    // Les identifiants d'avant le 2026-10-13 (par position) restent reconnus : les anciennes sauvegardes se relisent.
+    expect(levels.slice(0, 6).map((l) => l.formerIds)).toEqual([1, 2, 3, 4, 5, 6].map((n) => [`level-${n}`]));
   });
 
   it('une porte risquée ne dépose jamais sur un étage protégé', () => {

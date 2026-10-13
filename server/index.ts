@@ -2,7 +2,7 @@ import { createReadStream, existsSync, mkdirSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, extname, join, resolve } from 'node:path';
 import { WebSocketServer } from 'ws';
-import { levels } from '../src/levels';
+import { levelCatalog, levels } from '../src/levels';
 import { parseClientMessage, type ServerMessage } from '../src/net/protocol';
 import { AccountService } from './accounts';
 import { createApi } from './api';
@@ -40,7 +40,7 @@ const TYPES: Record<string, string> = {
 };
 
 mkdirSync(dirname(DATABASE), { recursive: true });
-const accounts = new AccountService(openDatabase(DATABASE), levels.map((l) => l.config.id));
+const accounts = new AccountService(openDatabase(DATABASE), levelCatalog);
 const api = createApi(accounts, { turnstileSecret: process.env.TURNSTILE_SECRET });
 setInterval(() => accounts.purgeExpiredSessions(), 3600_000).unref();
 

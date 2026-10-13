@@ -48,7 +48,7 @@ function room(count = 2, { launch = true, level = levels[0] as Level } = {}) {
   const lobby = new Lobby(levels, clock, () => 0.5);
   const peers = NAMES.slice(0, count).map((name) => peer(name[0].toLowerCase(), name));
   const [a, b, c, d] = peers;
-  lobby.handle(a, { t: 'create', level: level.number, powers: 'many' });
+  lobby.handle(a, { t: 'create', level: level.id, powers: 'many' });
   const code = a.last('room')!.code;
   peers.slice(1).forEach((p) => lobby.handle(p, { t: 'join', code: code.toLowerCase() }));
   if (launch && !a.last('start')) lobby.handle(a, { t: 'launch' });
@@ -294,7 +294,7 @@ describe('multijoueur : salles', () => {
     const lobby = new Lobby(levels, clock, () => 0.5);
     const a = peer('a');
     const b = peer('b');
-    lobby.handle(a, { t: 'create', level: 1, powers: 'few' });
+    lobby.handle(a, { t: 'create', level: levels[0].id, powers: 'few' });
     lobby.handle(b, { t: 'join', code: a.last('room')!.code });
     lobby.handle(a, { t: 'launch' });
     advance(COUNTDOWN_MS);

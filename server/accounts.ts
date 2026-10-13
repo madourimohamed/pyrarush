@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
-import { emptyProgress, mergeProgress, nameKey, nameProblem, normalizeProgress, passwordProblem, type Progress } from '../src/net/account';
+import { emptyProgress, mergeProgress, nameKey, nameProblem, normalizeProgress, passwordProblem, type LevelCatalog, type Progress } from '../src/net/account';
 import type { Database } from './db';
 
 /**
@@ -70,8 +70,8 @@ interface UserRow {
 export class AccountService {
   constructor(
     private readonly db: Database,
-    /** Identifiants des niveaux, dans l'ordre (validation de la progression). */
-    private readonly levelIds: string[],
+    /** Niveaux connus (validation de la progression, relecture des anciens identifiants). */
+    private readonly catalog: LevelCatalog,
     private readonly now: () => number = Date.now,
   ) {}
 
@@ -173,7 +173,7 @@ export class AccountService {
   saveProgress(userId: string, incoming: unknown): Progress {
     const account = this.get(userId);
     if (!account) throw new AccountError('not-found', 'Compte introuvable.');
-    const merged = mergeProgress(account.progress, normalizeProgress(incoming, this.levelIds));
+    const merged = mergeProgress(account.progress, normalizeProgress(incoming, this.catalog), this.catalog);
     this.db.prepare('UPDATE users SET progress = ? WHERE id = ?').run(JSON.stringify(merged), userId);
     return merged;
   }
@@ -209,9 +209,9 @@ export class AccountService {
   private toAccount(row: UserRow): Account {
     let progress: Progress;
     try {
-      progress = normalizeProgress(JSON.parse(row.progress), this.levelIds);
+      progress = normalizeProgress(JSON.parse(row.progress), this.catalog);
     } catch {
-      progress = emptyProgress();
+      progress = normalizeProgress(emptyProgress(), this.catalog);
     }
     return { id: row.id, name: row.name, secured: row.name_key !== null, progress };
   }

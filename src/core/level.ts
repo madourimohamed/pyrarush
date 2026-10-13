@@ -6,7 +6,14 @@ import type { Theme } from './theme';
  * et son thème (graphismes, couleurs, musique). Le moteur et le client savent jouer n'importe quel niveau.
  */
 export interface Level {
-  /** Position dans la progression (1, 2, 3…), déduite de l'ordre de la liste des niveaux. */
+  /**
+   * Identifiant permanent (ex. « temple-des-sables »), tiré du nom du fichier : c'est lui qui relie records, étoiles,
+   * déblocage et salles multijoueur au niveau. Ne dépend pas de la position : on peut insérer ou réordonner des niveaux.
+   */
+  id: string;
+  /** Anciens identifiants (renommage) : la progression enregistrée sous ces noms revient à ce niveau. */
+  formerIds: string[];
+  /** Position dans la progression (1, 2, 3…), déduite de l'ordre de la liste des niveaux. Affichage seulement. */
   number: number;
   name: string;
   /** Ce que le niveau apporte de nouveau, affiché dans le menu. */
@@ -60,6 +67,11 @@ export interface LevelDefinition {
   goals: LevelGoals;
   rules: LevelRules;
   theme: Theme;
+  /**
+   * Anciens identifiants de ce niveau, à compléter si on renomme son fichier : sans cela, les records et étoiles
+   * des joueurs seraient perdus. Ne jamais réutiliser l'ancien identifiant d'un autre niveau.
+   */
+  formerIds?: string[];
 }
 
 /** Déclare un niveau (aide au typage et à l'autocomplétion). */
@@ -74,16 +86,25 @@ export const band = (from: number, to: number, passages: number, mechanics: Floo
   ...(fragile !== undefined && { fragile }),
 });
 
-/** Transforme la liste ordonnée des définitions en niveaux numérotés, prêts à jouer. */
-export function buildLevels(definitions: LevelDefinition[]): Level[] {
-  return definitions.map(({ name, tagline, duration, highlights, goals, rules, theme }, i) => ({
-    number: i + 1,
-    name,
-    tagline,
-    duration,
-    highlights,
-    goals,
-    theme,
-    config: { ...LEVEL_DEFAULTS, ...rules, id: `level-${i + 1}`, name },
-  }));
+/** Format d'un identifiant de niveau : minuscules, chiffres et tirets (la partie « nom » du fichier NNN-nom.ts). */
+export const LEVEL_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/** Transforme la liste ordonnée des définitions (avec leur identifiant permanent) en niveaux numérotés, prêts à jouer. */
+export function buildLevels(entries: { id: string; definition: LevelDefinition }[]): Level[] {
+  return entries.map(({ id, definition }, i) => {
+    const { name, tagline, duration, highlights, goals, rules, theme, formerIds = [] } = definition;
+    if (!LEVEL_ID_PATTERN.test(id)) throw new Error(`Identifiant de niveau invalide : « ${id} »`);
+    return {
+      id,
+      formerIds,
+      number: i + 1,
+      name,
+      tagline,
+      duration,
+      highlights,
+      goals,
+      theme,
+      config: { ...LEVEL_DEFAULTS, ...rules, id, name },
+    };
+  });
 }

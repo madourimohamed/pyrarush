@@ -1,7 +1,7 @@
 import '@fontsource-variable/fredoka';
 import { nameProblem } from '../net/account';
 import { generateLayout, randomSeed, starsFor, type HintMode, type Level, type PyramidConfig } from '../core';
-import { levels } from '../levels';
+import { levelById, levels } from '../levels';
 import { AudioEngine } from './audio/audio';
 import { ZOOM_LABELS, type ZoomLevel } from './camera';
 import { Input } from './input/input';
@@ -50,8 +50,11 @@ document.addEventListener('click', (e) => (e.target as HTMLElement).closest('but
 
 // ---------- Progression ----------
 /** `?debloquer=6` débloque les niveaux jusqu'au 6 (pour tester). */
-let unlocked = progress.unlocked(levels.length, Number(params.get('debloquer') ?? 1));
-let selected: Level = levels[Math.min(unlocked, Number(storage.get('level') ?? unlocked) || 1) - 1];
+const unlockedNow = () => progress.unlocked(Number(params.get('debloquer') ?? 1));
+let unlocked = unlockedNow();
+/** Dernier niveau choisi (identifiant), sinon le plus loin débloqué. */
+const remembered = levelById(storage.get('level') ?? '');
+let selected: Level = remembered && remembered.number <= unlocked ? remembered : levels[unlocked - 1];
 let playing: Level = selected;
 const thumbnails = new Map<number, string>();
 const menuState = (): MenuState => ({ levels, selected, unlocked, best: (l) => progress.best(l), stars: (l) => progress.stars(l), thumbnails });
@@ -142,11 +145,11 @@ $('touch').addEventListener(
 );
 
 // ---------- Compte (invité automatique, sécurisable) ----------
-const account = new AccountManager(levels);
+const account = new AccountManager();
 const accountScreen = new AccountScreen(account);
 account.onUpdate = () => {
   // Progression synchronisée (autre appareil, connexion) : menu et profil à jour.
-  unlocked = progress.unlocked(levels.length, Number(params.get('debloquer') ?? 1));
+  unlocked = unlockedNow();
   renderMenu();
   accountScreen.render();
   if (document.activeElement !== nameInput) nameInput.value = account.account?.name ?? '';
@@ -261,7 +264,7 @@ function selectLevel(level: Level): boolean {
   if (level.number > unlocked) return false;
   const changed = level !== selected;
   selected = level;
-  storage.set('level', String(level.number));
+  storage.set('level', level.id);
   applyUiTheme(level);
   renderMenu();
   return changed;
@@ -325,8 +328,8 @@ function onVictory(result: SessionResult): void {
   const next = levels[playing.number];
   const justUnlocked = next !== undefined && next.number > unlocked;
   if (justUnlocked) {
-    unlocked = next.number;
-    progress.unlock(unlocked);
+    progress.unlock(next);
+    unlocked = unlockedNow();
     refreshThumbnails();
   }
   renderMenu();
