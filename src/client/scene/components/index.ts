@@ -1,7 +1,7 @@
 import type { ComponentSpec } from '../../../core';
 import { environment, grade } from './ambience';
 import type { Component, ComponentInstance, SceneContext } from './component';
-import { masonry, wallShadows } from './masonry';
+import { flagstones, masonry, wallShadows } from './masonry';
 import { cliffs, distantPyramids, mountains, obelisks, panorama, sky, terrain } from './landscape';
 import { banners, braziers, capstone, doorFrames, jars, particles, statues } from './temple';
 import { bushes, crystals, palms, pines, spires, terracePlants, vines } from './vegetation';
@@ -34,6 +34,7 @@ export const COMPONENTS: Record<string, Component<object>> = {
   vines,
   terracePlants,
   masonry,
+  flagstones,
   wallShadows,
   doorFrames,
   banners,

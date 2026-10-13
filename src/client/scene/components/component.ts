@@ -13,7 +13,7 @@ export interface SceneContext {
   groundHalf: number;
   pyramidHeight: number;
   /** Repères partagés entre composants, remplis dans l'ordre de la liste (ex. le centre de l'étang pour les palmiers). */
-  anchors: { pond?: THREE.Vector3; moatWidth?: number; wallRelief?: number };
+  anchors: { pond?: THREE.Vector3; moatWidth?: number; wallRelief?: number; floorRaise?: number };
 }
 
 export interface ComponentInstance {

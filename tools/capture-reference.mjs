@@ -56,7 +56,7 @@ for (const profile of PROFILES) {
   const shots = {};
   const shoot = async (name) => {
     const file = `${profile.name}-${name}.jpg`;
-    await page.screenshot({ path: join(outDir, file), type: 'jpeg', quality: 85 });
+    await page.screenshot({ path: join(outDir, file), type: 'jpeg', quality: 85, timeout: 180000 }); // rendu logiciel : une image peut prendre plus de 30 s
     const stats = await page.evaluate(() => window.__debug.stats());
     shots[name] = { file, stats };
   };

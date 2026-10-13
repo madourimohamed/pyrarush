@@ -1,6 +1,6 @@
-Kit de maçonnerie « temple » (block_*.glb)
+Kit de maçonnerie « temple » (blocs block_*.glb et dalles slab_*.glb)
 
-Créé pour PyraRush : blocs de pierre générés par le script art/temple/build_kit.py
+Créé pour PyraRush : blocs et dalles de pierre générés par le script art/temple/build_kit.py
 avec Blender 4.5 (logiciel GPL ; les créations appartiennent à leur auteur). Aucun asset tiers.
 
 © PyraRush. Tous droits réservés.
