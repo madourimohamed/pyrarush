@@ -104,9 +104,10 @@ export class Renderer {
       if (this.envScene) this.envScene.environment = null;
       this.envTarget?.dispose();
       this.envScene = scene;
-      this.envTarget = this.pmrem.fromScene(env.scene, 0.02);
+      this.envTarget = env.texture ? this.pmrem.fromEquirectangular(env.texture) : this.pmrem.fromScene(env.scene!, 0.02);
       scene.environment = this.envTarget.texture;
       scene.environmentIntensity = env.intensity;
+      scene.environmentRotation.y = env.rotation ?? 0;
     }
     const grade = scene.userData.grade as GradeRequest | undefined;
     this.gradePass.enabled = !!grade;

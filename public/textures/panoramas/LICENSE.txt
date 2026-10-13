@@ -1,0 +1,6 @@
+Panoramas d'horizon (sables.jpg, sables-mobile.jpg)
+
+Image source fournie par le porteur du projet : design/panoramique/
+« Panorama désertique égyptien au coucher du soleil.png ».
+Préparée pour le jeu par art/panoramas/prepare_panorama.py (raccord des bords, tailles ordinateur/mobile).
+Origine et licence de l'image source : à compléter par le porteur du projet (outil, formule, usage commercial).

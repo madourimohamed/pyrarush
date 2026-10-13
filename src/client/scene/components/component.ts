@@ -29,13 +29,16 @@ export interface Component<O extends object = object> {
   build(ctx: SceneContext, options: O): ComponentInstance | void;
   /** Modèles 3D à précharger avant la construction (voir scene/models.ts). */
   models?(options: O): string[];
+  /** Images à précharger avant la construction (voir scene/images.ts). */
+  textures?(options: O): string[];
 }
 
 export const defineComponent = <O extends object>(
   defaults: O,
   build: (ctx: SceneContext, options: O) => ComponentInstance | void,
   models?: (options: O) => string[],
-): Component<O> => ({ defaults, build, models });
+  textures?: (options: O) => string[],
+): Component<O> => ({ defaults, build, models, textures });
 
 // ---------- Utilitaires partagés par les composants ----------
 

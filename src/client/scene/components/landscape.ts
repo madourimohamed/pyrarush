@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { sunDirection } from '../themes';
+import { texture } from '../images';
 import { canvasTexture, defineComponent, merged } from './component';
 
 /** Ciel dégradé avec soleil (ou lune), brume, nuages basse-poly et étoiles optionnelles. */
@@ -81,8 +82,12 @@ export const sky = defineComponent({ clouds: 0xffffff, cloudGlow: 0xffc9a8, clou
   return { update: (dt) => void (clouds.rotation.y += dt * 0.004) };
 });
 
-/** Sol basse-poly vallonné, aplati autour de l'aire de jeu sur `flat` mètres au-delà de l'esplanade. */
-export const terrain = defineComponent({ flat: 3, relief: 1 }, (ctx, o) => {
+/**
+ * Sol vallonné, aplati autour de l'aire de jeu sur `flat` mètres au-delà de l'esplanade.
+ * Sans `detail` : basse-poly à facettes. Avec `detail` (ex. 'sand/ripples', voir art/textures/) : relief lissé,
+ * texture de détail en nuances de gris (la couleur reste celle du thème) et son relief (<detail>-normal), répétés tous les `tile` mètres.
+ */
+export const terrain = defineComponent({ flat: 3, relief: 1, detail: '', tile: 15 }, (ctx, o) => {
   const { theme, groundHalf, lowQuality } = ctx;
   const segments = lowQuality ? 90 : 140;
   const geometry = new THREE.PlaneGeometry(900, 900, segments, segments);
@@ -102,12 +107,80 @@ export const terrain = defineComponent({ flat: 3, relief: 1 }, (ctx, o) => {
     c.copy(dark).lerp(light, THREE.MathUtils.clamp((h + 5) / 10, 0, 1));
     colors.set([c.r, c.g, c.b], i * 3);
   }
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geometry.computeVertexNormals();
-  const ground = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  const detail = o.detail ? texture(o.detail) : null;
+  const normal = o.detail ? texture(`${o.detail}-normal`) : null;
+  let material: THREE.Material;
+  if (detail) {
+    // La texture de détail a une moyenne de 0,8 : on éclaircit d'autant la couleur du thème.
+    for (let i = 0; i < colors.length; i++) colors[i] /= 0.8;
+    const repeat = 900 / o.tile;
+    for (const t of [detail, normal]) {
+      if (!t) continue;
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.repeat.set(repeat, repeat);
+      t.anisotropy = 8;
+    }
+    detail.colorSpace = THREE.SRGBColorSpace;
+    material = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      map: detail,
+      normalMap: normal,
+      normalScale: new THREE.Vector2(1.2, 1.2),
+      roughness: 0.95,
+    });
+  } else {
+    material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const ground = new THREE.Mesh(geometry, material);
   ground.receiveShadow = true;
   ctx.scene.add(ground);
-});
+}, undefined, (o) => (o.detail ? [o.detail, `${o.detail}-normal`] : []));
+
+/**
+ * Panorama d'horizon (image 360° équirectangulaire, générée par art/panoramas/build_panorama.py) : ciel et paysage
+ * lointain en une seule image. Il éclaire aussi la scène (reflets, lumière douce) et donne sa couleur à la brume,
+ * pour que le sol 3D se fonde dans l'horizon. `rotation` (radians) tourne l'image autour de la verticale.
+ * Sans l'image (introuvable), repli sur le ciel dégradé du thème.
+ */
+export const panorama = defineComponent({ image: '', rotation: 0, environment: 0.6 }, (ctx, o) => {
+  const image = o.image ? texture(o.image) : null;
+  if (!image) return sky.build(ctx, sky.defaults);
+  image.mapping = THREE.EquirectangularReflectionMapping;
+  image.colorSpace = THREE.SRGBColorSpace;
+  const { scene, theme } = ctx;
+  scene.background = image;
+  scene.backgroundRotation.y = o.rotation;
+  scene.fog = new THREE.Fog(horizonColor(image) ?? theme.sky.horizon, theme.fog.near, theme.fog.far);
+  if (o.environment > 0) scene.userData.environment = { texture: image, intensity: o.environment, rotation: o.rotation };
+}, undefined, (o) => (o.image ? [o.image] : []));
+
+/** Couleur moyenne juste sous l'horizon du panorama (là où le sol 3D le rejoint), calculée une fois par image. */
+function horizonColor(image: THREE.Texture): THREE.Color | null {
+  if (image.userData.horizon) return image.userData.horizon as THREE.Color;
+  const source = image.image as CanvasImageSource | undefined;
+  if (!source) return null;
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 64;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  if (!g) return null;
+  g.drawImage(source, 0, 0, 64, 64);
+  const row = g.getImageData(0, 33, 64, 2).data;
+  let r = 0;
+  let gr = 0;
+  let b = 0;
+  for (let i = 0; i < row.length; i += 4) {
+    r += row[i];
+    gr += row[i + 1];
+    b += row[i + 2];
+  }
+  const n = row.length / 4;
+  const color = new THREE.Color().setRGB(r / n / 255, gr / n / 255, b / n / 255, THREE.SRGBColorSpace);
+  image.userData.horizon = color;
+  return color;
+}
 
 /** Montagnes à l'horizon : mesas ou pics. */
 export const mountains = defineComponent({ color: 0xc8775a, shape: 'mesa' as 'mesa' | 'peaks', count: 18 }, (ctx, o) => {

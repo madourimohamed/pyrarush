@@ -27,7 +27,20 @@ const templeBase = editComponents(BASE_THEME.components, {
 });
 
 export const themes = {
-  sables: BASE_THEME,
+  // Niveau 1 : horizon en panorama 360° (art/panoramas/prepare_panorama.py) et sable texturé.
+  sables: defineTheme(
+    {
+      components: editComponents(BASE_THEME.components, {
+        sky: null,
+        mountains: null,
+        distantPyramids: null,
+        terrain: { flat: 9, detail: 'sand/ripples' },
+        // Image fournie (design/panoramique/), tournée pour que son soleil soit dans la direction de theme.sun.
+        panorama: { image: 'panoramas/sables', rotation: -0.53 },
+      }),
+    },
+    BASE_THEME,
+  ),
 
   oasis: defineTheme({
     sky: { top: 0x1f8fd6, mid: 0x86d9ea, horizon: 0xe2f7e8, sun: 0xfffbe6 },

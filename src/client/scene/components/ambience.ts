@@ -8,8 +8,11 @@ import { defineComponent } from './component';
  */
 
 export interface EnvironmentRequest {
-  /** Petite scène (ciel dégradé + sol) dont on tire la carte d'environnement (reflets de l'or, lumière douce). */
-  scene: THREE.Scene;
+  /** Petite scène (ciel dégradé + sol) dont on tire la carte d'environnement (reflets de l'or, lumière douce)… */
+  scene?: THREE.Scene;
+  /** … ou un panorama équirectangulaire (composant panorama), tourné de `rotation` radians autour de la verticale. */
+  texture?: THREE.Texture;
+  rotation?: number;
   intensity: number;
 }
 

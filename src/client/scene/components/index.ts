@@ -2,12 +2,13 @@ import type { ComponentSpec } from '../../../core';
 import { environment, grade } from './ambience';
 import type { Component, ComponentInstance, SceneContext } from './component';
 import { masonry, wallShadows } from './masonry';
-import { cliffs, distantPyramids, mountains, obelisks, sky, terrain } from './landscape';
+import { cliffs, distantPyramids, mountains, obelisks, panorama, sky, terrain } from './landscape';
 import { banners, braziers, capstone, doorFrames, jars, particles, statues } from './temple';
 import { bushes, crystals, palms, pines, spires, terracePlants, vines } from './vegetation';
 import { moat, pond } from './water';
 import { props } from './props';
 import { preloadModels } from '../models';
+import { preloadTextures } from '../images';
 
 /**
  * Registre des composants de décor. Un thème de niveau les cite par leur nom (`use`) avec ses options.
@@ -17,6 +18,7 @@ export const COMPONENTS: Record<string, Component<object>> = {
   environment,
   grade,
   sky,
+  panorama,
   terrain,
   mountains,
   distantPyramids,
@@ -43,13 +45,18 @@ export const COMPONENTS: Record<string, Component<object>> = {
   props,
 } as Record<string, Component<object>>;
 
-/** Précharge les modèles 3D dont les composants d'un thème ont besoin (à attendre avant de construire le niveau). */
+/** Précharge les modèles 3D et les images dont les composants d'un thème ont besoin (à attendre avant de construire le niveau). */
 export function preloadComponents(specs: ComponentSpec[]): Promise<void> {
-  const names = specs.flatMap(({ use, ...options }) => {
+  const models: string[] = [];
+  const textures: string[] = [];
+  for (const { use, ...options } of specs) {
     const component = COMPONENTS[use];
-    return component?.models ? component.models({ ...component.defaults, ...options }) : [];
-  });
-  return preloadModels(names);
+    if (!component) continue;
+    const resolved = { ...component.defaults, ...options };
+    models.push(...(component.models?.(resolved) ?? []));
+    textures.push(...(component.textures?.(resolved) ?? []));
+  }
+  return Promise.all([preloadModels(models), preloadTextures(textures)]).then(() => undefined);
 }
 
 /** Construit les composants d'un thème dans l'ordre ; renvoie la fonction de mise à jour de l'ensemble. */

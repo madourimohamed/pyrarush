@@ -23,6 +23,7 @@ import { AccountScreen } from './ui/accountScreen';
 import { renderLevelCards, renderLevelInfo, renderRecords, showThumbnail, type MenuState } from './ui/menu';
 import { preloadComponents } from './scene/components';
 import { preloadCharacter } from './scene/models';
+import { useMobileTextures } from './scene/images';
 import { installDebugApi } from './debug/api';
 import { PerfStats } from './debug/stats';
 
@@ -36,6 +37,7 @@ setupFullscreen(isTouch, [$('btn-fullscreen'), $('btn-hud-fullscreen')]);
 
 // ---------- Rendu, commandes, son ----------
 const lowQuality = isTouch;
+useMobileTextures(lowQuality);
 const renderer = new Renderer($<HTMLCanvasElement>('game'), lowQuality);
 const input = new Input($('touch'), $('joy-base'), $('joy-knob'), $('btn-jump'), $('btn-act'));
 const hud = new Hud();
