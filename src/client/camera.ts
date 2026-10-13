@@ -10,11 +10,13 @@ export const ZOOM_LABELS = ['Proche', 'Moyen', 'Large'] as const;
  * dist : distance en mètres, ou multiple de la demi-largeur de la pyramide pour le plan large.
  * focus : part du cadrage tirée vers le centre de la pyramide plutôt que vers le joueur.
  * yaw : décalage de la caméra sur le côté, pour une vue de trois-quarts comme sur les maquettes.
+ * tilt : le regard se relève de cet angle au-dessus de la cible (le personnage descend dans l'image) : l'horizon
+ * et son paysage restent visibles en haut de l'écran, comme sur les maquettes.
  */
 const ZOOMS = [
-  { dist: (_half: number) => 8.5, pitch: 0.42, focus: 0, yaw: 0.38 },
-  { dist: (half: number) => Math.max(16, half * 0.9), pitch: 0.58, focus: 0.15, yaw: 0.3 },
-  { dist: (half: number) => half * 2.5, pitch: 0.78, focus: 0.7, yaw: 0.5 },
+  { dist: (_half: number) => 8.5, pitch: 0.36, focus: 0, yaw: 0.38, tilt: 0.07 },
+  { dist: (half: number) => Math.max(16, half * 0.9), pitch: 0.47, focus: 0.15, yaw: 0.3, tilt: 0.1 },
+  { dist: (half: number) => half * 2.5, pitch: 0.6, focus: 0.7, yaw: 0.5, tilt: 0.12 },
 ];
 
 /**
@@ -112,6 +114,8 @@ export class FollowCamera {
       this.target.z + Math.cos(yaw) * Math.cos(pitch) * dist,
     );
     this.camera.lookAt(this.target);
+    // Regard relevé (sauf en gros plan, centré sur le personnage).
+    this.camera.rotateX(z.tilt * (1 - c));
     if (this.shakeAmount > 0.002) {
       const s = this.shakeAmount;
       this.camera.position.add(new THREE.Vector3((Math.random() - 0.5) * s, (Math.random() - 0.5) * s, (Math.random() - 0.5) * s));
@@ -133,6 +137,7 @@ function sampleZoom(value: number, half: number) {
     pitch: THREE.MathUtils.lerp(a.pitch, b.pitch, t),
     focus: THREE.MathUtils.lerp(a.focus, b.focus, t),
     yaw: THREE.MathUtils.lerp(a.yaw, b.yaw, t),
+    tilt: THREE.MathUtils.lerp(a.tilt, b.tilt, t),
   };
 }
 
