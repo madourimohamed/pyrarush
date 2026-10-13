@@ -1,0 +1,211 @@
+{
+  "level": 1,
+  "seed": 20261011,
+  "url": "http://localhost:4182",
+  "date": "2026-10-13T21:18:07.808Z",
+  "renderer": "logiciel (SwiftShader)",
+  "profiles": {
+    "desktop": {
+      "timings": {
+        "pyrarush:menu-ready": 553,
+        "pyrarush:level-ready": 170
+      },
+      "downloadedMb": {
+        "menu": 3.46,
+        "total": 3.46
+      },
+      "views": {
+        "menu": {
+          "file": "desktop-menu.jpg",
+          "stats": {
+            "fps": 0.6521880910454578,
+            "frameAvg": 1533.2999999999993,
+            "frameP95": 3033.199999999997,
+            "longFrames": 2,
+            "gpuAvg": 2581.6451763333334,
+            "drawCalls": 151,
+            "triangles": 506949,
+            "geometries": 95,
+            "textures": 44,
+            "programs": 46,
+            "heapMb": 15.354156494140625
+          }
+        },
+        "play": {
+          "file": "desktop-play.jpg",
+          "stats": {
+            "fps": 0.591156301726177,
+            "frameAvg": 1691.5999999999985,
+            "frameP95": 3349.800000000003,
+            "longFrames": 2,
+            "gpuAvg": 2112.3786994666666,
+            "drawCalls": 151,
+            "triangles": 505827,
+            "geometries": 94,
+            "textures": 49,
+            "programs": 45,
+            "heapMb": 15.354156494140625
+          }
+        },
+        "door": {
+          "file": "desktop-door.jpg",
+          "stats": {
+            "fps": 0.23715789972963966,
+            "frameAvg": 4216.600000000006,
+            "frameP95": 4216.600000000006,
+            "longFrames": 1,
+            "gpuAvg": 2036.0905144210526,
+            "drawCalls": 151,
+            "triangles": 505827,
+            "geometries": 94,
+            "textures": 49,
+            "programs": 45,
+            "heapMb": 15.354156494140625
+          }
+        },
+        "terrace": {
+          "file": "desktop-terrace.jpg",
+          "stats": {
+            "fps": 0.1875082034839022,
+            "frameAvg": 5333.100000000006,
+            "frameP95": 5333.100000000006,
+            "longFrames": 1,
+            "gpuAvg": 2202.1472313636364,
+            "drawCalls": 151,
+            "triangles": 505827,
+            "geometries": 94,
+            "textures": 49,
+            "programs": 45,
+            "heapMb": 15.354156494140625
+          }
+        },
+        "aerial": {
+          "file": "desktop-aerial.jpg",
+          "stats": {
+            "fps": 0.824225640011211,
+            "frameAvg": 1213.2599999999977,
+            "frameP95": 4816.399999999994,
+            "longFrames": 5,
+            "gpuAvg": 2484.1673199230772,
+            "drawCalls": 154,
+            "triangles": 505875,
+            "geometries": 96,
+            "textures": 49,
+            "programs": 47,
+            "heapMb": 15.354156494140625
+          }
+        }
+      },
+      "errors": [
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+      ]
+    },
+    "mobile": {
+      "timings": {
+        "pyrarush:menu-ready": 417,
+        "pyrarush:level-ready": 144
+      },
+      "downloadedMb": {
+        "menu": 2.86,
+        "total": 2.86
+      },
+      "views": {
+        "menu": {
+          "file": "mobile-menu.jpg",
+          "stats": {
+            "fps": 1.127878910920123,
+            "frameAvg": 886.6200000000005,
+            "frameP95": 2449.9000000000015,
+            "longFrames": 5,
+            "gpuAvg": 1505.9924119999998,
+            "drawCalls": 152,
+            "triangles": 259233,
+            "geometries": 94,
+            "textures": 44,
+            "programs": 46,
+            "heapMb": 18.405914306640625
+          }
+        },
+        "play": {
+          "file": "mobile-play.jpg",
+          "stats": {
+            "fps": 1.058873358746295,
+            "frameAvg": 944.3999999999991,
+            "frameP95": 1566.7000000000044,
+            "longFrames": 3,
+            "gpuAvg": 1241.8515827692304,
+            "drawCalls": 151,
+            "triangles": 258999,
+            "geometries": 93,
+            "textures": 49,
+            "programs": 45,
+            "heapMb": 18.405914306640625
+          }
+        },
+        "door": {
+          "file": "mobile-door.jpg",
+          "stats": {
+            "fps": 0.6000240009600363,
+            "frameAvg": 1666.6000000000058,
+            "frameP95": 3266.5,
+            "longFrames": 2,
+            "gpuAvg": 1264.4772309999996,
+            "drawCalls": 151,
+            "triangles": 258999,
+            "geometries": 93,
+            "textures": 49,
+            "programs": 45,
+            "heapMb": 18.405914306640625
+          }
+        },
+        "terrace": {
+          "file": "mobile-terrace.jpg",
+          "stats": {
+            "fps": 0.37896013339396656,
+            "frameAvg": 2638.800000000003,
+            "frameP95": 6199.700000000012,
+            "longFrames": 3,
+            "gpuAvg": 1385.3146873181815,
+            "drawCalls": 151,
+            "triangles": 258999,
+            "geometries": 93,
+            "textures": 49,
+            "programs": 45,
+            "heapMb": 18.405914306640625
+          }
+        },
+        "aerial": {
+          "file": "mobile-aerial.jpg",
+          "stats": {
+            "fps": 1.1688615288708772,
+            "frameAvg": 855.5333333333352,
+            "frameP95": 2449.8000000000175,
+            "longFrames": 2,
+            "gpuAvg": 1434.6592885357138,
+            "drawCalls": 154,
+            "triangles": 259047,
+            "geometries": 95,
+            "textures": 49,
+            "programs": 47,
+            "heapMb": 18.405914306640625
+          }
+        }
+      },
+      "errors": [
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+      ]
+    }
+  },
+  "build": {
+    "woff2": 42,
+    "js": 868,
+    "css": 37,
+    "png": 34,
+    "svg": 1,
+    "html": 19,
+    "webmanifest": 1,
+    "txt": 2,
+    "glb": 1573,
+    "jpg": 1417
+  }
+}
