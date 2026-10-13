@@ -42,8 +42,10 @@ export const themes = {
           colors: { leafs: 0x5f9a3a, woodBark: 0x9a7650 },
           sway: 0.025,
         },
-        // Image fournie (design/panoramique/), tournée pour que son soleil soit dans la direction de theme.sun.
-        panorama: { image: 'panoramas/sables', rotation: -0.53 },
+        // Horizon tiré de 4 vues fournies (design/panoramique/, art/panoramas/build_horizon.py) : panorama de fond léger,
+        // tourné pour que son soleil soit dans la direction de theme.sun, et bande d'horizon nette, agrandie (zoom).
+        panorama: { image: 'panoramas/sables-horizon', rotation: -0.53 },
+        horizon: { image: 'panoramas/sables-horizon-band', rotation: -0.53, zoom: 1.35 },
       }),
     },
     BASE_THEME,

@@ -1,8 +1,9 @@
-Panoramas d'horizon (sables.jpg, sables-mobile.jpg)
+Horizon du niveau 1 (sables-horizon.jpg, sables-horizon-band.jpg et leurs versions -mobile)
 
-Image source fournie par le porteur du projet : design/panoramique/
-« Panorama désertique égyptien au coucher du soleil.png ».
-Préparée pour le jeu par art/panoramas/prepare_panorama.py (raccord des bords, tailles ordinateur/mobile).
-Origine : générée par le porteur du projet avec ChatGPT (OpenAI), 2026-10-13.
-Droits : selon les conditions d'utilisation d'OpenAI, l'image appartient à l'utilisateur qui l'a générée,
+Images sources fournies par le porteur du projet : design/panoramique/, quatre vues de 90° (ouest, nord, est, sud) :
+« Désert doré aux pyramides au coucher du soleil.png », « Oasis égyptienne au coucher du soleil.png »,
+« Panorama des ruines égyptiennes au désert.png », « Panorama désertique doré aux mesas lointaines.png ».
+Assemblées pour le jeu par art/panoramas/build_horizon.py (raccords, panorama de fond, bande d'horizon).
+Origine : générées par le porteur du projet avec ChatGPT (OpenAI), 2026-10-13.
+Droits : selon les conditions d'utilisation d'OpenAI, les images appartiennent à l'utilisateur qui les a générées,
 usage commercial autorisé (sous réserve des règles d'usage d'OpenAI).
