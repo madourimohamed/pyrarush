@@ -1,0 +1,207 @@
+{
+  "level": 1,
+  "seed": 20261011,
+  "url": "http://localhost:8787",
+  "date": "2026-10-13T21:03:31.529Z",
+  "renderer": "logiciel (SwiftShader)",
+  "profiles": {
+    "desktop": {
+      "timings": {
+        "pyrarush:menu-ready": 20261,
+        "pyrarush:level-ready": 161
+      },
+      "downloadedMb": {
+        "menu": 0.08,
+        "total": 0.08
+      },
+      "views": {
+        "menu": {
+          "file": "desktop-menu.jpg",
+          "stats": {
+            "fps": 0.70591557249753,
+            "frameAvg": 1416.5999999999985,
+            "frameP95": 1449.8999999999942,
+            "longFrames": 2,
+            "gpuAvg": 8902.042823285714,
+            "drawCalls": 152,
+            "triangles": 606415,
+            "geometries": 96,
+            "textures": 36,
+            "programs": 34,
+            "heapMb": 15.354156494140625
+          }
+        },
+        "play": {
+          "file": "desktop-play.jpg",
+          "stats": {
+            "fps": 3.1580609505763317,
+            "frameAvg": 316.65000000000146,
+            "frameP95": 1366.6000000000058,
+            "longFrames": 8,
+            "gpuAvg": 6325.478014727272,
+            "drawCalls": 152,
+            "triangles": 605071,
+            "geometries": 95,
+            "textures": 40,
+            "programs": 33,
+            "heapMb": 15.354156494140625
+          }
+        },
+        "door": {
+          "file": "desktop-door.jpg",
+          "stats": {
+            "fps": 0.15385088771962172,
+            "frameAvg": 6499.8000000000175,
+            "frameP95": 6499.8000000000175,
+            "longFrames": 1,
+            "gpuAvg": 5240.018097066667,
+            "drawCalls": 152,
+            "triangles": 605071,
+            "geometries": 95,
+            "textures": 40,
+            "programs": 33,
+            "heapMb": 15.354156494140625
+          }
+        },
+        "terrace": {
+          "file": "desktop-terrace.jpg",
+          "stats": {
+            "fps": 0.11050212164073579,
+            "frameAvg": 9049.599999999977,
+            "frameP95": 9049.599999999977,
+            "longFrames": 1,
+            "gpuAvg": 4882.71080931579,
+            "drawCalls": 152,
+            "triangles": 605071,
+            "geometries": 95,
+            "textures": 40,
+            "programs": 33,
+            "heapMb": 15.354156494140625
+          }
+        },
+        "aerial": {
+          "file": "desktop-aerial.jpg",
+          "stats": {
+            "fps": 1.4634860237084568,
+            "frameAvg": 683.3000000000078,
+            "frameP95": 1533.2999999999884,
+            "longFrames": 3,
+            "gpuAvg": 4680.348520652175,
+            "drawCalls": 155,
+            "triangles": 605119,
+            "geometries": 97,
+            "textures": 40,
+            "programs": 35,
+            "heapMb": 15.354156494140625
+          }
+        }
+      },
+      "errors": []
+    },
+    "mobile": {
+      "timings": {
+        "pyrarush:menu-ready": 535,
+        "pyrarush:level-ready": 184
+      },
+      "downloadedMb": {
+        "menu": 0.46,
+        "total": 0.46
+      },
+      "views": {
+        "menu": {
+          "file": "mobile-menu.jpg",
+          "stats": {
+            "fps": 1.7910715085299758,
+            "frameAvg": 558.3250000000007,
+            "frameP95": 1333.300000000003,
+            "longFrames": 2,
+            "gpuAvg": 2015.1114001666665,
+            "drawCalls": 149,
+            "triangles": 307543,
+            "geometries": 92,
+            "textures": 43,
+            "programs": 44,
+            "heapMb": 22.029876708984375
+          }
+        },
+        "play": {
+          "file": "mobile-play.jpg",
+          "stats": {
+            "fps": 0.5357334190506808,
+            "frameAvg": 1866.5999999999985,
+            "frameP95": 1933.199999999997,
+            "longFrames": 2,
+            "gpuAvg": 2108.926225823529,
+            "drawCalls": 149,
+            "triangles": 306273,
+            "geometries": 91,
+            "textures": 47,
+            "programs": 43,
+            "heapMb": 22.029876708984375
+          }
+        },
+        "door": {
+          "file": "mobile-door.jpg",
+          "stats": {
+            "fps": 0.3174703958855828,
+            "frameAvg": 3149.9000000000087,
+            "frameP95": 3149.9000000000087,
+            "longFrames": 1,
+            "gpuAvg": 1971.2242643809525,
+            "drawCalls": 149,
+            "triangles": 306273,
+            "geometries": 91,
+            "textures": 47,
+            "programs": 43,
+            "heapMb": 22.029876708984375
+          }
+        },
+        "terrace": {
+          "file": "mobile-terrace.jpg",
+          "stats": {
+            "fps": 0.45283702395508096,
+            "frameAvg": 2208.2999999999884,
+            "frameP95": 4116.5,
+            "longFrames": 2,
+            "gpuAvg": 1947.4448812399999,
+            "drawCalls": 149,
+            "triangles": 306273,
+            "geometries": 91,
+            "textures": 47,
+            "programs": 43,
+            "heapMb": 22.029876708984375
+          }
+        },
+        "aerial": {
+          "file": "mobile-aerial.jpg",
+          "stats": {
+            "fps": 0.9137426900584762,
+            "frameAvg": 1094.400000000004,
+            "frameP95": 1683.2000000000116,
+            "longFrames": 3,
+            "gpuAvg": 2008.533932612903,
+            "drawCalls": 152,
+            "triangles": 306321,
+            "geometries": 93,
+            "textures": 47,
+            "programs": 45,
+            "heapMb": 22.029876708984375
+          }
+        }
+      },
+      "errors": []
+    }
+  },
+  "build": {
+    "woff2": 42,
+    "js": 866,
+    "css": 37,
+    "png": 34,
+    "svg": 1,
+    "html": 19,
+    "webmanifest": 1,
+    "txt": 2,
+    "glb": 1573,
+    "jpg": 1417
+  }
+}
