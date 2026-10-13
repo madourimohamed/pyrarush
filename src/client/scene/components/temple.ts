@@ -36,7 +36,7 @@ export const doorFrames = defineComponent({ style: 'pillars' as 'pillars' | 'sim
 
 /** Bannières suspendues entre les portes. */
 export const banners = defineComponent({ cloth: '#2f5fb0', emblem: '#f2c14e', every: 2, offset: 0 }, (ctx, o) => {
-  const slots = wallGapSlots(ctx.layout, o.every, o.offset).map((s) => ({ ...s, position: s.position.clone().setY(s.position.y - 0.2) }));
+  const slots = wallGapSlots(ctx.layout, o.every, o.offset, ctx.anchors.wallRelief).map((s) => ({ ...s, position: s.position.clone().setY(s.position.y - 0.2) }));
   const matrices = atSlots(slots, new THREE.Matrix4());
   const cloth = new THREE.PlaneGeometry(0.8, 1.9);
   cloth.translate(0, -0.95, 0);

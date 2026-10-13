@@ -31,7 +31,7 @@ export interface DoorSlot extends Slot {
   door: Door;
 }
 
-const sideRotation = (side: number) => {
+export const sideRotation = (side: number) => {
   const f = sideFrame(side);
   return Math.atan2(f.outX, f.outZ);
 };
@@ -52,9 +52,10 @@ export function doorSlots(layout: Layout): DoorSlot[] {
 
 /**
  * Entre deux portes, sur la face de la paroi, au niveau du haut du mur (pour suspendre bannières, lianes…).
- * `every` : un emplacement sur N ; `offset` : décale le motif (ex. bannières sur les pairs, lianes sur les impairs).
+ * `every` : un emplacement sur N ; `offset` : décale le motif (ex. bannières sur les pairs, lianes sur les impairs) ;
+ * `relief` : épaisseur de l'habillage de la paroi (maçonnerie), pour accrocher le décor devant.
  */
-export function wallGapSlots(layout: Layout, every = 1, offset = 0): Slot[] {
+export function wallGapSlots(layout: Layout, every = 1, offset = 0, relief = 0): Slot[] {
   const slots: Slot[] = [];
   const { config } = layout;
   for (let floor = 1; floor <= config.floors; floor++) {
@@ -63,7 +64,7 @@ export function wallGapSlots(layout: Layout, every = 1, offset = 0): Slot[] {
     const gaps = gapTangents(config, floor);
     for (let side = 0; side < 4; side++) {
       gaps.forEach((t, i) => {
-        if ((i + offset) % every === 0) slots.push({ floor, side, position: onSide(side, a + 0.04, t, top), rotationY: sideRotation(side) });
+        if ((i + offset) % every === 0) slots.push({ floor, side, position: onSide(side, a + 0.04 + relief, t, top), rotationY: sideRotation(side) });
       });
     }
   }

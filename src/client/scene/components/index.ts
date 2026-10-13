@@ -1,5 +1,7 @@
 import type { ComponentSpec } from '../../../core';
+import { environment, grade } from './ambience';
 import type { Component, ComponentInstance, SceneContext } from './component';
+import { masonry, wallShadows } from './masonry';
 import { cliffs, distantPyramids, mountains, obelisks, sky, terrain } from './landscape';
 import { banners, braziers, capstone, doorFrames, jars, particles, statues } from './temple';
 import { bushes, crystals, palms, pines, spires, terracePlants, vines } from './vegetation';
@@ -12,6 +14,8 @@ import { preloadModels } from '../models';
  * Ajouter un design = écrire un composant (defineComponent) et l'enregistrer ici.
  */
 export const COMPONENTS: Record<string, Component<object>> = {
+  environment,
+  grade,
   sky,
   terrain,
   mountains,
@@ -27,6 +31,8 @@ export const COMPONENTS: Record<string, Component<object>> = {
   bushes,
   vines,
   terracePlants,
+  masonry,
+  wallShadows,
   doorFrames,
   banners,
   braziers,

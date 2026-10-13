@@ -117,7 +117,7 @@ export const bushes = defineComponent({ count: 40, color: 0x5aa046, aroundPond: 
 /** Lianes suspendues aux parois, entre les portes. */
 export const vines = defineComponent({ leaf: 0x2f9a4a, every: 2, offset: 1 }, (ctx, o) => {
   const rng = new Rng(ctx.layout.seed ^ 0x1f1e5);
-  const matrices = wallGapSlots(ctx.layout, o.every, o.offset).map((s) =>
+  const matrices = wallGapSlots(ctx.layout, o.every, o.offset, ctx.anchors.wallRelief).map((s) =>
     place(s.position.clone().setY(s.position.y + 0.02), s.rotationY, new THREE.Vector3(0.8 + rng.next() * 0.6, 0.8 + rng.next() * 1.4, 1)),
   );
   const geometry = new THREE.PlaneGeometry(1, 1);

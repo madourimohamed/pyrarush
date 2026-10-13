@@ -365,6 +365,14 @@ matériaux plats, manque de variété architecturale, lueur excessive.
 | 6 | **Assets externes** | statues d'Anubis, battants sculptés, braseros (pipeline du § 10), branchés par configuration | statues organiques en gros plan ; remplacement sans modification du moteur |
 | 7 | **Accueil** | plan « héroïque » : pyramide mise en valeur, personnage au premier plan, lumière dorée | capture de l'accueil comparée à la maquette pour l'ambiance et la composition |
 
+**Révision du 2026-10-13** (comparaison avec la maquette `design/level1.png`) : l'écart principal vient de la **géométrie des
+parois** (murs plats avec briques dessinées, au lieu de vrais blocs en relief) et de la **lumière / palette** (tout orange,
+pas de contraste chaud / froid). Nouvel ordre : **A** lumière, palette, environnement, étalonnage, ombres de contact
+(composants `environment`, `grade`, `wallShadows`) et **B** kit de blocs Blender (`art/temple/build_kit.py`, composant
+`masonry`) en premier, puis végétation et accessoires, éléments vus de près (portes, Anubis, braseros), effets.
+Un nouveau kit (glace, lave…) = un script Blender qui exporte des blocs selon le § 7.3 + `{ use: 'masonry', kit: [...] }`
+dans le thème ; aucune modification du moteur.
+
 Chaque étape est livrée seule, avec ses captures avant/après et ses mesures, et validée avant de passer à la suivante.
 **Priorité constante** : la lisibilité des portes, du personnage et des terrasses ; on ne surcharge jamais la pyramide.
 Les étapes 1 à 5 améliorent ce que le procédural sait bien faire ; la qualité finale des éléments vus de près

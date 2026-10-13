@@ -19,6 +19,8 @@ const templeBase = editComponents(BASE_THEME.components, {
   fleurs: null,
   'plantes-terrasses': null,
   statues: null,
+  // Étalonnage propre au niveau 1 (dominante chaude) : chaque famille garde ses couleurs.
+  grade: null,
   terrain: { flat: 3 },
   doorFrames: { style: 'simple' },
   banners: { every: 2 },
