@@ -34,6 +34,8 @@ export const props = defineComponent(
     colors: {} as Record<string, number>,
     /** Rotation aléatoire autour de la verticale (sinon : orienté comme l'emplacement). */
     randomRotation: true,
+    /** Balancement au vent (0 = immobile) : déplacement du sommet, en fraction de la hauteur (ex. 0.03 pour un palmier). */
+    sway: 0,
   },
   (ctx, o) => {
     const models = o.models.filter(isModelReady);
@@ -46,10 +48,43 @@ export const props = defineComponent(
       if (!byModel.has(name)) byModel.set(name, []);
       byModel.get(name)!.push(place(spot.position, rotation, height / modelHeight(name)));
     }
-    for (const [name, matrices] of byModel) ctx.scene.add(instancedModel(name, matrices, o.colors));
+    const time = { value: 0 };
+    for (const [name, matrices] of byModel) {
+      const group = instancedModel(name, matrices, o.colors);
+      if (o.sway > 0) group.traverse((obj) => obj instanceof THREE.Mesh && addSway(obj.material as THREE.Material, modelHeight(name), o.sway, time));
+      ctx.scene.add(group);
+    }
+    if (o.sway > 0) return { update: (_dt, t) => void (time.value = t) };
   },
   (o) => o.models,
 );
+
+/**
+ * Balancement au vent dans le vertex shader : le haut du modèle oscille (amplitude croissante avec la hauteur),
+ * chaque exemplaire avec sa propre phase (tirée de sa position) ; les feuilles frémissent en plus.
+ */
+function addSway(material: THREE.Material, height: number, amount: number, time: { value: number }): void {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.swayTime = time;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float swayTime;')
+      .replace(
+        '#include <begin_vertex>',
+        /* glsl */ `#include <begin_vertex>
+        {
+          float h = clamp(transformed.y / ${height.toFixed(3)}, 0.0, 1.0);
+          float bend = h * h * ${(amount * height).toFixed(4)};
+          vec2 seed = instanceMatrix[3].xz;
+          float phase = seed.x * 0.37 + seed.y * 0.23;
+          float gust = 0.6 + 0.4 * sin(swayTime * 0.35 + phase * 0.5);
+          transformed.x += bend * gust * (sin(swayTime * 1.3 + phase) + 0.35 * sin(swayTime * 2.9 + phase * 1.7));
+          transformed.z += bend * gust * 0.6 * cos(swayTime * 1.1 + phase * 1.3);
+          transformed.y += bend * 0.15 * h * sin(swayTime * 5.0 + transformed.x * 2.0 + transformed.z * 1.7 + phase);
+        }`,
+      );
+  };
+  material.customProgramCacheKey = () => `sway:${height.toFixed(3)}:${amount}`;
+}
 
 /** Emplacements sur la pyramide (calculés depuis la géométrie du jeu) ; null pour les emplacements extérieurs. */
 export function propSlots(layout: Layout, o: Pick<typeof props.defaults, 'place' | 'every' | 'offset' | 'spacing'>): Slot[] | null {

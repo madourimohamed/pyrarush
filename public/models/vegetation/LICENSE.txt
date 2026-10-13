@@ -1,0 +1,4 @@
+Palmiers (palm_a.glb, palm_b.glb, palm_c.glb)
+
+Créés pour PyraRush : modèles et textures générés par le script art/vegetation/build_palms.py
+avec Blender 4.5 (logiciel GPL ; les créations appartiennent à leur auteur). Aucun asset tiers.

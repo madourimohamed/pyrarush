@@ -35,6 +35,13 @@ export const themes = {
         mountains: null,
         distantPyramids: null,
         terrain: { flat: 9, detail: 'sand/ripples' },
+        // Eau animée (vaguelettes, reflets du ciel, écume) et palmiers réalistes qui se balancent (art/vegetation/).
+        moat: { realistic: true, color: 0x2fb7c4 },
+        palmiers: {
+          models: ['vegetation/palm_a', 'vegetation/palm_b', 'vegetation/palm_c'],
+          colors: { leafs: 0x5f9a3a, woodBark: 0x9a7650 },
+          sway: 0.025,
+        },
         // Image fournie (design/panoramique/), tournée pour que son soleil soit dans la direction de theme.sun.
         panorama: { image: 'panoramas/sables', rotation: -0.53 },
       }),

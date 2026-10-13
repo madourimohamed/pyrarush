@@ -5,6 +5,7 @@
 | Pack | Auteur | Licence | Dossier |
 |---|---|---|---|
 | Nature Kit (2.1) | [Kenney](https://kenney.nl/assets/nature-kit) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | `public/models/nature/` |
+| Palmiers réalistes | créés pour le jeu (script Blender `art/vegetation/build_palms.py`) | propre | `public/models/vegetation/` |
 | Explorateur (personnage) | créé pour le jeu (script Blender `art/explorer/build_explorer.py`) | propre | `public/models/explorer/` |
 | Kit de maçonnerie « temple » (blocs de pierre) | créé pour le jeu (script Blender `art/temple/build_kit.py`) | propre | `public/models/temple/` |
 
