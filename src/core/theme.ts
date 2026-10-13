@@ -103,9 +103,12 @@ export const BASE_THEME: Theme = {
     { use: 'props', id: 'obelisques', models: ['statue_obelisk'], place: 'shore', count: 6, height: [10, 14], colors: KENNEY_COLORS },
     { use: 'props', id: 'ruines', models: ['statue_column', 'statue_columnDamaged'], place: 'shore', count: 12, height: [3, 5.5], colors: KENNEY_COLORS },
     { use: 'props', id: 'rochers', models: ['rock_largeA', 'rock_largeB', 'rock_tallA'], place: 'shore', count: 14, height: [0.8, 2.2], colors: KENNEY_COLORS },
-    // Parois et sols habillés de vraies pierres (kit Blender art/temple), avant les décors accrochés aux murs.
+    // Parois en vraies pierres (kit Blender art/temple), avant les décors accrochés aux murs. Sol : sable autour de la
+    // pyramide ; sur les terrasses, grandes dalles claires (distinctes des murs) et sable accumulé au pied des parois.
     { use: 'masonry' },
-    { use: 'flagstones' },
+    { use: 'esplanade', detail: 'sand/ripples' },
+    { use: 'flagstones', where: 'terraces', size: 1.35, color: '#e9cfa2', rows: [1.3, 1.6], joint: 0.02, tint: 0.05 },
+    { use: 'sandDrifts', detail: 'sand/ripples' },
     { use: 'wallShadows' },
     { use: 'doorFrames', style: 'pillars', band: '#2f6fc0' },
     { use: 'banners', cloth: '#2f5fb0', emblem: '#f2c14e', every: 1 },

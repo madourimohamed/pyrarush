@@ -79,6 +79,13 @@ describe('maçonnerie (blocs posés sur les parois)', () => {
     });
   }
 
+  it("avec where: 'terraces', aucune dalle sur l'esplanade (étage 1)", () => {
+    const layout = generateLayout(levels[0].config, 5);
+    const slabs = pavingLayout(layout, SLABS, { rows: [0.9, 1.4], joint: 0.035, where: 'terraces' }, new Rng(5));
+    expect(slabs.length).toBeGreaterThan(0);
+    expect(slabs.every((s) => s.floor > 1)).toBe(true);
+  });
+
   it('est déterministe pour une graine donnée', () => {
     const layout = generateLayout(levels[0].config, 7);
     expect(masonryLayout(layout, BLOCKS, OPTIONS, new Rng(3))).toEqual(masonryLayout(layout, BLOCKS, OPTIONS, new Rng(3)));

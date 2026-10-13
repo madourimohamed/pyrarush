@@ -14,7 +14,7 @@ import {
   type Layout,
 } from '../../../core';
 import { instancedModel } from '../models';
-import { canvasTexture, defineComponent, place } from './component';
+import { canvasTexture, defineComponent, place, type SceneContext } from './component';
 import { onSide, sideRotation } from './slots';
 
 /**
@@ -200,17 +200,23 @@ interface Surface {
   max: [number, number];
 }
 
-/** Surfaces où l'on marche : esplanade autour de la pyramide, terrasses (hors trous), sommet. */
-function walkSurfaces(layout: Layout): Surface[] {
+/** Où poser les dalles : partout, ou seulement sur la pyramide (terrasses et sommet, l'esplanade restant du sable). */
+export type PavingArea = 'all' | 'terraces';
+
+/** Surfaces où l'on marche : esplanade autour de la pyramide (selon `where`), terrasses (hors trous), sommet. */
+function walkSurfaces(layout: Layout, where: PavingArea): Surface[] {
   const { config } = layout;
   const a = wallHalf(config, 1);
   const g = terraceOuterHalf(config, 1);
-  const surfaces: Surface[] = [
-    { floor: 1, y: 0, min: [-g, a], max: [g, g] },
-    { floor: 1, y: 0, min: [-g, -g], max: [g, -a] },
-    { floor: 1, y: 0, min: [a, -a], max: [g, a] },
-    { floor: 1, y: 0, min: [-g, -a], max: [-a, a] },
-  ];
+  const surfaces: Surface[] =
+    where === 'all'
+      ? [
+          { floor: 1, y: 0, min: [-g, a], max: [g, g] },
+          { floor: 1, y: 0, min: [-g, -g], max: [g, -a] },
+          { floor: 1, y: 0, min: [a, -a], max: [g, a] },
+          { floor: 1, y: 0, min: [-g, -a], max: [-a, a] },
+        ]
+      : [];
   for (const box of buildColliders(layout)) {
     if (box.kind !== 'block') continue;
     const floor = box.floor!;
@@ -225,10 +231,15 @@ function walkSurfaces(layout: Layout): Surface[] {
 }
 
 /** Position de chaque dalle : rangées parallèles au grand côté de chaque surface, de profondeurs variées. */
-export function pavingLayout(layout: Layout, pieces: KitPiece[], o: { rows: [number, number]; joint: number }, rng: Rng): SlabPlacement[] {
+export function pavingLayout(
+  layout: Layout,
+  pieces: KitPiece[],
+  o: { rows: [number, number]; joint: number; where?: PavingArea },
+  rng: Rng,
+): SlabPlacement[] {
   const all = pieces.map((_, i) => i);
   const slabs: SlabPlacement[] = [];
-  for (const s of walkSurfaces(layout)) {
+  for (const s of walkSurfaces(layout, o.where ?? 'all')) {
     const alongX = s.max[0] - s.min[0] >= s.max[1] - s.min[1];
     const [l0, l1] = alongX ? [s.min[0], s.max[0]] : [s.min[1], s.max[1]];
     const [d0, d1] = alongX ? [s.min[1], s.max[1]] : [s.min[0], s.max[0]];
@@ -374,10 +385,17 @@ export const masonry = defineComponent(
   (o) => kitPreload(o.kit),
 );
 
-/** Dalles de pierre sur l'esplanade et les terrasses, légèrement au-dessus du sol (les joints restent dans l'ombre). */
+/**
+ * Dalles de pierre sur les terrasses (et l'esplanade si `where: 'all'`), légèrement au-dessus du sol.
+ * `size` agrandit les dalles du kit ; `color` remplace la teinte du thème (vide : theme.top / theme.paving) —
+ * des dalles plus claires et plus grandes que les blocs des murs distinguent bien le sol où l'on marche.
+ */
 export const flagstones = defineComponent(
   {
     kit: SLABS_TEMPLE,
+    where: 'all' as PavingArea,
+    size: 1,
+    color: '',
     /** Profondeur des rangées (min, max) en mètres. */
     rows: [0.9, 1.4] as [number, number],
     joint: 0.035,
@@ -388,10 +406,10 @@ export const flagstones = defineComponent(
     const { layout, theme, scene } = ctx;
     ctx.anchors.floorRaise = o.raise;
     const names = kitNames(o.kit, ctx.lowQuality);
-    const pieces = names.map((name) => ({ width: modelSize(name).x }));
+    const pieces = names.map((name) => ({ width: modelSize(name).x * o.size }));
     const rng = new Rng(layout.seed ^ 0xf1a65);
-    const esplanade = new THREE.Color(theme.paving);
-    const terraces = new THREE.Color(theme.top);
+    const esplanade = new THREE.Color(o.color || theme.paving);
+    const terraces = new THREE.Color(o.color || theme.top);
     const turn = new THREE.Quaternion();
     addStones(
       scene,
@@ -414,34 +432,46 @@ export const flagstones = defineComponent(
 const UP = new THREE.Vector3(0, 1, 0);
 
 /**
- * Ombres de contact au pied des parois (occlusion ambiante simulée) : une bande dégradée posée sur chaque terrasse,
- * interrompue au-dessus des trous. Un seul appel de dessin, aucun calcul de lumière.
+ * Bandes posées sur le sol au pied des parois (une par face et par étage, interrompues au-dessus des trous),
+ * fusionnées en une géométrie. UV : u en mètres le long de la paroi / `tile`, v = 1 contre la paroi, 0 au bord.
  */
-export const wallShadows = defineComponent({ width: 1.1, strength: 0.45, color: 0x3a1d10 }, (ctx, o) => {
+export function footBands(ctx: SceneContext, width: number, lift: number, fromFloor = 1, tile = 0): THREE.BufferGeometry | null {
   const { layout } = ctx;
   const { config } = layout;
   const relief = ctx.anchors.wallRelief ?? 0;
   const parts: THREE.BufferGeometry[] = [];
-  for (let floor = 1; floor <= config.floors; floor++) {
+  for (let floor = fromFloor; floor <= config.floors; floor++) {
     const a = wallHalf(config, floor) + relief;
-    const y = floorY(floor) + (ctx.anchors.floorRaise ?? 0) + 0.015;
+    const y = floorY(floor) + (ctx.anchors.floorRaise ?? 0) + lift;
     for (let side = 0; side < 4; side++) {
       // Sud et nord couvrent les angles.
-      const reach = side % 2 === 0 ? a + o.width : a;
+      const reach = side % 2 === 0 ? a + width : a;
       const holes = layout.holes
         .filter((h) => h.floor === floor && h.side === side)
         .map((h): Interval => [holeTangent(config, h) - HOLE_WIDTH / 2, holeTangent(config, h) + HOLE_WIDTH / 2]);
       for (const [lo, hi] of subtract([[-reach, reach]], holes)) {
-        const g = new THREE.PlaneGeometry(hi - lo, o.width);
-        // v = 1 contre la paroi, 0 au bord de la bande.
+        const g = new THREE.PlaneGeometry(hi - lo, width);
+        if (tile > 0) {
+          const uv = g.getAttribute('uv');
+          for (let i = 0; i < uv.count; i++) uv.setX(i, (lo + uv.getX(i) * (hi - lo)) / tile);
+        }
         g.rotateX(-Math.PI / 2);
-        g.translate((lo + hi) / 2, 0, o.width / 2);
+        g.translate((lo + hi) / 2, 0, width / 2);
         g.applyMatrix4(place(onSide(side, a, 0, y), sideRotation(side)));
         parts.push(g);
       }
     }
   }
-  if (!parts.length) return;
+  return parts.length ? mergeGeometries(parts) : null;
+}
+
+/**
+ * Ombres de contact au pied des parois (occlusion ambiante simulée) : une bande dégradée posée sur chaque terrasse,
+ * interrompue au-dessus des trous. Un seul appel de dessin, aucun calcul de lumière.
+ */
+export const wallShadows = defineComponent({ width: 1.1, strength: 0.45, color: 0x3a1d10 }, (ctx, o) => {
+  const geometry = footBands(ctx, o.width, 0.02);
+  if (!geometry) return;
   const texture = canvasTexture(4, 64, (c) => {
     const gradient = c.createLinearGradient(0, 0, 0, 64);
     gradient.addColorStop(0, 'rgba(255,255,255,1)');
@@ -459,7 +489,7 @@ export const wallShadows = defineComponent({ width: 1.1, strength: 0.45, color: 
     polygonOffset: true,
     polygonOffsetFactor: -4,
   });
-  const mesh = new THREE.Mesh(mergeGeometries(parts), material);
-  mesh.renderOrder = 1;
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.renderOrder = 2;
   ctx.scene.add(mesh);
 });
