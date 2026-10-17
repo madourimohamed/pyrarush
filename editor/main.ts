@@ -12,6 +12,7 @@ import {
 } from '../src/core';
 import { COMPONENTS } from '../src/client/scene/components';
 import { el, fieldInput, type Assets } from './fields';
+import { panoramaRotation, prepare, type ImportKind } from './importer';
 import { Preview } from './preview';
 
 /**
@@ -79,6 +80,13 @@ async function load(): Promise<void> {
   files = data.themes;
   saved = Object.fromEntries(Object.entries(files).map(([name, file]) => [name, JSON.stringify(file)]));
   assets = { models: data.models, images: data.images };
+}
+
+/** Relit la liste des modèles et images disponibles (après un import), sans toucher aux thèmes en cours d'édition. */
+async function refreshAssets(): Promise<void> {
+  const data = (await (await fetch('/__editeur/donnees')).json()) as Assets;
+  assets = { models: data.models, images: data.images };
+  document.querySelectorAll('datalist').forEach((d) => d.remove());
 }
 
 async function put(url: string, body: unknown): Promise<void> {
@@ -210,6 +218,160 @@ function addComponent(use: string, id: string): string | null {
   open.add(key);
   return null;
 }
+
+// ---------- Bibliothèque : importer un asset ----------
+
+const IMPORT_KINDS: Record<ImportKind, { label: string; accept: string; folder: string }> = {
+  model: { label: 'Modèle 3D (.glb) : arbres, rochers, statues…', accept: '.glb', folder: 'decor' },
+  image: { label: 'Image détourée (.png) : arbres plats, silhouettes…', accept: 'image/png,image/webp', folder: 'arbres' },
+  texture: { label: 'Texture de sol (sable, herbe, neige…)', accept: 'image/*', folder: 'sol' },
+  panorama: { label: 'Panorama 360° (fond, image 2 fois plus large que haute)', accept: 'image/*', folder: 'panoramas' },
+};
+const LICENCES = ['CC0 1.0', 'CC BY 4.0', 'Créé pour le jeu', 'Généré par IA', 'Autre'];
+
+/** Nom de fichier tiré du fichier choisi : « Acacia 01.png » → « Acacia-01 ». */
+const fileBase = (name: string) => name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'asset';
+/** Identifiant d'élément de décor tiré d'un nom d'asset : « decor/Acacia_01 » → « acacia-01 ». */
+const componentId = (name: string) => fileBase(name.split('/').pop()!).toLowerCase().replace(/_/g, '-');
+
+/** Raccourcis proposés après un import, pour utiliser l'asset tout de suite dans le thème affiché. */
+function quickActions(kind: ImportKind, name: string, sunU?: number): HTMLElement[] {
+  const has = (key: string) => themes[current].components.some((c) => keyOf(c) === key);
+  const set = (key: string, use: string, options: Record<string, unknown>) => {
+    if (!has(key)) addComponent(use, key === use ? '' : key);
+    for (const [option, value] of Object.entries(options)) setOption(key, option, value);
+  };
+  switch (kind) {
+    case 'panorama':
+      return [
+        button(`Utiliser comme fond de « ${current} »`, () => {
+          if (has('sky')) removeComponent('sky');
+          const rotation = sunU === undefined ? 0 : panoramaRotation(sunU, themes[current].sun.dir);
+          set('panorama', 'panorama', { image: name, rotation });
+          status(`Fond « ${name} » utilisé, tourné de ${rotation} pour aligner son soleil sur la lumière du thème.`, 'ok');
+          changed(true);
+        }),
+      ];
+    case 'model':
+      return [
+        button(`Ajouter au décor de « ${current} »`, () => {
+          const id = componentId(name);
+          if (has(id)) return status(`« ${id} » existe déjà dans le décor.`, 'error');
+          set(id, 'props', { models: [name], place: 'shore', count: 12, height: [3, 6] });
+          status(`« ${id} » ajouté à la fin du décor : règle sa taille, son nombre et son emplacement.`, 'ok');
+          changed(true);
+        }),
+      ];
+    case 'texture':
+      return [
+        button(`Utiliser pour le sol de « ${current} »`, () => {
+          for (const key of ['terrain', 'esplanade', 'sandDrifts']) if (has(key)) setOption(key, 'detail', name);
+          status(`Texture « ${name} » utilisée pour le sol.`, 'ok');
+          changed(true);
+        }),
+      ];
+    case 'image':
+      return [];
+  }
+}
+
+function buildImportPanel(): HTMLElement {
+  const kind = el('select');
+  kind.append(...Object.entries(IMPORT_KINDS).map(([value, k]) => el('option', { value, textContent: k.label })));
+  const file = el('input', { type: 'file' });
+  const relief = el('input', { type: 'file', accept: 'image/*' });
+  const reliefRow = el('div', { className: 'block' }, el('label', { textContent: 'Relief (normal map, facultatif)' }), relief);
+  const folder = el('input', { type: 'text' });
+  const name = el('input', { type: 'text', placeholder: 'nom du fichier' });
+  const replace = el('input', { type: 'checkbox' });
+  const title = el('input', { type: 'text', placeholder: 'ex. Acacia du désert' });
+  const author = el('input', { type: 'text', placeholder: 'ex. Kenney, Poly Haven, moi (ChatGPT)…' });
+  const licence = el('select');
+  licence.append(...LICENCES.map((l) => el('option', { value: l, textContent: l })));
+  const details = el('input', { type: 'text', placeholder: "précisions (outil d'IA, version de la licence…)" });
+  const url = el('input', { type: 'text', placeholder: 'lien vers la source (facultatif)' });
+  const result = el('div', { className: 'result' });
+  const go = button('Importer', () => void run(), 'primary');
+
+  const sync = () => {
+    const k = IMPORT_KINDS[kind.value as ImportKind];
+    file.accept = k.accept;
+    folder.value = k.folder;
+    reliefRow.hidden = kind.value !== 'texture';
+  };
+  kind.addEventListener('change', sync);
+  file.addEventListener('change', () => {
+    const f = file.files?.[0];
+    if (!f) return;
+    name.value = fileBase(f.name);
+    if (!title.value) title.value = fileBase(f.name).replace(/[-_]+/g, ' ');
+  });
+  sync();
+
+  async function run(): Promise<void> {
+    const f = file.files?.[0];
+    if (!f) return status('Choisis un fichier.', 'error');
+    if (!author.value.trim() || !title.value.trim()) return status('Licence : titre et auteur / source sont obligatoires.', 'error');
+    const type = kind.value as ImportKind;
+    go.disabled = true;
+    status('Préparation (redimensionnement, version téléphone)…');
+    try {
+      const prepared = await prepare(type, f, relief.files?.[0]);
+      status('Envoi…');
+      const response = await fetch('/__editeur/importer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kind: type,
+          folder: folder.value.trim(),
+          name: name.value.trim(),
+          files: prepared.files,
+          license: { title: title.value, author: author.value, licence: details.value.trim() ? `${licence.value} (${details.value.trim()})` : licence.value, url: url.value.trim() || undefined },
+          replace: replace.checked,
+        }),
+      });
+      const answer = (await response.json()) as { name?: string; error?: string };
+      if (!response.ok || !answer.name) throw new Error(answer.error ?? `erreur ${response.status}`);
+      await refreshAssets();
+      result.replaceChildren(
+        el('p', { className: 'ok', textContent: `Importé : « ${answer.name} » (licence ajoutée au dossier et à CREDITS.md).` }),
+        ...prepared.report.map((line) => el('p', { className: 'note', textContent: line })),
+        el('div', { className: 'row' }, ...quickActions(type, answer.name, prepared.sunU)),
+      );
+      status(`« ${answer.name} » est disponible dans les listes de l'éditeur.`, 'ok');
+      file.value = '';
+      relief.value = '';
+      title.value = '';
+      render();
+    } catch (error) {
+      status(`Import impossible : ${(error as Error).message}`, 'error');
+    } finally {
+      go.disabled = false;
+    }
+  }
+
+  const row = (label: string, ...inputs: HTMLElement[]) => el('div', { className: 'block' }, el('label', { textContent: label }), ...inputs);
+  const panel = el(
+    'details',
+    { className: 'library' },
+    el('summary', { textContent: 'Bibliothèque : importer un modèle, une image, un panorama' }),
+    row('Type', kind),
+    row('Fichier', file),
+    reliefRow,
+    el('div', { className: 'row' }, row('Dossier', folder), row('Nom', name)),
+    el('label', { className: 'check' }, replace, ' remplacer un fichier du même nom'),
+    el('h4', { textContent: 'Licence (obligatoire)' }),
+    row('Titre', title),
+    row('Auteur / source', author),
+    el('div', { className: 'row' }, licence, details),
+    row('Lien', url),
+    go,
+    result,
+  );
+  return panel;
+}
+
+let importPanel: HTMLElement | null = null;
 
 // ---------- Affichage ----------
 
@@ -366,6 +528,7 @@ function render(): void {
   sidebar.replaceChildren(
     el('div', { className: 'block' }, el('label', { textContent: "Pyramide de l'aperçu" }), levelSelect, assign),
     el('div', { className: 'block' }, el('label', { textContent: 'Hérite de' }), parent, el('label', { textContent: 'Note' }), note),
+    (importPanel ??= buildImportPanel()),
     ...(theme
       ? [
           paletteSection(),

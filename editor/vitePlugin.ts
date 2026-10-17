@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { join, relative, sep } from 'node:path';
 import type { Plugin } from 'vite';
@@ -9,6 +9,7 @@ import type { Plugin } from 'vite';
  *   GET /__editeur/donnees              → fichiers de thème bruts, modèles et images disponibles
  *   PUT /__editeur/themes/<nom>          → écrit content/themes/<nom>.json (corps : le fichier, en JSON)
  *   PUT /__editeur/niveaux/<id>/theme    → change le thème d'un niveau (corps : { "theme": "<nom>" })
+ *   POST /__editeur/importer             → range un asset préparé par l'éditeur (voir Import), avec sa licence
  *
  * Les écritures ne sont acceptées que depuis cet ordinateur (le serveur de développement est aussi ouvert au réseau
  * local, pour tester sur téléphone).
@@ -20,6 +21,9 @@ const LEVELS = join(ROOT, 'src', 'levels');
 const MODELS = join(ROOT, 'public', 'models');
 const TEXTURES = join(ROOT, 'public', 'textures');
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+/** Nom de fichier d'un asset (les packs existants utilisent aussi « _ » et des majuscules, ex. tree_palmBend). */
+const FILE_NAME = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
+const CREDITS = join(ROOT, 'CREDITS.md');
 
 /** Fichiers d'un dossier et de ses sous-dossiers (chemins relatifs, séparés par « / »). */
 function files(dir: string): string[] {
@@ -39,8 +43,9 @@ function data() {
     .filter((f) => f.endsWith('.glb') && !f.startsWith('explorer/'))
     .map((f) => f.replace(/\.glb$/, '').replace(/^nature\//, ''))
     .sort();
+  // Images : les JPG s'écrivent sans extension (format historique), les autres avec (ex. arbres/acacia.png).
   const images = files(TEXTURES)
-    .filter((f) => f.endsWith('.jpg') && !f.endsWith('-mobile.jpg') && !f.endsWith('-normal.jpg'))
+    .filter((f) => /\.(jpg|png|webp)$/.test(f) && !/-(mobile|normal)\.\w+$/.test(f))
     .map((f) => f.replace(/\.jpg$/, ''))
     .sort();
   return { themes, models, images };
@@ -75,12 +80,12 @@ function inlineJson(value: unknown): string {
 const isLocal = (req: IncomingMessage) =>
   ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '') && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.headers.host ?? '');
 
-function readBody(req: IncomingMessage): Promise<unknown> {
+function readBody(req: IncomingMessage, limit = 1_000_000): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let body = '';
     req.on('data', (chunk) => {
       body += chunk;
-      if (body.length > 1_000_000) reject(new Error('fichier trop gros'));
+      if (body.length > limit) reject(new Error('fichier trop gros'));
     });
     req.on('end', () => {
       try {
@@ -109,6 +114,74 @@ function setLevelTheme(id: string, theme: string): void {
   writeFileSync(path, source.replace(pattern, `$1'${theme}',`));
 }
 
+/**
+ * Asset préparé par l'éditeur (redimensionné, versions ordinateur et téléphone) :
+ * - model : public/models/<dossier>/<nom>.glb ;
+ * - image, texture, panorama : public/textures/<dossier>/<nom><suffixe>.<ext> (suffixes '', '-mobile', '-normal'…).
+ * La licence est obligatoire : ajoutée au LICENSE.txt du dossier et au tableau de CREDITS.md.
+ */
+export interface Import {
+  kind: 'model' | 'image' | 'texture' | 'panorama';
+  folder: string;
+  name: string;
+  files: { suffix: string; ext: 'glb' | 'jpg' | 'png'; data: string }[];
+  license: { title: string; author: string; licence: string; url?: string };
+  replace?: boolean;
+}
+
+const KIND_LABEL: Record<Import['kind'], string> = { model: 'modèle 3D', image: 'image détourée', texture: 'texture de sol', panorama: 'panorama' };
+/** Suffixes de fichier : '', '-mobile', '-normal', '-normal-mobile'… */
+const SUFFIX = /^(-[a-z]+)*$/;
+
+/** Range les fichiers d'un import ; renvoie le nom à utiliser dans un thème. */
+function importAsset(asset: Import): string {
+  const { kind, folder, name, files: parts, license } = asset;
+  if (!NAME.test(folder)) throw new Error('dossier : minuscules, chiffres et tirets');
+  if (!FILE_NAME.test(name)) throw new Error('nom : lettres, chiffres, « - » et « _ »');
+  if (!parts?.length || parts.some((f) => !SUFFIX.test(f.suffix) || !['glb', 'jpg', 'png'].includes(f.ext) || typeof f.data !== 'string')) throw new Error('fichiers invalides');
+  for (const key of ['title', 'author', 'licence'] as const) if (!license?.[key]?.trim()) throw new Error('licence : titre, auteur et licence sont obligatoires');
+  if (kind === 'model' && (parts.length !== 1 || parts[0].ext !== 'glb')) throw new Error('un modèle 3D est un seul fichier .glb');
+
+  const dir = join(kind === 'model' ? MODELS : TEXTURES, folder);
+  const targets = parts.map((f) => ({ path: join(dir, `${name}${f.suffix}.${f.ext}`), data: Buffer.from(f.data, 'base64') }));
+  if (!asset.replace) {
+    const existing = targets.find((t) => existsSync(t.path));
+    if (existing) throw new Error(`${relative(ROOT, existing.path)} existe déjà (cocher « remplacer »)`);
+  }
+  if (kind === 'model' && targets[0].data.subarray(0, 4).toString() !== 'glTF') throw new Error("ce fichier n'est pas un modèle .glb");
+  mkdirSync(dir, { recursive: true });
+  for (const t of targets) writeFileSync(t.path, t.data);
+
+  // Licence : un bloc par asset dans le LICENSE.txt du dossier, une ligne dans CREDITS.md.
+  const date = new Date().toISOString().slice(0, 10);
+  const fileNames = targets.map((t) => relative(dir, t.path)).join(', ');
+  const block = [`${license.title} (${fileNames}) : ${KIND_LABEL[kind]}, ajouté le ${date}`, `Auteur / source : ${license.author}`, `Licence : ${license.licence}`]
+    .concat(license.url ? [`Lien : ${license.url}`] : [])
+    .join('\n');
+  const licensePath = join(dir, 'LICENSE.txt');
+  const previous = existsSync(licensePath) ? readFileSync(licensePath, 'utf8').trimEnd() + '\n\n' : '';
+  writeFileSync(licensePath, previous + block + '\n');
+  addCredit(kind === 'model' ? '## Modèles 3D' : '## Images', license, relative(ROOT, dir).split(sep).join('/') + '/');
+
+  const ext = parts[0].ext;
+  return kind === 'model' ? (folder === 'nature' ? name : `${folder}/${name}`) : `${folder}/${name}${ext === 'jpg' ? '' : `.${ext}`}`;
+}
+
+/** Ajoute une ligne à la fin du tableau d'une section de CREDITS.md. */
+function addCredit(section: string, license: Import['license'], folder: string): void {
+  const cell = (text: string) => text.replace(/\|/g, '/').replace(/\s+/g, ' ').trim();
+  const author = license.url ? `[${cell(license.author)}](${license.url.trim()})` : cell(license.author);
+  const line = `| ${cell(license.title)} | ${author} | ${cell(license.licence)} | \`${folder}\` |`;
+  const lines = readFileSync(CREDITS, 'utf8').split('\n');
+  const start = lines.indexOf(section);
+  if (start < 0) throw new Error(`CREDITS.md : section « ${section} » introuvable`);
+  let end = start + 1;
+  while (end < lines.length && !lines[end].startsWith('|')) end++;
+  while (end < lines.length && lines[end].startsWith('|')) end++;
+  lines.splice(end, 0, line);
+  writeFileSync(CREDITS, lines.join('\n'));
+}
+
 export function themeEditor(): Plugin {
   return {
     name: 'pyrarush-editeur',
@@ -118,15 +191,23 @@ export function themeEditor(): Plugin {
         try {
           const url = req.url ?? '';
           if (req.method === 'GET' && url === '/donnees') return send(res, 200, data());
-          if (req.method !== 'PUT') return send(res, 404, { error: 'inconnu' });
+          if (req.method !== 'PUT' && req.method !== 'POST') return send(res, 404, { error: 'inconnu' });
           if (!isLocal(req)) return send(res, 403, { error: "l'éditeur n'enregistre que depuis cet ordinateur" });
+
+          if (req.method === 'POST' && url === '/importer') {
+            const name = importAsset((await readBody(req, 150_000_000)) as Import);
+            return send(res, 200, { ok: true, name });
+          }
 
           const theme = url.match(/^\/themes\/([^/]+)$/);
           if (theme) {
             if (!NAME.test(theme[1])) return send(res, 400, { error: 'nom de thème : minuscules, chiffres et tirets' });
             const file = await readBody(req);
             if (!file || typeof file !== 'object' || Array.isArray(file)) return send(res, 400, { error: 'un thème est un objet JSON' });
-            writeFileSync(join(THEMES, `${theme[1]}.json`), formatJson(file) + '\n');
+            // Sections toujours dans le même ordre (les autres clés suivent), pour des fichiers faciles à comparer.
+            const { note, extends: parent, palette, components, ...rest } = file as Record<string, unknown>;
+            const ordered = { note, extends: parent, palette, components, ...rest };
+            writeFileSync(join(THEMES, `${theme[1]}.json`), formatJson(JSON.parse(JSON.stringify(ordered))) + '\n');
             return send(res, 200, { ok: true });
           }
 

@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 
 /**
- * Images du décor (public/textures/<nom>.jpg) : panoramas d'horizon, textures de détail du sol…
- * Chaque image existe en deux tailles : <nom>.jpg (ordinateur) et <nom>-mobile.jpg (téléphone, plus légère).
+ * Images du décor (public/textures/…) : panoramas d'horizon, textures de détail du sol, arbres détourés…
+ * Un nom sans extension désigne un JPG (« sand/ripples ») ; sinon l'extension est donnée (« arbres/acacia.png », transparence).
+ * Chaque image existe en deux tailles : <nom> (ordinateur) et <nom>-mobile (téléphone, plus légère).
  * Comme les modèles, elles sont chargées une fois avant la construction du niveau (Component.textures), puis réutilisées.
  * Sources et préparation : art/panoramas/, art/textures/ ; licences dans public/textures/<dossier>/LICENSE.txt.
  */
@@ -17,7 +18,11 @@ const loader = new THREE.TextureLoader();
 const cache = new Map<string, Promise<void>>();
 const ready = new Map<string, THREE.Texture>();
 
-const textureUrl = (name: string) => `${import.meta.env.BASE_URL}textures/${name}${mobile ? '-mobile' : ''}.jpg`;
+/** Adresse d'une image : « sand/ripples » → sand/ripples.jpg ; « arbres/acacia.png » → arbres/acacia.png (et -mobile). */
+const textureUrl = (name: string) => {
+  const [, base, ext] = name.match(/^(.*?)(\.(?:png|webp|jpg))?$/)!;
+  return `${import.meta.env.BASE_URL}textures/${base}${mobile ? '-mobile' : ''}${ext ?? '.jpg'}`;
+};
 
 /** Charge les images nécessaires (une seule fois chacune). Une image introuvable est signalée puis ignorée. */
 export function preloadTextures(names: Iterable<string>): Promise<void> {

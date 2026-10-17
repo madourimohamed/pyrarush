@@ -291,3 +291,27 @@ main {
   color: rgba(255, 255, 255, 0.7);
   text-shadow: 0 1px 2px #000;
 }
+
+.library {
+  border-color: var(--accent);
+}
+
+.library .row > .block {
+  flex: 1;
+}
+
+h4 {
+  margin: 10px 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.check {
+  display: block;
+  margin: 4px 0 8px;
+  color: var(--muted);
+}
+
+.result .ok {
+  color: var(--ok);
+}

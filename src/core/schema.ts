@@ -27,7 +27,7 @@ export type FieldKind =
   /** Un modèle 3D (chemin sous public/models, sans .glb) ; ou une liste de modèles (variantes). */
   | 'model'
   | 'models'
-  /** Une image (chemin sous public/textures, sans extension). */
+  /** Une image (chemin sous public/textures ; sans extension = JPG, sinon « .png » / « .webp »). */
   | 'image'
   /** Recoloration par nom de matériau : { leafs: 0x46a33c }. */
   | 'colorMap'
@@ -97,7 +97,8 @@ export function defaultsOf<S extends Schema>(schema: S): Values<S> {
 const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const CSS_COLOR = /^#[0-9a-f]{6}$/i;
-const ASSET_PATH = /^[a-z0-9_-]+(\/[a-z0-9_-]+)*$/i;
+/** Chemin d'asset relatif, sans « .. » ; extension facultative (images PNG ou WebP). */
+const ASSET_PATH = /^[a-z0-9_-]+(\/[a-z0-9_-]+)*(\.(png|webp|jpg))?$/i;
 /** Couleur d'une option `color` : nombre 0xRRGGBB, ou '#rrggbb' (fichiers de thème). */
 const isColor = (v: unknown) => (isNumber(v) && Number.isInteger(v) && v >= 0 && v <= 0xffffff) || (typeof v === 'string' && CSS_COLOR.test(v));
 const toColorNumber = (v: unknown) => (typeof v === 'string' && CSS_COLOR.test(v) ? parseInt(v.slice(1), 16) : v);
