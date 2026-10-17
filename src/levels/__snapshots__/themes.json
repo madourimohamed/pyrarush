@@ -582,22 +582,22 @@
       "sun": 16761504
     },
     "sun": {
-      "color": 16752522,
-      "intensity": 2.7,
+      "color": 16752778,
+      "intensity": 3,
       "dir": [
-        -0.82,
-        0.24,
-        0.52
+        -0.78,
+        0.4,
+        0.49
       ]
     },
     "hemi": {
       "sky": 9071574,
       "ground": 12738682,
-      "intensity": 1.5
+      "intensity": 1
     },
     "fog": {
-      "near": 150,
-      "far": 480
+      "near": 240,
+      "far": 720
     },
     "exposure": 1,
     "ground": {
@@ -619,9 +619,9 @@
       "panel": 2502763,
       "frame": 1708080,
       "glyph": [
-        2.4,
-        0.9,
-        1.8
+        1.6,
+        0.6,
+        2
       ]
     },
     "accent": [
@@ -651,18 +651,9 @@
         "intensity": 0.45
       },
       {
-        "use": "sky",
-        "clouds": 16757704,
-        "cloudGlow": 16738976
-      },
-      {
         "use": "terrain",
-        "flat": 3
-      },
-      {
-        "use": "mountains",
-        "color": 6960232,
-        "shape": "mesa"
+        "flat": 9,
+        "detail": "sand/ripples"
       },
       {
         "use": "masonry"
@@ -704,9 +695,9 @@
       {
         "use": "braziers",
         "flame": [
-          3,
-          0.9,
-          1.6
+          2,
+          0.6,
+          3.2
         ],
         "every": 2
       },
@@ -715,28 +706,30 @@
       },
       {
         "use": "capstone",
-        "style": "pyramid",
-        "color": 16763200,
+        "style": "crystal",
+        "color": 11816447,
         "glow": [
-          2.2,
-          1.5,
-          0.3
+          1.4,
+          0.5,
+          2.2
         ]
       },
       {
         "use": "particles",
         "color": [
-          1.8,
-          0.9,
-          1.5
+          1.6,
+          0.8,
+          1.6
         ],
         "size": 0.35,
-        "count": 420,
+        "count": 260,
         "motion": "float"
       },
       {
-        "use": "distantPyramids",
-        "color": 9063018
+        "use": "moat",
+        "realistic": true,
+        "color": 8015792,
+        "width": 4
       },
       {
         "use": "pond",
@@ -744,11 +737,42 @@
         "emissive": 2759274
       },
       {
-        "use": "palms",
-        "count": 10,
-        "trunk": 4860474,
-        "leaf": 3099226,
-        "aroundPond": true
+        "use": "props",
+        "id": "palmiers",
+        "models": [
+          "vegetation/palm_a",
+          "vegetation/palm_b",
+          "vegetation/palm_c"
+        ],
+        "place": "shore",
+        "count": 24,
+        "height": [
+          6.5,
+          10
+        ],
+        "colors": {
+          "leafs": 4020794,
+          "woodBark": 6965818
+        },
+        "sway": 0.025
+      },
+      {
+        "use": "crystals",
+        "count": 14,
+        "color": 11816447
+      },
+      {
+        "use": "panorama",
+        "image": "panoramas/crepuscule-horizon",
+        "rotation": -0.75
+      },
+      {
+        "use": "horizon",
+        "image": "panoramas/crepuscule-horizon-band",
+        "rotation": -0.75,
+        "zoom": 1,
+        "above": 600,
+        "below": 112
       }
     ]
   },

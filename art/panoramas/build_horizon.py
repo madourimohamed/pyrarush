@@ -19,6 +19,7 @@ si le paysage est haut, ex. des falaises) ; à reporter dans les options `above`
 Horizons produits :
     sables-horizon  niveau 1, design/panoramique/ (4 vues)          --horizon 0.54
     oasis-horizon   niveau 2, design/niveau 2/ (4 vues)             --horizon 0.62 --dessus 580
+    crepuscule-horizon  niveau 3, design/niveau 3/ (4 vues)         --horizon 0.62 --dessus 600
 """
 
 import os
