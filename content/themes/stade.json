@@ -1,0 +1,49 @@
+{
+  "note": "Niveau 7 : pyramide-stade, pelouse, tribunes en fête (maquette design/level5.png ; images de référence dans design/niveau 7/).",
+  "extends": "temple-simple",
+  "palette": {
+    "sky": { "top": "#2f6fd0", "mid": "#8fbcea", "horizon": "#cfe4fa", "sun": "#fff1cc" },
+    "sun": { "color": "#ffd8a0", "intensity": 3.6, "dir": [-0.657, 0.279, 0.698] },
+    "hemi": { "sky": "#9fc8ff", "ground": "#5fa83a", "intensity": 1 },
+    "fog": { "near": 260, "far": 760 },
+    "ground": { "light": "#5fbf3a", "dark": "#3f8f2a" },
+    "paving": "#e8e0d0",
+    "border": "#a89a80",
+    "stone": ["#ece4d4", "#ddd4c2"],
+    "top": "#f4eee2",
+    "trim": { "color": "#f2c14e", "emissive": "#5a3500" },
+    "door": { "panel": "#1a2a6a", "frame": "#0e1630", "glyph": [1.6, 1.3, 0.4] },
+    "accent": ["#e8323c", "#2a5ad8"],
+    "music": {
+      "scale": [0, 2, 4, 5, 7, 9, 11],
+      "root": 60,
+      "tempo": 132,
+      "lead": "square",
+      "drums": "k.s.k.s.k.s.kks."
+    }
+  },
+  "components": {
+    "mountains": null,
+    "sandDrifts": null,
+    "terrain": {
+      "flat": 200,
+      "detail": "grass/leafy",
+      "tile": 6,
+      "note": "Pelouse (Leafy Grass, Poly Haven) ; plate jusqu'au-delà du stade."
+    },
+    "esplanade": { "detail": "grass/leafy", "tile": 5 },
+    "flagstones": { "color": "#7cc85a", "tint": 0.04, "note": "Terrasses en pelouse tondue (maquette)." },
+    "doorFrames": { "style": "pillars", "band": "#e8323c" },
+    "banners": { "cloth": "#c8202a", "emblem": "#f2c14e", "every": 1 },
+    "capstone": { "style": "pyramid", "color": "#ffc940", "glow": [1.8, 1.3, 0.3] },
+    "particles": { "color": [1.8, 0.6, 0.5], "size": 0.35, "count": 260, "note": "Confettis dans l'air." },
+    "sky": {
+      "clouds": "#ffffff",
+      "cloudGlow": "#ffe2c8",
+      "note": "Ciel bleu (le stade en 3D remplace le panorama, qui ne rend pas un décor aussi proche)."
+    },
+    "stadium": {
+      "note": "Tribunes ovales en fête, projecteurs, drapeaux, écrans géants, pelouse à bandes (maquette et images de design/niveau 7/)."
+    }
+  }
+}

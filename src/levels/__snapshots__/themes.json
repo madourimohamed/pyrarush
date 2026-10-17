@@ -1341,5 +1341,166 @@
         "below": 112
       }
     ]
+  },
+  "stade-legendaire": {
+    "sky": {
+      "top": 3108816,
+      "mid": 9420010,
+      "horizon": 13624570,
+      "sun": 16773580
+    },
+    "sun": {
+      "color": 16767136,
+      "intensity": 3.6,
+      "dir": [
+        -0.657,
+        0.279,
+        0.698
+      ]
+    },
+    "hemi": {
+      "sky": 10471679,
+      "ground": 6268986,
+      "intensity": 1
+    },
+    "fog": {
+      "near": 260,
+      "far": 760
+    },
+    "exposure": 1,
+    "ground": {
+      "light": 6274874,
+      "dark": 4165418
+    },
+    "paving": "#e8e0d0",
+    "border": 11049600,
+    "stone": [
+      "#ece4d4",
+      "#ddd4c2"
+    ],
+    "top": "#f4eee2",
+    "trim": {
+      "color": 15909198,
+      "emissive": 5911808
+    },
+    "door": {
+      "panel": 1714794,
+      "frame": 923184,
+      "glyph": [
+        1.6,
+        1.3,
+        0.4
+      ]
+    },
+    "accent": [
+      "#e8323c",
+      "#2a5ad8"
+    ],
+    "music": {
+      "scale": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "root": 60,
+      "tempo": 132,
+      "lead": "square",
+      "drums": "k.s.k.s.k.s.kks."
+    },
+    "trapStyles": [
+      "glove",
+      "mummy"
+    ],
+    "components": [
+      {
+        "use": "environment",
+        "intensity": 0.45
+      },
+      {
+        "use": "sky",
+        "clouds": 16777215,
+        "cloudGlow": 16769736
+      },
+      {
+        "use": "terrain",
+        "flat": 200,
+        "detail": "grass/leafy",
+        "tile": 6
+      },
+      {
+        "use": "masonry"
+      },
+      {
+        "use": "esplanade",
+        "detail": "grass/leafy",
+        "tile": 5
+      },
+      {
+        "use": "flagstones",
+        "where": "terraces",
+        "size": 1.35,
+        "color": "#7cc85a",
+        "rows": [
+          1.3,
+          1.6
+        ],
+        "joint": 0.02,
+        "tint": 0.04
+      },
+      {
+        "use": "wallShadows"
+      },
+      {
+        "use": "doorFrames",
+        "style": "pillars",
+        "band": "#e8323c"
+      },
+      {
+        "use": "banners",
+        "cloth": "#c8202a",
+        "emblem": "#f2c14e",
+        "every": 1
+      },
+      {
+        "use": "braziers",
+        "flame": [
+          1.7,
+          0.7,
+          0.12
+        ],
+        "every": 2
+      },
+      {
+        "use": "jars"
+      },
+      {
+        "use": "capstone",
+        "style": "pyramid",
+        "color": 16763200,
+        "glow": [
+          1.8,
+          1.3,
+          0.3
+        ]
+      },
+      {
+        "use": "particles",
+        "color": [
+          1.8,
+          0.6,
+          0.5
+        ],
+        "size": 0.35,
+        "count": 260,
+        "motion": "float"
+      },
+      {
+        "use": "stadium"
+      }
+    ]
   }
 }

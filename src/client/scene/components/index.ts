@@ -9,6 +9,7 @@ import { banners, braziers, capstone, doorFrames, jars, particles, statues } fro
 import { bushes, crystals, palms, pines, spires, terracePlants, vines } from './vegetation';
 import { moat, pond } from './water';
 import { props } from './props';
+import { stadium } from './stadium';
 import { preloadModels } from '../models';
 import { preloadTextures } from '../images';
 
@@ -49,6 +50,7 @@ export const COMPONENTS: Record<string, Component<object>> = {
   capstone,
   particles,
   props,
+  stadium,
 } as Record<string, Component<object>>;
 
 /**
