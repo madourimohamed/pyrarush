@@ -1,0 +1,1227 @@
+{
+  "temple-des-sables": {
+    "sky": {
+      "top": 3108816,
+      "mid": 9420010,
+      "horizon": 16767398,
+      "sun": 16773580
+    },
+    "sun": {
+      "color": 16761980,
+      "intensity": 4.4,
+      "dir": [
+        -0.62,
+        0.42,
+        0.66
+      ]
+    },
+    "hemi": {
+      "sky": 9417968,
+      "ground": 11040330,
+      "intensity": 0.95
+    },
+    "fog": {
+      "near": 240,
+      "far": 700
+    },
+    "exposure": 1,
+    "ground": {
+      "light": 15643754,
+      "dark": 13206598
+    },
+    "paving": "#cf9c5c",
+    "border": 11038780,
+    "stone": [
+      "#d4924c",
+      "#c88644"
+    ],
+    "top": "#dcae70",
+    "trim": {
+      "color": 15907131,
+      "emissive": 5911808
+    },
+    "door": {
+      "panel": 3022096,
+      "frame": 1707783,
+      "glyph": [
+        1.9,
+        1.3,
+        0.35
+      ]
+    },
+    "accent": [
+      "#ffd84a",
+      "#f59a00"
+    ],
+    "music": {
+      "scale": [
+        0,
+        1,
+        4,
+        5,
+        7,
+        8,
+        10
+      ],
+      "root": 62,
+      "tempo": 100,
+      "lead": "triangle",
+      "drums": "t..t..t.t..t.t.."
+    },
+    "trapStyles": [
+      "glove",
+      "mummy"
+    ],
+    "components": [
+      {
+        "use": "environment",
+        "intensity": 0.45
+      },
+      {
+        "use": "grade"
+      },
+      {
+        "use": "terrain",
+        "flat": 9,
+        "detail": "sand/ripples"
+      },
+      {
+        "use": "moat",
+        "color": 3127236,
+        "emissive": 674400,
+        "width": 5,
+        "realistic": true
+      },
+      {
+        "use": "props",
+        "id": "palmiers",
+        "models": [
+          "vegetation/palm_a",
+          "vegetation/palm_b",
+          "vegetation/palm_c"
+        ],
+        "place": "shore",
+        "count": 34,
+        "height": [
+          6.5,
+          10
+        ],
+        "colors": {
+          "leafs": 6265402,
+          "woodBark": 10122832
+        },
+        "sway": 0.025
+      },
+      {
+        "use": "props",
+        "id": "buissons",
+        "models": [
+          "plant_bushLarge",
+          "plant_bush",
+          "plant_bushDetailed"
+        ],
+        "place": "shore",
+        "count": 50,
+        "height": [
+          0.9,
+          1.8
+        ],
+        "colors": {
+          "leafs": 4629308,
+          "grass": 5810245,
+          "woodBark": 10119747,
+          "stoneDark": 12882008,
+          "stone": 14462580,
+          "dirt": 13671002
+        }
+      },
+      {
+        "use": "props",
+        "id": "obelisques",
+        "models": [
+          "statue_obelisk"
+        ],
+        "place": "shore",
+        "count": 6,
+        "height": [
+          10,
+          14
+        ],
+        "colors": {
+          "leafs": 4629308,
+          "grass": 5810245,
+          "woodBark": 10119747,
+          "stoneDark": 12882008,
+          "stone": 14462580,
+          "dirt": 13671002
+        }
+      },
+      {
+        "use": "props",
+        "id": "ruines",
+        "models": [
+          "statue_column",
+          "statue_columnDamaged"
+        ],
+        "place": "shore",
+        "count": 12,
+        "height": [
+          3,
+          5.5
+        ],
+        "colors": {
+          "leafs": 4629308,
+          "grass": 5810245,
+          "woodBark": 10119747,
+          "stoneDark": 12882008,
+          "stone": 14462580,
+          "dirt": 13671002
+        }
+      },
+      {
+        "use": "props",
+        "id": "rochers",
+        "models": [
+          "rock_largeA",
+          "rock_largeB",
+          "rock_tallA"
+        ],
+        "place": "shore",
+        "count": 14,
+        "height": [
+          0.8,
+          2.2
+        ],
+        "colors": {
+          "leafs": 4629308,
+          "grass": 5810245,
+          "woodBark": 10119747,
+          "stoneDark": 12882008,
+          "stone": 14462580,
+          "dirt": 13671002
+        }
+      },
+      {
+        "use": "masonry"
+      },
+      {
+        "use": "esplanade",
+        "detail": "sand/ripples"
+      },
+      {
+        "use": "flagstones",
+        "where": "terraces",
+        "size": 1.35,
+        "color": "#e9cfa2",
+        "rows": [
+          1.3,
+          1.6
+        ],
+        "joint": 0.02,
+        "tint": 0.05
+      },
+      {
+        "use": "sandDrifts",
+        "detail": "sand/ripples"
+      },
+      {
+        "use": "wallShadows"
+      },
+      {
+        "use": "doorFrames",
+        "style": "pillars",
+        "band": "#2f6fc0"
+      },
+      {
+        "use": "banners",
+        "cloth": "#2f5fb0",
+        "emblem": "#f2c14e",
+        "every": 1
+      },
+      {
+        "use": "braziers",
+        "flame": [
+          1.7,
+          0.7,
+          0.12
+        ],
+        "every": 2
+      },
+      {
+        "use": "statues",
+        "model": "anubis"
+      },
+      {
+        "use": "props",
+        "id": "plantes-terrasses",
+        "models": [
+          "plant_bushDetailed",
+          "plant_bushLarge"
+        ],
+        "place": "terraceCorner",
+        "spacing": 1.6,
+        "height": [
+          0.9,
+          1.3
+        ],
+        "colors": {
+          "leafs": 4629308,
+          "grass": 5810245,
+          "woodBark": 10119747,
+          "stoneDark": 12882008,
+          "stone": 14462580,
+          "dirt": 13671002
+        }
+      },
+      {
+        "use": "props",
+        "id": "fleurs",
+        "models": [
+          "flower_redA",
+          "flower_yellowA",
+          "grass_large"
+        ],
+        "place": "shore",
+        "count": 40,
+        "height": [
+          0.5,
+          0.9
+        ],
+        "colors": {
+          "leafs": 4629308,
+          "grass": 5810245,
+          "woodBark": 10119747,
+          "stoneDark": 12882008,
+          "stone": 14462580,
+          "dirt": 13671002
+        }
+      },
+      {
+        "use": "jars"
+      },
+      {
+        "use": "capstone",
+        "style": "pyramid",
+        "color": 16763200,
+        "glow": [
+          2.2,
+          1.5,
+          0.3
+        ]
+      },
+      {
+        "use": "particles",
+        "color": [
+          1.6,
+          1.25,
+          0.8
+        ],
+        "size": 0.35,
+        "count": 420,
+        "motion": "float"
+      },
+      {
+        "use": "panorama",
+        "image": "panoramas/sables-horizon",
+        "rotation": -0.53
+      },
+      {
+        "use": "horizon",
+        "image": "panoramas/sables-horizon-band",
+        "rotation": -0.53,
+        "zoom": 1.35
+      }
+    ]
+  },
+  "oasis-emeraude": {
+    "sky": {
+      "top": 2068438,
+      "mid": 8837610,
+      "horizon": 14874600,
+      "sun": 16776166
+    },
+    "sun": {
+      "color": 16774102,
+      "intensity": 3,
+      "dir": [
+        0.55,
+        0.6,
+        0.58
+      ]
+    },
+    "hemi": {
+      "sky": 12577023,
+      "ground": 9420650,
+      "intensity": 1.6
+    },
+    "fog": {
+      "near": 180,
+      "far": 540
+    },
+    "exposure": 0.95,
+    "ground": {
+      "light": 10473836,
+      "dark": 6068804
+    },
+    "paving": "#ddd2a6",
+    "border": 9075285,
+    "stone": [
+      "#c4dcb4",
+      "#b2cfa4"
+    ],
+    "top": "#eef0da",
+    "trim": {
+      "color": 15909198,
+      "emissive": 4862464
+    },
+    "door": {
+      "panel": 999228,
+      "frame": 664610,
+      "glyph": [
+        0.9,
+        2.6,
+        1.2
+      ]
+    },
+    "accent": [
+      "#3ee08a",
+      "#11a9c9"
+    ],
+    "music": {
+      "scale": [
+        0,
+        2,
+        4,
+        7,
+        9
+      ],
+      "root": 65,
+      "tempo": 112,
+      "lead": "sine",
+      "drums": "k..hs.h.k.khs.h."
+    },
+    "trapStyles": [
+      "glove",
+      "mummy"
+    ],
+    "components": [
+      {
+        "use": "environment",
+        "intensity": 0.45
+      },
+      {
+        "use": "sky",
+        "clouds": 16777215,
+        "cloudGlow": 15138808
+      },
+      {
+        "use": "terrain",
+        "flat": 9
+      },
+      {
+        "use": "mountains",
+        "color": 6266474,
+        "shape": "mesa"
+      },
+      {
+        "use": "masonry"
+      },
+      {
+        "use": "esplanade",
+        "detail": "sand/ripples"
+      },
+      {
+        "use": "flagstones",
+        "where": "terraces",
+        "size": 1.35,
+        "color": "#e9cfa2",
+        "rows": [
+          1.3,
+          1.6
+        ],
+        "joint": 0.02,
+        "tint": 0.05
+      },
+      {
+        "use": "sandDrifts",
+        "detail": "sand/ripples"
+      },
+      {
+        "use": "wallShadows"
+      },
+      {
+        "use": "doorFrames",
+        "style": "simple",
+        "band": "#2f6fc0"
+      },
+      {
+        "use": "banners",
+        "cloth": "#13827a",
+        "emblem": "#f2c14e",
+        "every": 2
+      },
+      {
+        "use": "braziers",
+        "flame": [
+          1,
+          3,
+          1.1
+        ],
+        "every": 2
+      },
+      {
+        "use": "jars"
+      },
+      {
+        "use": "capstone",
+        "style": "crystal",
+        "color": 3137674,
+        "glow": [
+          0.6,
+          2.6,
+          1.2
+        ]
+      },
+      {
+        "use": "particles",
+        "color": [
+          1.5,
+          1.7,
+          0.8
+        ],
+        "size": 0.3,
+        "count": 380,
+        "motion": "float"
+      },
+      {
+        "use": "cliffs",
+        "waterfalls": true
+      },
+      {
+        "use": "moat",
+        "color": 2082752,
+        "emissive": 674376,
+        "width": 4
+      },
+      {
+        "use": "pond",
+        "color": 2082752,
+        "emissive": 674376,
+        "lilies": true
+      },
+      {
+        "use": "palms",
+        "count": 40,
+        "trunk": 9067066,
+        "leaf": 3119690
+      },
+      {
+        "use": "vines",
+        "leaf": 3119690
+      }
+    ]
+  },
+  "crepuscule-pourpre": {
+    "sky": {
+      "top": 2365530,
+      "mid": 12730511,
+      "horizon": 16751211,
+      "sun": 16761504
+    },
+    "sun": {
+      "color": 16752522,
+      "intensity": 2.7,
+      "dir": [
+        -0.82,
+        0.24,
+        0.52
+      ]
+    },
+    "hemi": {
+      "sky": 9071574,
+      "ground": 12738682,
+      "intensity": 1.5
+    },
+    "fog": {
+      "near": 150,
+      "far": 480
+    },
+    "exposure": 1,
+    "ground": {
+      "light": 14256778,
+      "dark": 10508920
+    },
+    "paving": "#d9a3a0",
+    "border": 9063006,
+    "stone": [
+      "#d99a8c",
+      "#c98a84"
+    ],
+    "top": "#f0c4b8",
+    "trim": {
+      "color": 16764794,
+      "emissive": 5908992
+    },
+    "door": {
+      "panel": 2502763,
+      "frame": 1708080,
+      "glyph": [
+        2.4,
+        0.9,
+        1.8
+      ]
+    },
+    "accent": [
+      "#ff7ab0",
+      "#8a5bff"
+    ],
+    "music": {
+      "scale": [
+        0,
+        3,
+        5,
+        7,
+        10
+      ],
+      "root": 57,
+      "tempo": 92,
+      "lead": "square",
+      "drums": "k...s...k.k.s..."
+    },
+    "trapStyles": [
+      "glove",
+      "mummy"
+    ],
+    "components": [
+      {
+        "use": "environment",
+        "intensity": 0.45
+      },
+      {
+        "use": "sky",
+        "clouds": 16757704,
+        "cloudGlow": 16738976
+      },
+      {
+        "use": "terrain",
+        "flat": 3
+      },
+      {
+        "use": "mountains",
+        "color": 6960232,
+        "shape": "mesa"
+      },
+      {
+        "use": "masonry"
+      },
+      {
+        "use": "esplanade",
+        "detail": "sand/ripples"
+      },
+      {
+        "use": "flagstones",
+        "where": "terraces",
+        "size": 1.35,
+        "color": "#e9cfa2",
+        "rows": [
+          1.3,
+          1.6
+        ],
+        "joint": 0.02,
+        "tint": 0.05
+      },
+      {
+        "use": "sandDrifts",
+        "detail": "sand/ripples"
+      },
+      {
+        "use": "wallShadows"
+      },
+      {
+        "use": "doorFrames",
+        "style": "simple",
+        "band": "#2f6fc0"
+      },
+      {
+        "use": "banners",
+        "cloth": "#7a2a8a",
+        "emblem": "#ffcf7a",
+        "every": 2
+      },
+      {
+        "use": "braziers",
+        "flame": [
+          3,
+          0.9,
+          1.6
+        ],
+        "every": 2
+      },
+      {
+        "use": "jars"
+      },
+      {
+        "use": "capstone",
+        "style": "pyramid",
+        "color": 16763200,
+        "glow": [
+          2.2,
+          1.5,
+          0.3
+        ]
+      },
+      {
+        "use": "particles",
+        "color": [
+          1.8,
+          0.9,
+          1.5
+        ],
+        "size": 0.35,
+        "count": 420,
+        "motion": "float"
+      },
+      {
+        "use": "distantPyramids",
+        "color": 9063018
+      },
+      {
+        "use": "pond",
+        "color": 6970070,
+        "emissive": 2759274
+      },
+      {
+        "use": "palms",
+        "count": 10,
+        "trunk": 4860474,
+        "leaf": 3099226,
+        "aroundPond": true
+      }
+    ]
+  },
+  "pyramide-de-glace": {
+    "sky": {
+      "top": 5211856,
+      "mid": 12114162,
+      "horizon": 15660799,
+      "sun": 16777215
+    },
+    "sun": {
+      "color": 15397631,
+      "intensity": 2.6,
+      "dir": [
+        -0.5,
+        0.55,
+        0.67
+      ]
+    },
+    "hemi": {
+      "sky": 14085375,
+      "ground": 11060448,
+      "intensity": 1.7
+    },
+    "fog": {
+      "near": 120,
+      "far": 420
+    },
+    "exposure": 0.88,
+    "ground": {
+      "light": 16185855,
+      "dark": 12900078
+    },
+    "paving": "#dfe9f5",
+    "border": 10138832,
+    "stone": [
+      "#cfe3f5",
+      "#bcd6ee"
+    ],
+    "top": "#f6faff",
+    "trim": {
+      "color": 10479871,
+      "emissive": 1722986
+    },
+    "door": {
+      "panel": 1915499,
+      "frame": 989744,
+      "glyph": [
+        0.6,
+        2.2,
+        3
+      ]
+    },
+    "accent": [
+      "#7fdcff",
+      "#4a7bff"
+    ],
+    "music": {
+      "scale": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "root": 64,
+      "tempo": 84,
+      "lead": "sine",
+      "drums": "k.......s......."
+    },
+    "trapStyles": [
+      "glove",
+      "mummy"
+    ],
+    "components": [
+      {
+        "use": "environment",
+        "intensity": 0.45
+      },
+      {
+        "use": "sky",
+        "clouds": 16777215,
+        "cloudGlow": 14675967
+      },
+      {
+        "use": "terrain",
+        "flat": 3
+      },
+      {
+        "use": "mountains",
+        "color": 15003391,
+        "shape": "peaks"
+      },
+      {
+        "use": "masonry"
+      },
+      {
+        "use": "esplanade",
+        "detail": "sand/ripples"
+      },
+      {
+        "use": "flagstones",
+        "where": "terraces",
+        "size": 1.35,
+        "color": "#e9cfa2",
+        "rows": [
+          1.3,
+          1.6
+        ],
+        "joint": 0.02,
+        "tint": 0.05
+      },
+      {
+        "use": "sandDrifts",
+        "detail": "sand/ripples"
+      },
+      {
+        "use": "wallShadows"
+      },
+      {
+        "use": "doorFrames",
+        "style": "simple",
+        "band": "#2f6fc0"
+      },
+      {
+        "use": "banners",
+        "cloth": "#1d4a8a",
+        "emblem": "#bff0ff",
+        "every": 2
+      },
+      {
+        "use": "braziers",
+        "flame": [
+          0.8,
+          2,
+          3.2
+        ],
+        "every": 2
+      },
+      {
+        "use": "jars"
+      },
+      {
+        "use": "capstone",
+        "style": "pyramid",
+        "color": 16763200,
+        "glow": [
+          2.2,
+          1.5,
+          0.3
+        ]
+      },
+      {
+        "use": "particles",
+        "color": [
+          1.6,
+          1.7,
+          1.9
+        ],
+        "size": 0.32,
+        "count": 900,
+        "motion": "snow"
+      },
+      {
+        "use": "pond",
+        "color": 12578815,
+        "emissive": 3828362
+      },
+      {
+        "use": "pines",
+        "count": 14,
+        "trunk": 5917242,
+        "leaf": 3107418
+      }
+    ]
+  },
+  "sanctuaire-de-lave": {
+    "sky": {
+      "top": 1312776,
+      "mid": 6167056,
+      "horizon": 16738858,
+      "sun": 16742970
+    },
+    "sun": {
+      "color": 16747098,
+      "intensity": 2.3,
+      "dir": [
+        0.6,
+        0.35,
+        -0.72
+      ]
+    },
+    "hemi": {
+      "sky": 6959152,
+      "ground": 16734746,
+      "intensity": 1.3
+    },
+    "fog": {
+      "near": 110,
+      "far": 380
+    },
+    "exposure": 1,
+    "ground": {
+      "light": 5127738,
+      "dark": 2365978
+    },
+    "paving": "#5a4a48",
+    "border": 3811880,
+    "stone": [
+      "#4e423f",
+      "#423835"
+    ],
+    "top": "#6e5e5a",
+    "trim": {
+      "color": 16742938,
+      "emissive": 16730624
+    },
+    "door": {
+      "panel": 1971734,
+      "frame": 920074,
+      "glyph": [
+        3.2,
+        1.2,
+        0.2
+      ]
+    },
+    "accent": [
+      "#ff8a2a",
+      "#ff2a2a"
+    ],
+    "music": {
+      "scale": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "root": 52,
+      "tempo": 128,
+      "lead": "sawtooth",
+      "drums": "k.hkshk.k.hks.hs"
+    },
+    "trapStyles": [
+      "glove",
+      "mummy"
+    ],
+    "components": [
+      {
+        "use": "environment",
+        "intensity": 0.45
+      },
+      {
+        "use": "sky",
+        "clouds": 4864570,
+        "cloudGlow": 6953472
+      },
+      {
+        "use": "terrain",
+        "flat": 3
+      },
+      {
+        "use": "mountains",
+        "color": 2759192,
+        "shape": "peaks"
+      },
+      {
+        "use": "masonry"
+      },
+      {
+        "use": "esplanade",
+        "detail": "sand/ripples"
+      },
+      {
+        "use": "flagstones",
+        "where": "terraces",
+        "size": 1.35,
+        "color": "#e9cfa2",
+        "rows": [
+          1.3,
+          1.6
+        ],
+        "joint": 0.02,
+        "tint": 0.05
+      },
+      {
+        "use": "sandDrifts",
+        "detail": "sand/ripples"
+      },
+      {
+        "use": "wallShadows"
+      },
+      {
+        "use": "doorFrames",
+        "style": "simple",
+        "band": "#2f6fc0"
+      },
+      {
+        "use": "banners",
+        "cloth": "#5a1010",
+        "emblem": "#ff8a2a",
+        "every": 2
+      },
+      {
+        "use": "braziers",
+        "flame": [
+          3.5,
+          1.2,
+          0.2
+        ],
+        "every": 2
+      },
+      {
+        "use": "jars"
+      },
+      {
+        "use": "capstone",
+        "style": "pyramid",
+        "color": 16763200,
+        "glow": [
+          2.2,
+          1.5,
+          0.3
+        ]
+      },
+      {
+        "use": "particles",
+        "color": [
+          3,
+          1.2,
+          0.3
+        ],
+        "size": 0.3,
+        "count": 520,
+        "motion": "embers"
+      },
+      {
+        "use": "pond",
+        "color": 16730624,
+        "emissive": 16726528,
+        "glow": true
+      },
+      {
+        "use": "spires",
+        "count": 14,
+        "color": 3811882
+      }
+    ]
+  },
+  "cite-celeste": {
+    "sky": {
+      "top": 330276,
+      "mid": 1714794,
+      "horizon": 4864650,
+      "sun": 14674175
+    },
+    "sun": {
+      "color": 10138879,
+      "intensity": 1.9,
+      "dir": [
+        0.45,
+        0.55,
+        0.7
+      ]
+    },
+    "hemi": {
+      "sky": 4872874,
+      "ground": 2759242,
+      "intensity": 1.4
+    },
+    "fog": {
+      "near": 140,
+      "far": 460
+    },
+    "exposure": 1.1,
+    "ground": {
+      "light": 3026530,
+      "dark": 1710650
+    },
+    "paving": "#3c3c6e",
+    "border": 2763344,
+    "stone": [
+      "#5c5c9e",
+      "#505092"
+    ],
+    "top": "#7c7cbc",
+    "trim": {
+      "color": 16766826,
+      "emissive": 6965760
+    },
+    "door": {
+      "panel": 3807834,
+      "frame": 1182240,
+      "glyph": [
+        2.6,
+        2.2,
+        0.9
+      ]
+    },
+    "accent": [
+      "#a07aff",
+      "#ff7ad9"
+    ],
+    "music": {
+      "scale": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        10
+      ],
+      "root": 67,
+      "tempo": 76,
+      "lead": "triangle",
+      "drums": "k.....h.....s..."
+    },
+    "trapStyles": [
+      "glove",
+      "mummy"
+    ],
+    "components": [
+      {
+        "use": "environment",
+        "intensity": 0.45
+      },
+      {
+        "use": "sky",
+        "clouds": 3816058,
+        "cloudGlow": 2763370,
+        "stars": true
+      },
+      {
+        "use": "terrain",
+        "flat": 3
+      },
+      {
+        "use": "mountains",
+        "color": 1710656,
+        "shape": "mesa"
+      },
+      {
+        "use": "masonry"
+      },
+      {
+        "use": "esplanade",
+        "detail": "sand/ripples"
+      },
+      {
+        "use": "flagstones",
+        "where": "terraces",
+        "size": 1.35,
+        "color": "#e9cfa2",
+        "rows": [
+          1.3,
+          1.6
+        ],
+        "joint": 0.02,
+        "tint": 0.05
+      },
+      {
+        "use": "sandDrifts",
+        "detail": "sand/ripples"
+      },
+      {
+        "use": "wallShadows"
+      },
+      {
+        "use": "doorFrames",
+        "style": "simple",
+        "band": "#2f6fc0"
+      },
+      {
+        "use": "banners",
+        "cloth": "#2a1a5a",
+        "emblem": "#ffd76a",
+        "every": 2
+      },
+      {
+        "use": "braziers",
+        "flame": [
+          1,
+          1.6,
+          3.5
+        ],
+        "every": 2
+      },
+      {
+        "use": "jars"
+      },
+      {
+        "use": "capstone",
+        "style": "pyramid",
+        "color": 16763200,
+        "glow": [
+          2.2,
+          1.5,
+          0.3
+        ]
+      },
+      {
+        "use": "particles",
+        "color": [
+          1.2,
+          2.4,
+          3
+        ],
+        "size": 0.45,
+        "count": 360,
+        "motion": "float"
+      },
+      {
+        "use": "pond",
+        "color": 8018687,
+        "emissive": 5913343,
+        "glow": true
+      },
+      {
+        "use": "crystals",
+        "count": 14,
+        "color": 9071359
+      }
+    ]
+  }
+}
