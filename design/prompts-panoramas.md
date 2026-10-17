@@ -65,7 +65,7 @@ Vue 4 : vallée enneigée avec des sapins et des rochers, montagnes plus douces 
 
 ---
 
-## Niveau 5 · Le Sanctuaire de Lave (niveau actuel du jeu)
+## Niveau 5 · Le Sanctuaire de Lave
 
 ```text
 Le bas de l'image est une plaine plate de roche volcanique noire, parcourue de fines fissures de lave orange lumineuse. Ciel sombre rouge et orangé, nuages de cendre, lueur de la lave sur les nuages.
@@ -82,21 +82,6 @@ Vue 3 : ruines de temple en pierre sombre à moitié englouties, braises qui flo
 ```
 ```text
 Vue 4 : champ de pitons rocheux pointus et de cristaux rouges, volcans plus petits fumants à l'horizon.
-```
-
-### Variante : Le Stade Légendaire (maquette `design/level5.png`)
-
-À utiliser seulement si l'on remplace la lave par le stade au niveau 5 (décision à prendre).
-
-```text
-Le bas de l'image est une pelouse de football tondue à bandes, parfaitement plate. Ciel de fin de journée orange et violet, projecteurs allumés.
-```
-
-```text
-Vue 1 : au centre, le soleil couchant juste au-dessus du toit ouvert d'un immense stade.
-Vue 2 : tribunes pleines de supporters stylisés, drapeaux rouges et bleus, grands projecteurs.
-Vue 3 : écran géant et tribunes, confettis dans l'air.
-Vue 4 : tribunes et entrée monumentale du stade, drapeaux qui flottent.
 ```
 
 ---
@@ -121,4 +106,22 @@ Vue 3 : au loin, des tours d'observatoire en pierre claire et or posées sur des
 ```
 ```text
 Vue 4 : plusieurs petites planètes et lunes, une nébuleuse rose, quelques rochers flottants plus proches.
+```
+
+---
+
+## Niveau 7 · Le Stade Légendaire
+
+Ambiance (maquette `design/level5.png`) : pyramide-stade, pelouse à bandes, tribunes, projecteurs, drapeaux,
+ballon géant au sommet. Ranger les images dans `design/niveau 7/`.
+
+```text
+Le bas de l'image est une pelouse de football tondue à bandes, parfaitement plate. Ciel de fin de journée orange et violet, projecteurs allumés.
+```
+
+```text
+Vue 1 : au centre, le soleil couchant juste au-dessus du toit ouvert d'un immense stade.
+Vue 2 : tribunes pleines de supporters stylisés, drapeaux rouges et bleus, grands projecteurs.
+Vue 3 : écran géant et tribunes, confettis dans l'air.
+Vue 4 : tribunes et entrée monumentale du stade, drapeaux qui flottent.
 ```
