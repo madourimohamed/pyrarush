@@ -3,6 +3,7 @@ import { doorFront, INTERACT_RANGE, type Vec3 } from './geometry';
 import { getMechanic } from './mechanics/registry';
 import { wall } from './mechanics/basic';
 import { SEAL_COOLDOWN_MS, SEAL_MS, SEAL_WINDOW_MS } from './multiplayer';
+import { TREASURE_FALLBACK_SHARDS, TREASURE_HOURGLASS_MS, type TreasureId } from './mechanics/treasure';
 import { summitFloor, BONUS_EYE_MS, BONUS_HOURGLASS_MS, type BonusId, type Door, type GameEvent, type Layout, type PlayerState, type PyramidConfig } from './types';
 
 /**
@@ -24,6 +25,11 @@ export class Game {
    */
   readonly seals = new Map<string, { owner: string; until: number; rest: number; active: boolean }>();
   winner?: string;
+  /**
+   * Le sablier des trésors retire du temps au chronomètre (solo). En multijoueur, le classement suit l'horloge du
+   * serveur : le sablier est remplacé par des éclats (réglé à false par la salle et par le navigateur).
+   */
+  timeBonuses = true;
 
   constructor(config: PyramidConfig, seed: number) {
     this.config = config;
@@ -42,6 +48,7 @@ export class Game {
       shield: false,
       falls: 0,
       doorsTested: 0,
+      shards: 0,
     };
     this.players.set(id, player);
     return player;
@@ -79,7 +86,7 @@ export class Game {
       player.knownPassages.add(door.id);
       player.lastPassage = { doorId: door.id, at: now };
     }
-    player.tried.set(door.id, to > from ? 'up' : to < from || outcome.fx !== 'wall' ? 'trap' : 'wall');
+    player.tried.set(door.id, to > from ? 'up' : outcome.treasure ? 'treasure' : to < from || outcome.fx !== 'wall' ? 'trap' : 'wall');
 
     const events: GameEvent[] = [
       {
@@ -95,6 +102,7 @@ export class Game {
       },
     ];
     if (shielded) events.push({ type: 'shielded', playerId, cause: 'door', floor: from });
+    if (outcome.treasure) events.push(this.collectTreasure(player, door.id, outcome.treasure.reward, outcome.treasure.amount));
     if (mechanic.revealPublicly && to > from) {
       const until = now + this.config.publicRevealMs;
       this.reveals.set(door.id, until);
@@ -193,6 +201,19 @@ export class Game {
     const from = player.floor;
     const to = Math.max(1, from - 1);
     return [{ type: 'knocked', playerId, from, to }, ...this.moveTo(player, to, 'attack', now)];
+  }
+
+  /** Applique la récompense d'un trésor ; sablier (sans chronomètre) ou bouclier déjà actif : des éclats à la place. */
+  private collectTreasure(player: PlayerState, doorId: string, reward: TreasureId, amount: number): GameEvent {
+    if ((reward === 'hourglass' && !this.timeBonuses) || (reward === 'shield' && player.shield)) {
+      reward = 'shards';
+      amount = TREASURE_FALLBACK_SHARDS;
+    }
+    if (reward === 'shards') player.shards += amount;
+    if (reward === 'shield') player.shield = true;
+    const event: GameEvent = { type: 'treasure', playerId: player.id, doorId, reward, amount: reward === 'shards' ? amount : 0 };
+    if (reward === 'hourglass') event.timeBonusMs = TREASURE_HOURGLASS_MS;
+    return event;
   }
 
   /** Borne une variation d'étage selon la configuration de la pyramide. */

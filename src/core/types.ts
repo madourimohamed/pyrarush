@@ -1,4 +1,5 @@
 import type { TrialRules } from './trials';
+import type { TreasureId } from './mechanics/treasure';
 
 /** Nombre fixe ou intervalle [min, max] tiré au sort à la génération. */
 export type CountSpec = number | [number, number];
@@ -44,6 +45,8 @@ export interface PyramidConfig {
   settings?: Record<string, Record<string, number>>;
   /** Épreuves d'ouverture des portes : sortes mélangées et difficulté du premier au dernier étage (voir trials.ts). */
   trials: TrialRules;
+  /** Part des portes « indice » (murs) changées en trésors, de 0 à 1 (voir mechanics/treasure.ts). */
+  treasureShare: number;
 }
 
 export interface PlayerState {
@@ -62,6 +65,8 @@ export interface PlayerState {
   lastPassage?: { doorId: string; at: number };
   falls: number;
   doorsTested: number;
+  /** Éclats d'or ramassés dans les trésors pendant la partie. */
+  shards: number;
   finishedAt?: number;
 }
 
@@ -125,9 +130,9 @@ export type BonusId = (typeof BONUS_IDS)[number];
 export const BONUS_EYE_MS = 5000;
 export const BONUS_HOURGLASS_MS = 10000;
 
-/** Ce qu'un joueur a découvert derrière une porte : un passage (monte), un mur, ou un piège (descend ou repousse). */
-/** 'power' : en duel, un pouvoir a été trouvé derrière cette porte vide (marque ajoutée par le navigateur). */
-export type TriedOutcome = 'up' | 'wall' | 'trap' | 'power';
+/** Ce qu'un joueur a découvert derrière une porte : un passage (monte), un indice (mur), un piège (descend ou repousse), un trésor. */
+/** 'power' : en multijoueur, un pouvoir a été trouvé derrière cette porte (marque ajoutée par le navigateur). */
+export type TriedOutcome = 'up' | 'wall' | 'trap' | 'power' | 'treasure';
 
 /** Effets de porte joués par un gardien (gant ou momie) qui projette le joueur : pièges et pari perdu. */
 export const TRAP_FX: readonly string[] = ['smallTrap', 'bigTrap', 'riskyLose'];
@@ -164,4 +169,6 @@ export type GameEvent =
   | { type: 'sealed'; doorId: string; owner: string; until: number }
   | { type: 'unsealed'; doorId: string }
   /** Duel : un joueur a tenté d'ouvrir une porte scellée par l'adversaire (rien ne se passe). */
-  | { type: 'doorSealed'; playerId: string; doorId: string };
+  | { type: 'doorSealed'; playerId: string; doorId: string }
+  /** Trésor ramassé : éclats d'or (`amount`), bouclier, ou sablier (`timeBonusMs` retirés au chronomètre, solo seulement). */
+  | { type: 'treasure'; playerId: string; doorId: string; reward: TreasureId; amount: number; timeBonusMs?: number };

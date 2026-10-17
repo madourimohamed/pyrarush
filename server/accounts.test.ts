@@ -105,6 +105,11 @@ describe('règles partagées', () => {
     // La démo faite sur un appareil reste faite après fusion (elle n'est montrée qu'une fois).
     expect(mergeProgress({ levels: {}, tutorial: true }, { levels: {} }, catalog).tutorial).toBe(true);
     expect(normalizeProgress({ tutorial: 'oui' }, catalog).tutorial).toBeUndefined();
+    // Éclats d'or : entiers positifs plausibles seulement ; la fusion garde le plus grand total (jamais compté deux fois).
+    expect(normalizeProgress({ shards: 42.7 }, catalog).shards).toBe(42);
+    expect(normalizeProgress({ shards: -5 }, catalog).shards).toBeUndefined();
+    expect(normalizeProgress({ shards: 1e12 }, catalog).shards).toBeUndefined();
+    expect(mergeProgress({ levels: {}, shards: 30 }, { levels: {}, shards: 12 }, catalog).shards).toBe(30);
   });
 
   it('progression : terminer un niveau débloque le suivant ; on garde le plus loin des deux appareils', () => {

@@ -1,5 +1,6 @@
 import type { Rng } from '../rng';
 import type { Door, Hint, Layout, PlayerState, PyramidConfig } from '../types';
+import type { TreasureId } from './treasure';
 
 export interface MechanicContext {
   door: Door;
@@ -13,6 +14,8 @@ export interface MechanicOutcome {
   fx: string;
   message: string;
   hint?: Hint;
+  /** Porte trésor : la récompense, appliquée par le moteur (voir treasure.ts). */
+  treasure?: { reward: TreasureId; amount: number };
 }
 
 /**

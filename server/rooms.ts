@@ -246,6 +246,8 @@ export class Room {
     this.clearTimers();
     const seed = this.seeds();
     this.game = new Game(this.level.config, seed);
+    // Le classement suit l'horloge du serveur : le sablier des trésors y est remplacé par des éclats.
+    this.game.timeBonuses = false;
     this.hidePowers(this.game);
     this.fighters.clear();
     this.arrivals = [];

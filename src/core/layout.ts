@@ -1,6 +1,7 @@
 import { Rng } from './rng';
 import { doorsPerSide, holeTangents } from './geometry';
 import { getMechanic } from './mechanics/registry';
+import { placeTreasures } from './mechanics/treasure';
 import type { CountSpec, Door, FloorBand, Hole, Layout, PyramidConfig } from './types';
 
 export function bandFor(config: PyramidConfig, floor: number): FloorBand {
@@ -73,6 +74,8 @@ export function generateLayout(config: PyramidConfig, seed: number): Layout {
     }
   }
 
+  // Plus de portes vides : une part des portes indice devient des trésors (tirage séparé, pyramide inchangée).
+  placeTreasures(layout.doorsByFloor, config.treasureShare, seed);
   assertCompletable(layout);
   return layout;
 }

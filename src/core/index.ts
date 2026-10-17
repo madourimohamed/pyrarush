@@ -7,6 +7,7 @@ export * from './multiplayer';
 export * from './level';
 export * from './theme';
 export { getMechanic, registerMechanic } from './mechanics/registry';
+export { TREASURE_IDS, TREASURE_HOURGLASS_MS, type TreasureId } from './mechanics/treasure';
 export type { Mechanic, MechanicContext, MechanicOutcome } from './mechanics/mechanic';
 export * from './schema';
 export * from './themeFile';

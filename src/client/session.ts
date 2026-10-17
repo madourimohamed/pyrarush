@@ -78,7 +78,16 @@ export interface SessionResult {
   time: number;
   falls: number;
   doorsTested: number;
+  /** Éclats d'or ramassés dans les trésors. */
+  shards: number;
 }
+
+/** Récompenses des trésors : titre et sous-titre du message. */
+const TREASURE_TEXT = {
+  shards: (n: number) => [`+${n} éclats d’or`, 'Ils serviront à personnaliser ton explorateur'],
+  hourglass: () => ['Sablier de Thot', '−3 s au chronomètre'],
+  shield: () => ['Bouclier d’Anubis', 'Ta prochaine chute est annulée'],
+} as const;
 
 /** Titre et sous-titre du message affiché après l'ouverture d'une porte. */
 function toastText(e: Extract<GameEvent, { type: 'doorResult' }>, scarabWords?: string): [string, string] {
@@ -86,9 +95,10 @@ function toastText(e: Extract<GameEvent, { type: 'doorResult' }>, scarabWords?: 
   const floors = (n: number) => `${n} étage${Math.abs(n) > 1 ? 's' : ''}`;
   const delta = change > 0 ? `+${floors(change)}` : change < 0 ? `−${floors(-change)}` : '';
   if (e.fx === 'passage') return ['Passage trouvé !', delta];
-  if (e.hint?.type === 'hotCold') return ['Mur', { chaud: 'Chaud !', tiede: 'Tiède…', froid: 'Froid.' }[e.hint.level]];
-  if (e.hint?.type === 'scarab') return ['Mur', scarabWords ?? 'Suis le scarabée !'];
-  if (e.fx === 'wall') return ['Mur', 'Rien ici…'];
+  if (e.hint?.type === 'hotCold') return ['Indice', { chaud: 'Chaud !', tiede: 'Tiède…', froid: 'Froid.' }[e.hint.level]];
+  if (e.hint?.type === 'scarab') return ['Indice', scarabWords ?? 'Suis le scarabée !'];
+  if (e.fx === 'wall') return ['Indice', 'Rien ici…'];
+  if (e.fx === 'treasure') return ['Trésor !', ''];
   return [e.message, delta || 'Bing ! Tu recules…'];
 }
 
@@ -309,6 +319,8 @@ export class GameSession {
 
   /** Prépare les effets des pouvoirs (mines, traînée du turbo et des bottes). */
   enableMultiplayer(): void {
+    // Le classement suit l'horloge du serveur : pas de sablier (des éclats à la place), comme sur le serveur.
+    this.game.timeBonuses = false;
     this.mines ??= new Mines(this.world.scene, this.tweens, this.world.theme.top);
     this.trail ??= new Trail(this.world.scene, 0x9ad8ff);
   }
@@ -653,6 +665,14 @@ export class GameSession {
         case 'unsealed':
           this.world.doors.setSealed(event.doorId, false);
           break;
+        case 'treasure': {
+          const [title, sub] = TREASURE_TEXT[event.reward](event.amount);
+          this.hud.showToast(title, 'good', 2, sub);
+          this.sound.play(event.reward === 'shards' ? 'pickup' : 'bonus');
+          if (event.timeBonusMs) this.clock = Math.max(0, this.clock - event.timeBonusMs);
+          if (event.reward === 'shield') this.onShieldEnd?.();
+          break;
+        }
         case 'doorSealed':
           this.world.shakeDoor(event.doorId);
           this.character.react('bump');
@@ -761,6 +781,13 @@ export class GameSession {
     if (e.to === e.from && trap) {
       // Déjà tout en bas : le gardien frappe quand même et repousse le joueur en arrière (perte de temps).
       this.startTrapScene(door, e.from, e.to);
+      return;
+    }
+    if (e.fx === 'treasure') {
+      // Le message et la récompense arrivent avec l'événement « treasure » qui suit.
+      this.world.openDoor(door.id, 0.7);
+      this.world.flashDoor(door.id, GOLD, 1.2);
+      this.sound.play('chest');
       return;
     }
     if (e.to === e.from) {
@@ -1039,6 +1066,7 @@ export class GameSession {
         time: p.finishedAt ?? this.clock,
         falls: p.falls,
         doorsTested: p.doorsTested,
+        shards: p.shards,
       });
     }, 1700);
   }

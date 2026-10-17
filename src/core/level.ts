@@ -58,6 +58,8 @@ export const LEVEL_DEFAULTS = {
   hints: 'scarab',
   // Premier niveau : une seule sorte d'épreuve, très facile en bas, un peu moins en haut.
   trials: { kinds: ['verrou'], difficulty: [1, 2] },
+  // Un tiers des portes « indice » cachent un trésor : plus aucune porte vide.
+  treasureShare: 0.35,
 } satisfies Partial<PyramidConfig>;
 
 type Defaults = typeof LEVEL_DEFAULTS;

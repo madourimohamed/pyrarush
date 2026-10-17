@@ -110,6 +110,13 @@ export const progress = {
     return improved;
   },
   /** Bonus en réserve (un seul), gagné dans un coffre du sommet. */
+  /** Éclats d'or gagnés au total. */
+  shards(): number {
+    return load().shards ?? 0;
+  },
+  addShards(count: number): void {
+    if (count > 0) change((p) => ({ ...p, shards: (p.shards ?? 0) + Math.floor(count) }));
+  },
   bonus(): BonusId | null {
     return load().bonus ?? null;
   },

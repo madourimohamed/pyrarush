@@ -27,7 +27,7 @@ describe('génération', () => {
   it('le niveau 1 ne contient que des mécaniques simples', () => {
     for (const seed of SEEDS) {
       const ids = new Set(generateLayout(pyramid1, seed).doors.map((d) => d.mechanic));
-      for (const id of ids) expect(['passage', 'wall', 'smallTrap', 'riskyDoor']).toContain(id);
+      for (const id of ids) expect(['passage', 'wall', 'treasure', 'smallTrap', 'riskyDoor']).toContain(id);
     }
   });
 

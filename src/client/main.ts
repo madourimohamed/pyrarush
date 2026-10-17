@@ -331,6 +331,7 @@ function onVictory(result: SessionResult): void {
   // En multijoueur, c'est le serveur qui annonce le classement (sans coffres ni étoiles).
   if (multi.active) return;
   const { isRecord, hadPrevious } = progress.recordTime(playing, result.time);
+  progress.addShards(result.shards);
   const stars = starsFor(playing.goals, result.time, result.falls);
   progress.recordStars(playing, stars.stars);
 

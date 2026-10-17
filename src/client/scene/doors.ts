@@ -8,12 +8,13 @@ import { glyphTextures } from './textures';
 const COLORS = { hint: 0xffc93c, reveal: 0x3ce0ff, highlight: 0x7ff6ff };
 /** Symbole des portes mystère : cyan lumineux (HDR). */
 const MYSTERY_GLYPH = new THREE.Color(0.5, 2.2, 2.8);
-/** Trace privée des portes essayées : mur scellé (pierre), piège fissuré (rouge sombre), coffre vidé (duel, violet). */
+/** Trace privée des portes essayées : indice scellé (pierre), piège fissuré (rouge sombre), coffre vidé (pouvoir : violet, trésor : or). */
 type Traced = Exclude<TriedOutcome, 'up'>;
 const TRIED_LOOK: Record<Traced, { panel: THREE.Color; glyph: THREE.Color }> = {
   wall: { panel: new THREE.Color(0x8c7a62), glyph: new THREE.Color(0.55, 0.5, 0.42) },
   trap: { panel: new THREE.Color(0x4a1712), glyph: new THREE.Color(1.6, 0.25, 0.12) },
   power: { panel: new THREE.Color(0x3a2350), glyph: new THREE.Color(1.3, 0.7, 1.9) },
+  treasure: { panel: new THREE.Color(0x4a3812), glyph: new THREE.Color(1.8, 1.3, 0.35) },
 };
 const SEALED_PANEL = new THREE.Color(0x6a2aa8);
 const isTraced = (t: TriedOutcome | null | undefined): t is Traced => !!t && t !== 'up';
@@ -76,7 +77,7 @@ export class DoorsView {
     const glyphs = glyphTextures().map((t) => t.image as HTMLCanvasElement);
     const symbols = [...new Set(slots.map((s) => getMechanic(s.door.mechanic).appearance?.symbol(layout.config)).filter((x): x is string => !!x))];
     const cells = [...glyphs, ...symbols.map((sym) => symbolTexture(sym).image as HTMLCanvasElement), sealCanvas(), crackCanvas(), chestCanvas()];
-    this.traceCells = { wall: cells.length - 3, trap: cells.length - 2, power: cells.length - 1 };
+    this.traceCells = { wall: cells.length - 3, trap: cells.length - 2, power: cells.length - 1, treasure: cells.length - 1 };
     const atlas = document.createElement('canvas');
     atlas.width = 128 * cells.length;
     atlas.height = 128;

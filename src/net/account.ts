@@ -25,12 +25,16 @@ export interface Progress {
   bonus?: BonusId | null;
   /** Démo de prise en main terminée (montrée au premier lancement seulement). */
   tutorial?: boolean;
+  /** Éclats d'or gagnés dans les trésors (monnaie des objets cosmétiques à venir). */
+  shards?: number;
 }
 
 export const emptyProgress = (): Progress => ({ levels: {} });
 
 /** Temps minimal plausible pour terminer un niveau (ms) : en dessous, le record est ignoré. */
 const MIN_PLAUSIBLE_TIME = 5000;
+/** Plafond de vraisemblance des éclats (une progression envoyée au serveur n'est jamais crue sur parole). */
+const MAX_SHARDS = 1_000_000;
 
 /**
  * Nombre de niveaux jouables (les N premiers) : jusqu'au niveau atteint, et au moins jusqu'à celui qui suit
@@ -80,7 +84,8 @@ export function normalizeProgress(raw: unknown, catalog: LevelCatalog): Progress
   const count = unlockedCount(progress, catalog);
   progress.reached = catalog.ids[count - 1];
   const bonus = BONUS_IDS.find((b) => b === p.bonus) ?? null;
-  return { ...progress, bonus, ...(p.tutorial === true && { tutorial: true }) };
+  const shards = Math.floor(Number(p.shards));
+  return { ...progress, bonus, ...(p.tutorial === true && { tutorial: true }), ...(shards > 0 && shards <= MAX_SHARDS && { shards }) };
 }
 
 /**
@@ -98,7 +103,9 @@ export function mergeProgress(a: Progress, b: Progress, catalog: LevelCatalog): 
   }
   const reached = Math.max(unlockedCount(a, catalog), unlockedCount(b, catalog));
   const tutorial = a.tutorial === true || b.tutorial === true;
-  return { reached: catalog.ids[reached - 1], levels, bonus: b.bonus ?? null, ...(tutorial && { tutorial }) };
+  // Éclats : le plus grand des deux totaux (fusionner deux appareils ne doit pas les compter deux fois).
+  const shards = Math.max(a.shards ?? 0, b.shards ?? 0);
+  return { reached: catalog.ids[reached - 1], levels, bonus: b.bonus ?? null, ...(tutorial && { tutorial }), ...(shards > 0 && { shards }) };
 }
 
 // ---------- Pseudos et mots de passe ----------
