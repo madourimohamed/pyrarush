@@ -26,13 +26,8 @@ import { preloadCharacter } from './scene/models';
 import { useMobileTextures } from './scene/images';
 import { installDebugApi } from './debug/api';
 import { PerfStats } from './debug/stats';
-import { splash } from './ui/splash';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-
-// Le JS est chargé : la suite de la barre suit les modèles et textures de l'accueil.
-splash.progress(0.35);
-splash.trackAssets(0.35, 0.9);
 
 const params = new URLSearchParams(location.search);
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -531,9 +526,7 @@ performance.mark('pyrarush:start');
 // ---------- Démarrage ----------
 applyUiTheme(selected);
 renderMenu();
-void showBackground()
-  .then(() => performance.measure('pyrarush:menu-ready', 'pyrarush:start'))
-  .finally(() => splash.done());
+void showBackground().then(() => performance.measure('pyrarush:menu-ready', 'pyrarush:start'));
 // Au premier lancement (et pas en arrivant par une invitation), la démo de prise en main démarre toute seule,
 // une fois le compte prêt (au plus 3 s d'attente : hors connexion, on n'attend pas le serveur).
 void Promise.race([account.start(), new Promise((r) => setTimeout(r, 3000))]).then(() => {
