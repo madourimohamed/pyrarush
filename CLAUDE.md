@@ -13,6 +13,7 @@ Jeu 3D de course sur pyramide, jouable dans le navigateur (mobile + desktop).
 Node 22 est requis. Dans ce WSL, `npm` pointe vers le npm Windows : utiliser le Node Linux installé dans `~/.local/share/node-v22.20.0-linux-x64/bin` (à mettre en tête du PATH).
 
 - `npm run dev` : serveur de développement (http://localhost:5173, accessible aussi depuis le réseau local pour tester sur téléphone)
+- **Éditeur de décor** : http://localhost:5173/editeur.html (avec `npm run dev`). Modifie les thèmes (`content/themes/*.json`) avec l'aperçu du vrai rendu du jeu, crée des thèmes, associe un thème à un niveau. Code dans `editor/` (`vitePlugin.ts` : lecture et écriture des fichiers, en développement seulement et depuis cet ordinateur) ; jamais inclus dans le jeu publié.
 - `npm test` : tests du moteur de règles (Vitest)
 - Modifier les dépendances : utiliser `npx -y npm@11 install …` (le npm 10.9 fourni avec Node 22 plante sur l'arbre de dépendances de Vitest 4, erreur `edgesOut`).
 - `npm run build` : vérification des types + build statique dans `dist/`

@@ -2,7 +2,7 @@
   "extends": "temple-simple",
   "palette": {
     "sky": { "top": "#1f8fd6", "mid": "#86d9ea", "horizon": "#e2f7e8", "sun": "#fffbe6" },
-    "sun": { "color": "#fff3d6", "intensity": 3.0, "dir": [0.55, 0.6, 0.58] },
+    "sun": { "color": "#fff3d6", "intensity": 3, "dir": [0.55, 0.6, 0.58] },
     "hemi": { "sky": "#bfe8ff", "ground": "#8fbf6a", "intensity": 1.6 },
     "fog": { "near": 180, "far": 540 },
     "exposure": 0.95,
@@ -26,7 +26,7 @@
     "palms": { "count": 40, "trunk": "#8a5a3a", "leaf": "#2f9a4a" },
     "vines": { "leaf": "#2f9a4a" },
     "banners": { "cloth": "#13827a", "emblem": "#f2c14e" },
-    "braziers": { "flame": [1.0, 3.0, 1.1] },
+    "braziers": { "flame": [1, 3, 1.1] },
     "capstone": { "style": "crystal", "color": "#2fe08a", "glow": [0.6, 2.6, 1.2] },
     "particles": { "color": [1.5, 1.7, 0.8], "size": 0.3, "count": 380 }
   }

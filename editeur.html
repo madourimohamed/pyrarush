@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Éditeur de décor · PyraRush</title>
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/editor/editor.css" />
+  </head>
+  <body>
+    <!-- Éditeur de décor : page de développement (npm run dev), jamais incluse dans le jeu publié. -->
+    <aside>
+      <header>
+        <h1>Éditeur de décor</h1>
+        <div class="bar">
+          <select id="theme" title="Thème à modifier"></select>
+          <button type="button" id="new" class="small">Nouveau thème</button>
+          <button type="button" id="save" class="primary">Enregistré</button>
+        </div>
+        <div id="users"></div>
+        <ul id="errors"></ul>
+      </header>
+      <div id="panel"></div>
+    </aside>
+    <main>
+      <canvas id="preview"></canvas>
+      <div id="status"></div>
+      <div class="hint">Clic gauche : tourner · clic droit : déplacer · molette : zoomer</div>
+    </main>
+    <script type="module" src="/editor/main.ts"></script>
+  </body>
+</html>

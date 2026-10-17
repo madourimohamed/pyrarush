@@ -13,7 +13,13 @@
     "trim": { "color": "#ff7a1a", "emissive": "#ff4a00" },
     "door": { "panel": "#1e1616", "frame": "#0e0a0a", "glyph": [3.2, 1.2, 0.2] },
     "accent": ["#ff8a2a", "#ff2a2a"],
-    "music": { "scale": [0, 1, 3, 5, 7, 8, 10], "root": 52, "tempo": 128, "lead": "sawtooth", "drums": "k.hkshk.k.hks.hs" }
+    "music": {
+      "scale": [0, 1, 3, 5, 7, 8, 10],
+      "root": 52,
+      "tempo": 128,
+      "lead": "sawtooth",
+      "drums": "k.hkshk.k.hks.hs"
+    }
   },
   "components": {
     "sky": { "clouds": "#4a3a3a", "cloudGlow": "#6a1a00" },
@@ -22,6 +28,6 @@
     "spires": { "count": 14, "color": "#3a2a2a" },
     "banners": { "cloth": "#5a1010", "emblem": "#ff8a2a" },
     "braziers": { "flame": [3.5, 1.2, 0.2] },
-    "particles": { "color": [3.0, 1.2, 0.3], "size": 0.3, "count": 520, "motion": "embers" }
+    "particles": { "color": [3, 1.2, 0.3], "size": 0.3, "count": 520, "motion": "embers" }
   }
 }

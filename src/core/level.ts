@@ -92,13 +92,16 @@ export const band = (from: number, to: number, passages: number, mechanics: Floo
 /** Format d'un identifiant de niveau : minuscules, chiffres et tirets (la partie « nom » du fichier NNN-nom.ts). */
 export const LEVEL_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+/** Règles complètes d'un niveau (valeurs par défaut comprises), prêtes pour le moteur. */
+export const levelConfig = (id: string, { name, rules }: LevelDefinition): PyramidConfig => ({ ...LEVEL_DEFAULTS, ...rules, id, name });
+
 /**
  * Transforme la liste ordonnée des définitions (avec leur identifiant permanent) en niveaux numérotés, prêts à jouer.
  * `themes` : thèmes disponibles, par nom (voir themeFile.ts).
  */
 export function buildLevels(entries: { id: string; definition: LevelDefinition }[], themes: Record<string, Theme>): Level[] {
   return entries.map(({ id, definition }, i) => {
-    const { name, tagline, duration, highlights, goals, rules, theme, formerIds = [] } = definition;
+    const { name, tagline, duration, highlights, goals, theme, formerIds = [] } = definition;
     if (!LEVEL_ID_PATTERN.test(id)) throw new Error(`Identifiant de niveau invalide : « ${id} »`);
     if (!themes[theme]) throw new Error(`Niveau « ${id} » : thème « ${theme} » introuvable (content/themes/${theme}.json)`);
     return {
@@ -112,7 +115,7 @@ export function buildLevels(entries: { id: string; definition: LevelDefinition }
       goals,
       themeId: theme,
       theme: themes[theme],
-      config: { ...LEVEL_DEFAULTS, ...rules, id, name },
+      config: levelConfig(id, definition),
     };
   });
 }

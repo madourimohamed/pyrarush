@@ -14,11 +14,14 @@
       "note": "Palmiers réalistes qui se balancent (art/vegetation/)."
     },
     "panorama": {
-      "image": "panoramas/sables-horizon", "rotation": -0.53,
+      "image": "panoramas/sables-horizon",
+      "rotation": -0.53,
       "note": "Panorama de fond léger, tourné pour que son soleil soit dans la direction de la lumière du thème."
     },
     "horizon": {
-      "image": "panoramas/sables-horizon-band", "rotation": -0.53, "zoom": 1.35,
+      "image": "panoramas/sables-horizon-band",
+      "rotation": -0.53,
+      "zoom": 1.35,
       "note": "Bande d'horizon nette tirée de 4 vues fournies (design/panoramique/, art/panoramas/build_horizon.py), agrandie."
     }
   }

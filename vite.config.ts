@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite';
+import { themeEditor } from './editor/vitePlugin';
 
 export default defineConfig({
+  // Éditeur de décor (editeur.html) : lecture et écriture des thèmes, en développement seulement.
+  plugins: [themeEditor()],
   build: { chunkSizeWarningLimit: 800 },
   // Tests avec des amis via un tunnel Cloudflare temporaire (cloudflared → *.trycloudflare.com).
   preview: { allowedHosts: ['.trycloudflare.com'] },

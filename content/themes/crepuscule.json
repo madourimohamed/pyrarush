@@ -22,7 +22,7 @@
     "pond": { "color": "#6a5ad6", "emissive": "#2a1a6a" },
     "palms": { "count": 10, "trunk": "#4a2a3a", "leaf": "#2f4a5a", "aroundPond": true },
     "banners": { "cloth": "#7a2a8a", "emblem": "#ffcf7a" },
-    "braziers": { "flame": [3.0, 0.9, 1.6] },
+    "braziers": { "flame": [3, 0.9, 1.6] },
     "particles": { "color": [1.8, 0.9, 1.5] }
   }
 }
