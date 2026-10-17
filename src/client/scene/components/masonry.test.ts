@@ -19,24 +19,26 @@ describe('maçonnerie (blocs posés sur les parois)', () => {
         const { config } = layout;
         const blocks = masonryLayout(layout, BLOCKS, OPTIONS, new Rng(seed));
         expect(blocks.some((b) => BLOCKS[b.variant].tall)).toBe(true);
-        for (const b of blocks) {
+        // Des dizaines de milliers de contrôles : on collecte les erreurs, puis une seule vérification (rapide et lisible).
+        const errors: string[] = [];
+        const check = (ok: boolean, message: string) => ok || errors.length > 20 || errors.push(`graine ${seed} : ${message}`);
+        for (const [i, b] of blocks.entries()) {
           const a = wallHalf(config, b.floor);
           const [lo, hi] = [b.center - b.width / 2, b.center + b.width / 2];
-          expect(lo).toBeGreaterThanOrEqual(-a - OPTIONS.relief - 1e-6);
-          expect(hi).toBeLessThanOrEqual(a + OPTIONS.relief + 1e-6);
-          expect(b.width).toBeGreaterThan(0.2);
-          expect(b.y + b.height).toBeLessThanOrEqual(floorY(b.floor) + 3 + 1e-6);
+          check(lo >= -a - OPTIONS.relief - 1e-6 && hi <= a + OPTIONS.relief + 1e-6, `bloc ${i} hors de la paroi`);
+          check(b.width > 0.2, `bloc ${i} trop étroit`);
+          check(b.y + b.height <= floorY(b.floor) + 3 + 1e-6, `bloc ${i} trop haut`);
           // Jamais devant un encadrement de porte (sous la hauteur libre).
           if (b.y < floorY(b.floor) + OPTIONS.doorClear[1] - 1e-6) {
             for (const door of layout.doors.filter((d) => d.floor === b.floor && d.side === b.side)) {
               const t = doorTangent(config, door.floor, door.slot);
-              expect(overlaps(lo, hi, t - OPTIONS.doorClear[0], t + OPTIONS.doorClear[0])).toBe(false);
+              check(!overlaps(lo, hi, t - OPTIONS.doorClear[0], t + OPTIONS.doorClear[0]), `bloc ${i} devant la porte ${door.id}`);
             }
           }
           // Jamais en travers d'un trou (le puits coupe la paroi du dessous).
           for (const hole of layout.holes.filter((h) => h.floor === b.floor + 1 && h.side === b.side)) {
             const t = holeTangent(config, hole);
-            expect(overlaps(lo, hi, t - HOLE_WIDTH / 2, t + HOLE_WIDTH / 2)).toBe(false);
+            check(!overlaps(lo, hi, t - HOLE_WIDTH / 2, t + HOLE_WIDTH / 2), `bloc ${i} en travers d'un trou`);
           }
         }
         // Aucun chevauchement entre blocs d'une même face (blocs doubles compris).
@@ -45,9 +47,10 @@ describe('maçonnerie (blocs posés sur les parois)', () => {
             const [p, q] = [blocks[i], blocks[j]];
             if (p.floor !== q.floor || p.side !== q.side) continue;
             const both = overlaps(p.center - p.width / 2, p.center + p.width / 2, q.center - q.width / 2, q.center + q.width / 2) && overlaps(p.y, p.y + p.height, q.y, q.y + q.height);
-            expect(both, `blocs ${i} et ${j} se chevauchent`).toBe(false);
+            check(!both, `blocs ${i} et ${j} se chevauchent`);
           }
         }
+        expect(errors).toEqual([]);
       }
     }, SLOW);
 
