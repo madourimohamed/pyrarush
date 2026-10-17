@@ -28,7 +28,7 @@ describe('description des options', () => {
   it('signale chaque erreur avec son emplacement', () => {
     const errors = checkValues(
       schema,
-      { count: 2.5, size: 'grand', leaf: '#ffffff', cloth: 'rouge', shape: 'cube', height: [1], variants: ['../secret'], stars: 1, sky: { top: -1 }, oups: 1 },
+      { count: 2.5, size: 'grand', leaf: 'vert', cloth: 'rouge', shape: 'cube', height: [1], variants: ['../secret'], stars: 1, sky: { top: -1 }, oups: 1 },
       'palmiers',
     );
     expect(errors).toHaveLength(10);

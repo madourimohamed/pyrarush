@@ -12,7 +12,7 @@ export type FieldKind =
   | 'boolean'
   | 'text'
   | 'choice'
-  /** Couleur 0xRRGGBB (nombre). */
+  /** Couleur 0xRRGGBB (nombre) ; s'écrit '#rrggbb' dans les fichiers de thème (voir normalizeValues). */
   | 'color'
   /** Couleur CSS '#rrggbb' ; vide = couleur tirée du thème. */
   | 'cssColor'
@@ -98,6 +98,25 @@ const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.is
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const CSS_COLOR = /^#[0-9a-f]{6}$/i;
 const ASSET_PATH = /^[a-z0-9_-]+(\/[a-z0-9_-]+)*$/i;
+/** Couleur d'une option `color` : nombre 0xRRGGBB, ou '#rrggbb' (fichiers de thème). */
+const isColor = (v: unknown) => (isNumber(v) && Number.isInteger(v) && v >= 0 && v <= 0xffffff) || (typeof v === 'string' && CSS_COLOR.test(v));
+const toColorNumber = (v: unknown) => (typeof v === 'string' && CSS_COLOR.test(v) ? parseInt(v.slice(1), 16) : v);
+
+/**
+ * Valeurs lues dans un fichier → valeurs reçues par le code : les couleurs `color` (et `colorMap`) écrites '#rrggbb'
+ * deviennent des nombres. Les options absentes restent absentes ; les autres valeurs sont recopiées telles quelles.
+ */
+export function normalizeValues(schema: Schema, values: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(values).map(([key, value]) => {
+      const field = schema[key];
+      if (field?.kind === 'color') return [key, toColorNumber(value)];
+      if (field?.kind === 'colorMap' && isRecord(value)) return [key, Object.fromEntries(Object.entries(value).map(([k, v]) => [k, toColorNumber(v)]))];
+      if (field?.kind === 'group' && isRecord(value)) return [key, normalizeValues(field.fields!, value)];
+      return [key, value];
+    }),
+  );
+}
 
 /** Erreurs d'une valeur pour un champ (liste vide = valeur correcte). `path` situe l'erreur dans les messages. */
 export function checkField(field: Field, value: unknown, path: string): string[] {
@@ -119,7 +138,7 @@ export function checkField(field: Field, value: unknown, path: string): string[]
     case 'choices':
       return Array.isArray(value) && value.every((v) => field.options!.includes(v)) ? [] : fail(`une liste parmi ${field.options!.join(', ')}`);
     case 'color':
-      return isNumber(value) && Number.isInteger(value) && value >= 0 && value <= 0xffffff ? [] : fail('une couleur');
+      return isColor(value) ? [] : fail('une couleur');
     case 'cssColor':
       return value === '' || (typeof value === 'string' && CSS_COLOR.test(value)) ? [] : fail('une couleur #rrggbb');
     case 'cssColors':
@@ -140,7 +159,7 @@ export function checkField(field: Field, value: unknown, path: string): string[]
     case 'models':
       return Array.isArray(value) && value.every((v) => typeof v === 'string' && ASSET_PATH.test(v)) ? [] : fail('une liste de chemins de fichiers');
     case 'colorMap':
-      return isRecord(value) && Object.values(value).every((v) => isNumber(v) && Number.isInteger(v) && v >= 0 && v <= 0xffffff) ? [] : fail('des couleurs par matériau');
+      return isRecord(value) && Object.values(value).every(isColor) ? [] : fail('des couleurs par matériau');
     case 'group':
       return isRecord(value) ? checkValues(field.fields!, value, path, true) : fail('un groupe');
   }

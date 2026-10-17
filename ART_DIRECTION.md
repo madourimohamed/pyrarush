@@ -168,8 +168,8 @@ jouable ne changent jamais.
   `banners`, `braziers`, `statues`, `capstone`, `particles`.
 - **Modèles GLB** (`src/client/scene/models.ts`) : préchargement, instanciation (un appel de dessin par matériau),
   recoloration par nom de matériau.
-- **Familles de thèmes** partagées (`src/levels/themes.ts`) et `defineTheme(surcharges, base)` /
-  `editComponents(liste, modifications)` pour varier sans dupliquer.
+- **Thèmes en fichiers de données** (`content/themes/<nom>.json`) : héritage (`extends`), seules les différences
+  sont écrites, couleurs en `'#rrggbb'` (format : `src/core/themeFile.ts`). Modifiables sans toucher au code.
 - **Options décrites** (`src/core/schema.ts`) : chaque composant déclare le type, la valeur par défaut et les limites de ses
   options ; la palette aussi (`PALETTE_SCHEMA`). Sert au typage, à la validation et aux formulaires de l'éditeur de décor.
 - **Contrôles automatiques** : chaque composant cité par un niveau existe, chaque option est connue et du bon type,

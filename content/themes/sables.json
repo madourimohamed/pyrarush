@@ -1,0 +1,25 @@
+{
+  "note": "Niveau 1 : horizon en panorama 360° (art/panoramas/) et sable texturé.",
+  "extends": "base",
+  "components": {
+    "sky": null,
+    "mountains": null,
+    "distantPyramids": null,
+    "terrain": { "flat": 9, "detail": "sand/ripples" },
+    "moat": { "realistic": true, "color": "#2fb7c4", "note": "Eau animée (vaguelettes, reflets du ciel, écume)." },
+    "palmiers": {
+      "models": ["vegetation/palm_a", "vegetation/palm_b", "vegetation/palm_c"],
+      "colors": { "leafs": "#5f9a3a", "woodBark": "#9a7650" },
+      "sway": 0.025,
+      "note": "Palmiers réalistes qui se balancent (art/vegetation/)."
+    },
+    "panorama": {
+      "image": "panoramas/sables-horizon", "rotation": -0.53,
+      "note": "Panorama de fond léger, tourné pour que son soleil soit dans la direction de la lumière du thème."
+    },
+    "horizon": {
+      "image": "panoramas/sables-horizon-band", "rotation": -0.53, "zoom": 1.35,
+      "note": "Bande d'horizon nette tirée de 4 vues fournies (design/panoramique/, art/panoramas/build_horizon.py), agrandie."
+    }
+  }
+}

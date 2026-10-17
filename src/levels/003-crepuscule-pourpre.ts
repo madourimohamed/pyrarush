@@ -1,5 +1,4 @@
 import { band, defineLevel } from '../core';
-import { themes } from './themes';
 
 export default defineLevel({
   name: 'Le Crépuscule Pourpre',
@@ -22,7 +21,7 @@ export default defineLevel({
     limits: { teleportUp: 2, riskyDoor: 1 },
     settings: { teleportUp: { min: 2, max: 2 }, riskyDoor: { amount: 2 } },
   },
-  theme: themes.crepuscule,
+  theme: 'crepuscule',
   // Identifiant d'avant le 2026-10-13 (rangé par position) : la progression déjà enregistrée suit le niveau.
   formerIds: ['level-3'],
 });

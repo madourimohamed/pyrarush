@@ -1,5 +1,4 @@
 import { band, defineLevel } from '../core';
-import { themes } from './themes';
 
 export default defineLevel({
   name: 'La Pyramide de Glace',
@@ -21,7 +20,7 @@ export default defineLevel({
     limits: { teleportUp: 2, riskyDoor: 2 },
     settings: { teleportUp: { min: 2, max: 3 }, teleportDown: { min: 2, max: 2 }, riskyDoor: { amount: 3 } },
   },
-  theme: themes.glace,
+  theme: 'glace',
   // Identifiant d'avant le 2026-10-13 (rangé par position) : la progression déjà enregistrée suit le niveau.
   formerIds: ['level-4'],
 });

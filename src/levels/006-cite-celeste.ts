@@ -1,5 +1,4 @@
 import { defineLevel } from '../core';
-import { themes } from './themes';
 import { tenFloorBands } from './shared';
 
 export default defineLevel({
@@ -18,7 +17,7 @@ export default defineLevel({
     limits: { teleportUp: 2, riskyDoor: 3 },
     settings: { teleportUp: { min: 3, max: 4 }, teleportDown: { min: 2, max: 3 }, riskyDoor: { amount: 3 } },
   },
-  theme: themes.celeste,
+  theme: 'celeste',
   // Identifiant d'avant le 2026-10-13 (rangé par position) : la progression déjà enregistrée suit le niveau.
   formerIds: ['level-6'],
 });

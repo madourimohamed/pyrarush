@@ -1,29 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { checkValues, PALETTE_SCHEMA } from '../../../core';
-import { levels } from '../../../levels';
+import { themes } from '../../../levels';
 import { COMPONENTS } from './index';
 
 describe('composants de décor', () => {
-  it('chaque composant cité par un niveau existe dans le registre', () => {
-    for (const level of levels) {
-      for (const spec of level.theme.components) {
-        expect(COMPONENTS[spec.use], `niveau ${level.number} : composant « ${spec.use} » inconnu`).toBeDefined();
+  it('chaque thème (content/themes) : composants connus, options connues et du bon type', () => {
+    for (const [name, theme] of Object.entries(themes)) {
+      for (const { use, id, ...options } of theme.components) {
+        expect(COMPONENTS[use], `thème ${name} : composant « ${use} » inconnu`).toBeDefined();
+        expect(checkValues(COMPONENTS[use].schema, options, `thème ${name}, ${id ?? use}`)).toEqual([]);
       }
     }
   });
 
-  it('les options déclarées par les niveaux sont connues du composant et du bon type', () => {
-    for (const level of levels) {
-      for (const { use, id, ...options } of level.theme.components) {
-        expect(checkValues(COMPONENTS[use].schema, options, `niveau ${level.number}, ${id ?? use}`)).toEqual([]);
-      }
-    }
-  });
-
-  it('la palette de chaque niveau est complète et du bon type', () => {
-    for (const level of levels) {
-      const { components: _components, ...palette } = level.theme;
-      expect(checkValues(PALETTE_SCHEMA, palette, `niveau ${level.number}`, false)).toEqual([]);
+  it('chaque thème : palette complète et du bon type', () => {
+    for (const [name, theme] of Object.entries(themes)) {
+      const { components: _components, ...palette } = theme;
+      expect(checkValues(PALETTE_SCHEMA, palette, `thème ${name}`, false)).toEqual([]);
     }
   });
 

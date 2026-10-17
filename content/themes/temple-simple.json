@@ -1,0 +1,20 @@
+{
+  "note": "Décor commun aux temples « simples » : le niveau 1 sans ses éléments propres (île, statues, pyramides lointaines…). Point de départ des familles Oasis, Crépuscule, Glace, Lave et Céleste.",
+  "extends": "base",
+  "components": {
+    "distantPyramids": null,
+    "moat": null,
+    "palmiers": null,
+    "buissons": null,
+    "obelisques": null,
+    "ruines": null,
+    "rochers": null,
+    "fleurs": null,
+    "plantes-terrasses": null,
+    "statues": null,
+    "grade": null,
+    "terrain": { "flat": 3 },
+    "doorFrames": { "style": "simple" },
+    "banners": { "every": 2 }
+  }
+}

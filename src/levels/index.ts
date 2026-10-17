@@ -1,4 +1,4 @@
-import { buildLevels, type LevelDefinition, type PyramidConfig } from '../core';
+import { buildLevels, resolveThemes, type LevelDefinition, type PyramidConfig, type ThemeFile } from '../core';
 import type { LevelCatalog } from '../net/account';
 
 /**
@@ -6,7 +6,7 @@ import type { LevelCatalog } from '../net/account';
  * un defineLevel({...}). NNN = position dans la progression ; « nom » = identifiant permanent du niveau.
  *
  * Ajouter un niveau = créer UN fichier, par exemple « 007-mon-niveau.ts » :
- * règles (étages, portes, trous…) + thème (une famille de themes.ts, éventuellement variée).
+ * règles (étages, portes, trous…) + nom du thème (un fichier de content/themes/).
  * Rien d'autre à modifier : numéro, déblocage, carte du menu et record sont automatiques.
  *
  * Insérer ou réordonner des niveaux : changer seulement les numéros NNN, jamais les noms. Records, étoiles et
@@ -23,7 +23,17 @@ export const levelFiles = Object.keys(modules)
   })
   .sort((a, b) => a.order - b.order);
 
-export const levels = buildLevels(levelFiles.map((f) => ({ id: f.id, definition: modules[f.path] })));
+/**
+ * Thèmes : un fichier JSON par thème dans content/themes/, découvert automatiquement (nom du fichier = nom du thème).
+ * Décor modifiable sans toucher au code (à la main ou avec l'éditeur de décor) ; format décrit dans core/themeFile.ts.
+ */
+const themeFiles = import.meta.glob<ThemeFile>('../../content/themes/*.json', { eager: true, import: 'default' });
+export const themes = resolveThemes(Object.fromEntries(Object.entries(themeFiles).map(([path, file]) => [path.match(/([^/]+)\.json$/)![1], file])));
+
+export const levels = buildLevels(
+  levelFiles.map((f) => ({ id: f.id, definition: modules[f.path] })),
+  themes,
+);
 
 export const levelConfigs: PyramidConfig[] = levels.map((l) => l.config);
 

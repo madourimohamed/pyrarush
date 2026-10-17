@@ -1,0 +1,28 @@
+{
+  "extends": "temple-simple",
+  "palette": {
+    "sky": { "top": "#4f86d0", "mid": "#b8d8f2", "horizon": "#eef6ff", "sun": "#ffffff" },
+    "sun": { "color": "#eaf2ff", "intensity": 2.6, "dir": [-0.5, 0.55, 0.67] },
+    "hemi": { "sky": "#d6ecff", "ground": "#a8c4e0", "intensity": 1.7 },
+    "fog": { "near": 120, "far": 420 },
+    "exposure": 0.88,
+    "ground": { "light": "#f6f9ff", "dark": "#c4d6ee" },
+    "paving": "#dfe9f5",
+    "border": "#9ab4d0",
+    "stone": ["#cfe3f5", "#bcd6ee"],
+    "top": "#f6faff",
+    "trim": { "color": "#9fe8ff", "emissive": "#1a4a6a" },
+    "door": { "panel": "#1d3a6b", "frame": "#0f1a30", "glyph": [0.6, 2.2, 3.0] },
+    "accent": ["#7fdcff", "#4a7bff"],
+    "music": { "scale": [0, 2, 4, 6, 7, 9, 11], "root": 64, "tempo": 84, "lead": "sine", "drums": "k.......s......." }
+  },
+  "components": {
+    "sky": { "clouds": "#ffffff", "cloudGlow": "#dfefff" },
+    "mountains": { "color": "#e4eeff", "shape": "peaks" },
+    "pond": { "color": "#bfefff", "emissive": "#3a6a8a" },
+    "pines": { "count": 14, "trunk": "#5a4a3a", "leaf": "#2f6a5a" },
+    "banners": { "cloth": "#1d4a8a", "emblem": "#bff0ff" },
+    "braziers": { "flame": [0.8, 2.0, 3.2] },
+    "particles": { "color": [1.6, 1.7, 1.9], "size": 0.32, "count": 900, "motion": "snow" }
+  }
+}

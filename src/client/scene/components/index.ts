@@ -1,4 +1,4 @@
-import type { ComponentSpec } from '../../../core';
+import { normalizeValues, type ComponentSpec } from '../../../core';
 import { environment, grade } from './ambience';
 import type { Component, ComponentInstance, SceneContext } from './component';
 import { esplanade, sandDrifts } from './ground';
@@ -51,14 +51,22 @@ export const COMPONENTS: Record<string, Component<object>> = {
   props,
 } as Record<string, Component<object>>;
 
+/**
+ * Options complètes d'un composant : valeurs par défaut + options du thème, couleurs des fichiers ('#rrggbb')
+ * converties pour le code (voir normalizeValues).
+ */
+export function resolveOptions(component: Component<object>, options: Record<string, unknown>): object {
+  return { ...component.defaults, ...normalizeValues(component.schema, options) };
+}
+
 /** Précharge les modèles 3D et les images dont les composants d'un thème ont besoin (à attendre avant de construire le niveau). */
 export function preloadComponents(specs: ComponentSpec[]): Promise<void> {
   const models: string[] = [];
   const textures: string[] = [];
-  for (const { use, ...options } of specs) {
+  for (const { use, id: _id, ...options } of specs) {
     const component = COMPONENTS[use];
     if (!component) continue;
-    const resolved = { ...component.defaults, ...options };
+    const resolved = resolveOptions(component, options);
     models.push(...(component.models?.(resolved) ?? []));
     textures.push(...(component.textures?.(resolved) ?? []));
   }
@@ -74,7 +82,7 @@ export function buildComponents(ctx: SceneContext, specs: ComponentSpec[]): (dt:
       console.warn(`Composant de décor inconnu : « ${use} »`);
       continue;
     }
-    const instance = component.build(ctx, { ...component.defaults, ...options });
+    const instance = component.build(ctx, resolveOptions(component, options));
     if (instance?.update) instances.push(instance);
   }
   return (dt, time) => {

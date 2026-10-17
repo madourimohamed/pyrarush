@@ -24,6 +24,8 @@ export interface Level {
   highlights: string[];
   /** Objectifs des étoiles. */
   goals: LevelGoals;
+  /** Nom du thème (fichier content/themes/<nom>.json) et thème résolu. */
+  themeId: string;
   theme: Theme;
   config: PyramidConfig;
 }
@@ -66,7 +68,8 @@ export interface LevelDefinition {
   highlights: string[];
   goals: LevelGoals;
   rules: LevelRules;
-  theme: Theme;
+  /** Nom du thème : un fichier content/themes/<nom>.json (décor modifiable avec l'éditeur, sans toucher au code). */
+  theme: string;
   /**
    * Anciens identifiants de ce niveau, à compléter si on renomme son fichier : sans cela, les records et étoiles
    * des joueurs seraient perdus. Ne jamais réutiliser l'ancien identifiant d'un autre niveau.
@@ -89,11 +92,15 @@ export const band = (from: number, to: number, passages: number, mechanics: Floo
 /** Format d'un identifiant de niveau : minuscules, chiffres et tirets (la partie « nom » du fichier NNN-nom.ts). */
 export const LEVEL_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-/** Transforme la liste ordonnée des définitions (avec leur identifiant permanent) en niveaux numérotés, prêts à jouer. */
-export function buildLevels(entries: { id: string; definition: LevelDefinition }[]): Level[] {
+/**
+ * Transforme la liste ordonnée des définitions (avec leur identifiant permanent) en niveaux numérotés, prêts à jouer.
+ * `themes` : thèmes disponibles, par nom (voir themeFile.ts).
+ */
+export function buildLevels(entries: { id: string; definition: LevelDefinition }[], themes: Record<string, Theme>): Level[] {
   return entries.map(({ id, definition }, i) => {
     const { name, tagline, duration, highlights, goals, rules, theme, formerIds = [] } = definition;
     if (!LEVEL_ID_PATTERN.test(id)) throw new Error(`Identifiant de niveau invalide : « ${id} »`);
+    if (!themes[theme]) throw new Error(`Niveau « ${id} » : thème « ${theme} » introuvable (content/themes/${theme}.json)`);
     return {
       id,
       formerIds,
@@ -103,7 +110,8 @@ export function buildLevels(entries: { id: string; definition: LevelDefinition }
       duration,
       highlights,
       goals,
-      theme,
+      themeId: theme,
+      theme: themes[theme],
       config: { ...LEVEL_DEFAULTS, ...rules, id, name },
     };
   });

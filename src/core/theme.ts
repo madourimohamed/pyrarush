@@ -1,5 +1,6 @@
 /**
- * Socle visuel d'un niveau : uniquement des données (aucune dépendance 3D).
+ * Socle visuel d'un niveau : uniquement des données (aucune dépendance 3D). Les thèmes eux-mêmes sont des fichiers
+ * (content/themes/*.json, voir themeFile.ts).
  *
  * Un thème = une PALETTE (ciel, lumière, pierres, portes, interface, musique)
  *          + une liste de COMPOSANTS de décor (ce qu'on pose, et avec quelles options).
@@ -62,16 +63,6 @@ export interface MusicStyle {
   drums: string;
 }
 
-/** Recoloration des modèles Kenney (par nom de matériau) vers la palette chaude des maquettes. */
-export const KENNEY_COLORS = {
-  leafs: 0x46a33c,
-  grass: 0x58a845,
-  woodBark: 0x9a6a43,
-  stoneDark: 0xc49058,
-  stone: 0xdcae74,
-  dirt: 0xd09a5a,
-};
-
 /**
  * Palette d'un thème (tout sauf les composants de décor) : type, valeur par défaut et limites de chaque réglage.
  * Les valeurs par défaut sont celles du Temple des Sables (niveau 1), d'après les maquettes.
@@ -105,42 +96,8 @@ export const PALETTE_SCHEMA = {
   trapStyles: choices(['glove', 'mummy'], ['glove', 'mummy']),
 } satisfies Schema;
 
-/** Thème de base : le Temple des Sables (niveau 1), d'après les maquettes. */
-export const BASE_THEME: Theme = {
-  ...defaultsOf(PALETTE_SCHEMA),
-  components: [
-    // Ambiance : reflets et lumière douce tirés du ciel, étalonnage chaud/froid de la maquette.
-    { use: 'environment', intensity: 0.45 },
-    { use: 'grade' },
-    { use: 'sky', clouds: 0xffffff, cloudGlow: 0xffc9a8 },
-    { use: 'terrain', flat: 9 },
-    { use: 'mountains', color: 0xc8775a, shape: 'mesa' },
-    { use: 'distantPyramids', color: 0xd09a62 },
-    { use: 'moat', color: 0x22b8d0, emissive: 0x0a4a60, width: 5 },
-    // Modèles 3D (Kenney Nature Kit, CC0), recolorés à la palette de la maquette.
-    { use: 'props', id: 'palmiers', models: ['tree_palm', 'tree_palmBend', 'tree_palmTall', 'tree_palmDetailedTall'], place: 'shore', count: 34, height: [6.5, 10], colors: KENNEY_COLORS },
-    { use: 'props', id: 'buissons', models: ['plant_bushLarge', 'plant_bush', 'plant_bushDetailed'], place: 'shore', count: 50, height: [0.9, 1.8], colors: KENNEY_COLORS },
-    { use: 'props', id: 'obelisques', models: ['statue_obelisk'], place: 'shore', count: 6, height: [10, 14], colors: KENNEY_COLORS },
-    { use: 'props', id: 'ruines', models: ['statue_column', 'statue_columnDamaged'], place: 'shore', count: 12, height: [3, 5.5], colors: KENNEY_COLORS },
-    { use: 'props', id: 'rochers', models: ['rock_largeA', 'rock_largeB', 'rock_tallA'], place: 'shore', count: 14, height: [0.8, 2.2], colors: KENNEY_COLORS },
-    // Parois en vraies pierres (kit Blender art/temple), avant les décors accrochés aux murs. Sol : sable autour de la
-    // pyramide ; sur les terrasses, grandes dalles claires (distinctes des murs) et sable accumulé au pied des parois.
-    { use: 'masonry' },
-    { use: 'esplanade', detail: 'sand/ripples' },
-    { use: 'flagstones', where: 'terraces', size: 1.35, color: '#e9cfa2', rows: [1.3, 1.6], joint: 0.02, tint: 0.05 },
-    { use: 'sandDrifts', detail: 'sand/ripples' },
-    { use: 'wallShadows' },
-    { use: 'doorFrames', style: 'pillars', band: '#2f6fc0' },
-    { use: 'banners', cloth: '#2f5fb0', emblem: '#f2c14e', every: 1 },
-    { use: 'braziers', flame: [1.7, 0.7, 0.12], every: 2 },
-    { use: 'statues', model: 'anubis' },
-    { use: 'props', id: 'plantes-terrasses', models: ['plant_bushDetailed', 'plant_bushLarge'], place: 'terraceCorner', spacing: 1.6, height: [0.9, 1.3], colors: KENNEY_COLORS },
-    { use: 'props', id: 'fleurs', models: ['flower_redA', 'flower_yellowA', 'grass_large'], place: 'shore', count: 40, height: [0.5, 0.9], colors: KENNEY_COLORS },
-    { use: 'jars' },
-    { use: 'capstone', style: 'pyramid', color: 0xffc940, glow: [2.2, 1.5, 0.3] },
-    { use: 'particles', color: [1.6, 1.25, 0.8], size: 0.35, count: 420, motion: 'float' },
-  ],
-};
+/** Palette par défaut (Temple des Sables) : point de départ des thèmes qui n'en héritent pas d'un autre. */
+export const BASE_PALETTE: Omit<Theme, 'components'> = defaultsOf(PALETTE_SCHEMA);
 
 /** Surcharge d'un thème : chaque groupe (sky, sun, door…) peut n'être redéfini qu'en partie. */
 export type ThemeOverrides = {
@@ -150,11 +107,11 @@ export type ThemeOverrides = {
 const isGroup = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /**
- * Crée un thème à partir d'un thème de base (par défaut le niveau 1) en ne déclarant que ce qui change.
+ * Crée un thème à partir d'un thème de base en ne déclarant que ce qui change.
  * Fusion sur un niveau de profondeur : { sky: { top } } ne remplace que la couleur du haut du ciel.
  * La liste `components` est remplacée en entier : pour l'ajuster, voir editComponents.
  */
-export function defineTheme(overrides: ThemeOverrides = {}, base: Theme = BASE_THEME): Theme {
+export function defineTheme(overrides: ThemeOverrides, base: Theme): Theme {
   const theme: Record<string, unknown> = { ...base };
   for (const [key, value] of Object.entries(overrides)) {
     const current = theme[key];

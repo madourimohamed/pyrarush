@@ -1,5 +1,4 @@
 import { band, defineLevel } from '../core';
-import { themes } from './themes';
 
 export default defineLevel({
   name: 'Le Temple des Sables',
@@ -26,7 +25,7 @@ export default defineLevel({
     ],
     settings: { riskyDoor: { amount: 2 } },
   },
-  theme: themes.sables,
+  theme: 'sables',
   // Identifiant d'avant le 2026-10-13 (rangé par position) : la progression déjà enregistrée suit le niveau.
   formerIds: ['level-1'],
 });

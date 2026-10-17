@@ -176,7 +176,7 @@ describe('indices', () => {
       expect(hint.doors).toBe(steps);
       expect(doors.find((d) => d.id === hint.target)?.mechanic).toBe('passage');
     }
-  });
+  }, 30_000); // toutes les pyramides et graines : lent quand tous les tests tournent en même temps
 
   it('le mode chaud/froid et le mode sans indice restent disponibles', () => {
     for (const hints of ['hotCold', 'none'] as const) {
