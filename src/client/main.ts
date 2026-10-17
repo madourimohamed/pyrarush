@@ -50,7 +50,12 @@ document.addEventListener('click', (e) => (e.target as HTMLElement).closest('but
 
 // ---------- Progression ----------
 /** `?debloquer=6` débloque les niveaux jusqu'au 6 (pour tester). */
-const unlockedNow = () => progress.unlocked(Number(params.get('debloquer') ?? 1));
+/**
+ * TEMPORAIRE (tests des décors, 2026-10-17) : tous les niveaux sont débloqués par défaut. Remettre à false pour
+ * retrouver la progression normale (le paramètre ?debloquer=N reste disponible).
+ */
+const UNLOCK_ALL = true;
+const unlockedNow = () => progress.unlocked(UNLOCK_ALL ? levels.length : Number(params.get('debloquer') ?? 1));
 let unlocked = unlockedNow();
 /** Dernier niveau choisi (identifiant), sinon le plus loin débloqué. */
 const remembered = levelById(storage.get('level') ?? '');
