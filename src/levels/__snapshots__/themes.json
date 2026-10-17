@@ -989,21 +989,21 @@
     },
     "sun": {
       "color": 16747098,
-      "intensity": 2.3,
+      "intensity": 2.6,
       "dir": [
         0.6,
-        0.35,
-        -0.72
+        0.355,
+        -0.718
       ]
     },
     "hemi": {
       "sky": 6959152,
       "ground": 16734746,
-      "intensity": 1.3
+      "intensity": 1
     },
     "fog": {
-      "near": 110,
-      "far": 380
+      "near": 220,
+      "far": 680
     },
     "exposure": 1,
     "ground": {
@@ -1013,21 +1013,21 @@
     "paving": "#5a4a48",
     "border": 3811880,
     "stone": [
-      "#4e423f",
-      "#423835"
+      "#5a4c48",
+      "#4c403c"
     ],
     "top": "#6e5e5a",
     "trim": {
       "color": 16742938,
-      "emissive": 16730624
+      "emissive": 10498048
     },
     "door": {
       "panel": 1971734,
       "frame": 920074,
       "glyph": [
-        3.2,
-        1.2,
-        0.2
+        2,
+        0.7,
+        0.1
       ]
     },
     "accent": [
@@ -1059,18 +1059,9 @@
         "intensity": 0.45
       },
       {
-        "use": "sky",
-        "clouds": 4864570,
-        "cloudGlow": 6953472
-      },
-      {
         "use": "terrain",
-        "flat": 3
-      },
-      {
-        "use": "mountains",
-        "color": 2759192,
-        "shape": "peaks"
+        "flat": 9,
+        "detail": "sand/ripples"
       },
       {
         "use": "masonry"
@@ -1112,9 +1103,9 @@
       {
         "use": "braziers",
         "flame": [
-          3.5,
-          1.2,
-          0.2
+          1.7,
+          0.7,
+          0.12
         ],
         "every": 2
       },
@@ -1123,24 +1114,30 @@
       },
       {
         "use": "capstone",
-        "style": "pyramid",
-        "color": 16763200,
+        "style": "crystal",
+        "color": 16734746,
         "glow": [
-          2.2,
-          1.5,
-          0.3
+          2,
+          0.6,
+          0.1
         ]
       },
       {
         "use": "particles",
         "color": [
-          3,
-          1.2,
-          0.3
+          2.4,
+          1,
+          0.25
         ],
         "size": 0.3,
-        "count": 520,
+        "count": 400,
         "motion": "embers"
+      },
+      {
+        "use": "moat",
+        "color": 16730624,
+        "emissive": 16726528,
+        "width": 4
       },
       {
         "use": "pond",
@@ -1150,8 +1147,26 @@
       },
       {
         "use": "spires",
-        "count": 14,
-        "color": 3811882
+        "count": 16,
+        "color": 3023392
+      },
+      {
+        "use": "crystals",
+        "count": 10,
+        "color": 16726570
+      },
+      {
+        "use": "panorama",
+        "image": "panoramas/lave-horizon",
+        "rotation": 2.6
+      },
+      {
+        "use": "horizon",
+        "image": "panoramas/lave-horizon-band",
+        "rotation": 2.6,
+        "zoom": 1,
+        "above": 600,
+        "below": 112
       }
     ]
   },

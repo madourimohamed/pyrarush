@@ -21,6 +21,7 @@ Horizons produits :
     oasis-horizon   niveau 2, design/niveau 2/ (4 vues)             --horizon 0.62 --dessus 580
     crepuscule-horizon  niveau 3, design/niveau 3/ (4 vues)         --horizon 0.62 --dessus 600
     glace-horizon   niveau 4, design/niveau 4/ (4 vues)             --horizon 0.62 --dessus 620
+    lave-horizon    niveau 5, design/niveau 5/ (4 vues)             --horizon 0.61 --dessus 600
 """
 
 import os
