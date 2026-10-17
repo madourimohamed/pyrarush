@@ -49,7 +49,7 @@ for (const profile of PROFILES) {
     bytes += len || (await r.body().catch(() => Buffer.alloc(0))).length;
   });
   await page.goto(`${url}/?seed=${seed}&debloquer=${level}&stats=1&debug=1`);
-  await page.waitForFunction(() => window.__debug && performance.getEntriesByName('pyrarush:menu-ready').length > 0, null, { timeout: 120000 });
+  await page.waitForFunction(() => window.__debug && performance.getEntriesByName('pyrarush:menu-ready').length > 0 && !document.getElementById('splash'), null, { timeout: 120000 });
   // Laisser les miniatures du menu se calculer (limité à 20 s).
   await page.waitForFunction(() => document.querySelectorAll('.level-card .thumb').length > 0, null, { timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(1500);
