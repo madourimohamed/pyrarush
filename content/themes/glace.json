@@ -1,28 +1,46 @@
 {
+  "note": "Niveau 4 : montagne enneigée, lac gelé, cascades de glace, aurore (maquette design/level4.png) ; horizon tiré de 4 vues (design/niveau 4/, art/panoramas/build_horizon.py).",
   "extends": "temple-simple",
   "palette": {
     "sky": { "top": "#4f86d0", "mid": "#b8d8f2", "horizon": "#eef6ff", "sun": "#ffffff" },
-    "sun": { "color": "#eaf2ff", "intensity": 2.6, "dir": [-0.5, 0.55, 0.67] },
-    "hemi": { "sky": "#d6ecff", "ground": "#a8c4e0", "intensity": 1.7 },
-    "fog": { "near": 120, "far": 420 },
+    "sun": { "color": "#eaf2ff", "intensity": 3, "dir": [-0.53, 0.45, 0.72] },
+    "hemi": { "sky": "#d6ecff", "ground": "#a8c4e0", "intensity": 1 },
+    "fog": { "near": 240, "far": 720 },
     "exposure": 0.88,
     "ground": { "light": "#f6f9ff", "dark": "#c4d6ee" },
     "paving": "#dfe9f5",
     "border": "#9ab4d0",
-    "stone": ["#cfe3f5", "#bcd6ee"],
-    "top": "#f6faff",
+    "stone": ["#b9c6d4", "#a9b8c8"],
+    "top": "#eef4fb",
     "trim": { "color": "#9fe8ff", "emissive": "#1a4a6a" },
-    "door": { "panel": "#1d3a6b", "frame": "#0f1a30", "glyph": [0.6, 2.2, 3] },
+    "door": { "panel": "#1d3a6b", "frame": "#0f1a30", "glyph": [0.4, 1.4, 2] },
     "accent": ["#7fdcff", "#4a7bff"],
     "music": { "scale": [0, 2, 4, 6, 7, 9, 11], "root": 64, "tempo": 84, "lead": "sine", "drums": "k.......s......." }
   },
   "components": {
-    "sky": { "clouds": "#ffffff", "cloudGlow": "#dfefff" },
-    "mountains": { "color": "#e4eeff", "shape": "peaks" },
+    "sky": null,
+    "mountains": null,
+    "terrain": { "flat": 9, "detail": "sand/ripples", "note": "Neige soufflée (rides teintées en blanc par la palette)." },
+    "esplanade": { "detail": "sand/ripples" },
+    "flagstones": { "color": "#e6eef6", "note": "Dalles des terrasses couvertes de givre." },
+    "moat": { "color": "#a8dcf5", "emissive": "#1a4a6a", "width": 4, "note": "Douves gelées, comme le lac du panorama." },
     "pond": { "color": "#bfefff", "emissive": "#3a6a8a" },
-    "pines": { "count": 14, "trunk": "#5a4a3a", "leaf": "#2f6a5a" },
+    "pines": { "count": 30, "trunk": "#5a4a3a", "leaf": "#2f5a4a" },
+    "rochers": {
+      "use": "props",
+      "id": "rochers",
+      "models": ["rock_largeA", "rock_largeB", "rock_tallA"],
+      "place": "shore",
+      "count": 16,
+      "height": [0.8, 2.4],
+      "colors": { "stone": "#dde7f0", "stoneDark": "#aebccb" },
+      "note": "Rochers enneigés."
+    },
     "banners": { "cloth": "#1d4a8a", "emblem": "#bff0ff" },
-    "braziers": { "flame": [0.8, 2, 3.2] },
-    "particles": { "color": [1.6, 1.7, 1.9], "size": 0.32, "count": 900, "motion": "snow" }
+    "braziers": { "note": "Flammes orange (maquette) : chaleur contre le froid." },
+    "capstone": { "style": "crystal", "color": "#7fdcff", "glow": [0.6, 1.6, 2.2] },
+    "particles": { "color": [1.6, 1.7, 1.9], "size": 0.32, "count": 700, "motion": "snow" },
+    "panorama": { "image": "panoramas/glace-horizon", "rotation": -0.38, "note": "Soleil du panorama aligné sur la lumière du thème." },
+    "horizon": { "image": "panoramas/glace-horizon-band", "rotation": -0.38, "zoom": 1, "above": 620, "below": 112 }
   }
 }

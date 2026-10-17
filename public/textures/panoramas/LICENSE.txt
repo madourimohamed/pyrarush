@@ -27,3 +27,13 @@ Assemblées pour le jeu par art/panoramas/build_horizon.py (--horizon 0.62 --des
 Origine : générées par le porteur du projet avec ChatGPT (OpenAI), 2026-10-17.
 Droits : selon les conditions d'utilisation d'OpenAI, les images appartiennent à l'utilisateur qui les a générées,
 usage commercial autorisé (sous réserve des règles d'usage d'OpenAI).
+
+Horizon du niveau 4 (glace-horizon.jpg, glace-horizon-band.jpg et leurs versions -mobile)
+
+Images sources fournies par le porteur du projet : design/niveau 4/, quatre vues de 90°, dans l'ordre ouest, nord, est, sud :
+« Panorama glacé des sommets enneigés.png », « Royaume alpin aux cascades gelées.png »,
+« Vallée glaciaire aux ruines antiques.png », « Panorama arctique sous les aurores boréales.png ».
+Assemblées pour le jeu par art/panoramas/build_horizon.py (--horizon 0.62 --dessus 620).
+Origine : générées par le porteur du projet avec ChatGPT (OpenAI), 2026-10-17.
+Droits : selon les conditions d'utilisation d'OpenAI, les images appartiennent à l'utilisateur qui les a générées,
+usage commercial autorisé (sous réserve des règles d'usage d'OpenAI).

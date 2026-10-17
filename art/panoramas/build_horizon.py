@@ -20,6 +20,7 @@ Horizons produits :
     sables-horizon  niveau 1, design/panoramique/ (4 vues)          --horizon 0.54
     oasis-horizon   niveau 2, design/niveau 2/ (4 vues)             --horizon 0.62 --dessus 580
     crepuscule-horizon  niveau 3, design/niveau 3/ (4 vues)         --horizon 0.62 --dessus 600
+    glace-horizon   niveau 4, design/niveau 4/ (4 vues)             --horizon 0.62 --dessus 620
 """
 
 import os
@@ -118,13 +119,17 @@ for width, suffix, quality in ((w, "", 88), (w // 2, "-mobile", 85)):
 EW, EH = 2048, 1024
 rows = h * EW // W
 small = resize(strip, EW, rows)
-top_row = small[:6].mean(axis=0)
+# Couleur du ciel au-dessus des vues : médiane des premières rangées (un nuage ou des flocons isolés ne comptent pas).
+top_row = np.median(small[:24], axis=0)
 bottom_row = small[-6:].mean(axis=0)
 # Lissage horizontal des couleurs de prolongement (pas de stries verticales).
-SMOOTH = EW // 8
+SMOOTH = EW // 4
 kernel = np.ones(SMOOTH) / SMOOTH
 smooth = lambda row: np.stack([np.convolve(np.concatenate([row[-SMOOTH:, c], row[:, c], row[:SMOOTH, c]]), kernel, "same")[SMOOTH:-SMOOTH] for c in range(3)], axis=1)
 top_row, bottom_row = smooth(top_row), smooth(bottom_row)
+# Le ciel prolongé ne garde qu'un peu des variations d'une vue à l'autre : sinon, chaque différence devient une bande
+# verticale jusqu'au zénith.
+top_row = top_row * 0.3 + top_row.mean(axis=0) * 0.7
 sand = bottom_row.mean(axis=0)
 zenith = top_row.mean(axis=0) * np.array([0.75, 0.82, 0.95])
 equi = np.zeros((EH, EW, 3), dtype=np.float32)
@@ -137,8 +142,9 @@ for r in range(start):
 for r in range(start + rows, EH):
     t = min(1.0, (r - start - rows) / 60)
     equi[r] = bottom_row * (1 - t) + sand * t
-for i in range(24):
-    t = i / 24
+FADE = 48
+for i in range(FADE):
+    t = i / FADE
     equi[start + i] = equi[start + i] * t + top_row * (1 - t)
     equi[start + rows - 1 - i] = equi[start + rows - 1 - i] * t + bottom_row * (1 - t)
 write(equi, os.path.join(OUT, f"{name}.jpg"), 90)
