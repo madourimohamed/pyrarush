@@ -142,14 +142,17 @@ describe('géométrie', () => {
       for (const seed of SEEDS.slice(0, 20)) {
         const layout = generateLayout(config, seed);
         expect(buildColliders(layout).length).toBeGreaterThan(0);
+        // Des milliers de points : on cherche le pire, puis une seule vérification (un expect par point est très lent).
+        let closest = Infinity;
         for (const hole of layout.holes) {
+          const f = sideFrame(hole.side);
+          const center = holeTangent(config, hole);
           for (let t = -40; t <= 40; t += 0.7) {
             const p = landingPoint(config, hole.floor, hole.side, t);
-            const f = sideFrame(hole.side);
-            const tangent = p.x * f.tanX + p.z * f.tanZ;
-            expect(Math.abs(tangent - holeTangent(config, hole))).toBeGreaterThan(HOLE_WIDTH / 2 + 0.3);
+            closest = Math.min(closest, Math.abs(p.x * f.tanX + p.z * f.tanZ - center));
           }
         }
+        expect(closest, `${config.id}, graine ${seed}`).toBeGreaterThan(HOLE_WIDTH / 2 + 0.3);
       }
     }
   }, 30000);

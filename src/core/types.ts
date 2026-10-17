@@ -1,3 +1,5 @@
+import type { TrialRules } from './trials';
+
 /** Nombre fixe ou intervalle [min, max] tiré au sort à la génération. */
 export type CountSpec = number | [number, number];
 
@@ -40,6 +42,8 @@ export interface PyramidConfig {
   limits?: Record<string, number>;
   /** Réglages propres à chaque mécanique, par identifiant (ex. { teleportUp: { min: 3, max: 4 } }). */
   settings?: Record<string, Record<string, number>>;
+  /** Épreuves d'ouverture des portes : sortes mélangées et difficulté du premier au dernier étage (voir trials.ts). */
+  trials: TrialRules;
 }
 
 export interface PlayerState {

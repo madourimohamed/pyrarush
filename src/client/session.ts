@@ -11,6 +11,8 @@ import {
   spawnPoint,
   summitFloor,
   INTERACT_RANGE,
+  TRIAL_FAIL_LOCK_MS,
+  trialFor,
   FLOOR_HEIGHT,
   MINE_MAX_ACTIVE,
   rideTarget,
@@ -43,6 +45,7 @@ import { createTrapScene, trapLanding, TRAP_SCENE_SOLO_S, type Cutscene } from '
 import { RideScene } from './scene/rideScene';
 import { releaseScarab } from './scene/props';
 import { HINT_COLORS, World } from './scene/world';
+import { trialOverlay, type TrialOverlay } from './trials/overlay';
 import { BONUS_INFO } from './ui/bonus';
 import type { Hud, ToastKind } from './ui/hud';
 
@@ -102,6 +105,11 @@ export class GameSession {
   private locked = false;
   private finished = false;
   private nearestDoor: Door | null = null;
+  /** Épreuve d'ouverture en cours (porte visée), essais par porte, portes bloquées après un échec (fin, ms de jeu). */
+  private trial: { door: Door } | null = null;
+  private readonly trialAttempts = new Map<string, number>();
+  private readonly doorLocks = new Map<string, number>();
+  private readonly trials: TrialOverlay;
   private extraCamDistance = 0;
   paused = false;
   /** Écran d'accueil : la caméra tourne autour de la pyramide, le jeu ne démarre pas. */
@@ -160,6 +168,7 @@ export class GameSession {
     private readonly sound: SoundPlayer = { play: () => {} },
   ) {
     this.game = new Game(config, seed);
+    this.trials = trialOverlay(sound);
     this.game.addPlayer(PLAYER_ID);
     this.world = new World(this.game.layout, theme, this.tweens, lowQuality);
     this.camera = new FollowCamera(aspect);
@@ -222,7 +231,8 @@ export class GameSession {
     if (!this.finished) this.clock += dt * 1000;
     this.hud.setTime(this.finished ? (this.player.finishedAt ?? this.clock) : this.clock);
 
-    if (!this.locked) {
+    if (this.trial) this.updateTrial(dt, frame.interact || frame.jump);
+    if (!this.locked && !this.trial) {
       // Les commandes sont relatives à la caméra : « avant » = vers la pyramide.
       const yaw = this.camera.viewYaw;
       const fx = -Math.sin(yaw);
@@ -258,12 +268,7 @@ export class GameSession {
         this.handle(events);
       }
       this.updateNearestDoor();
-      if (frame.interact && this.nearestDoor && this.body.grounded && this.canInteract) {
-        const door = this.nearestDoor;
-        const events = this.game.interact(PLAYER_ID, door.id, this.clock, this.body.pos);
-        if (events.length) this.net?.interact(door.id, this.body.pos);
-        this.handle(events);
-      }
+      if (frame.interact && this.nearestDoor && this.body.grounded && this.canInteract) this.tryDoor(this.nearestDoor);
     }
 
     this.handle(this.game.update(this.clock));
@@ -538,6 +543,64 @@ export class GameSession {
     if (this.locked) return;
     const p = this.body.pos;
     this.character.root.position.set(p.x, p.y, p.z);
+  }
+
+  // ---------- Épreuves d'ouverture des portes ----------
+
+  /**
+   * Le joueur veut ouvrir une porte : directement s'il l'a déjà ouverte, sinon après une épreuve (client/trials/).
+   * Une épreuve ratée bloque la porte quelques secondes.
+   */
+  private tryDoor(door: Door): void {
+    if (this.player.tried.has(door.id)) {
+      this.openDoor(door);
+      return;
+    }
+    const lockedUntil = this.doorLocks.get(door.id) ?? 0;
+    if (this.clock < lockedUntil) {
+      this.world.shakeDoor(door.id);
+      this.hud.showToast('Porte bloquée', 'info', 1, `Encore ${Math.ceil((lockedUntil - this.clock) / 1000)} s`);
+      return;
+    }
+    const attempt = this.trialAttempts.get(door.id) ?? 0;
+    this.trialAttempts.set(door.id, attempt + 1);
+    this.trial = { door };
+    this.hud.setPrompt(false);
+    // Le personnage s'arrête devant la porte pendant l'épreuve.
+    this.body.vel.x = this.body.vel.z = 0;
+    this.trials.start(trialFor(this.config, this.game.layout, door, attempt), (success) => this.endTrial(door, success));
+  }
+
+  private openDoor(door: Door): void {
+    const events = this.game.interact(PLAYER_ID, door.id, this.clock, this.body.pos);
+    if (events.length) this.net?.interact(door.id, this.body.pos);
+    this.handle(events);
+  }
+
+  private updateTrial(dt: number, action: boolean): void {
+    // Chute, coup reçu, scène de piège ou fin de course pendant l'épreuve : elle est abandonnée, sans pénalité.
+    if (this.locked || this.finished || this.player.floor !== this.trial!.door.floor) {
+      this.cancelTrial();
+      return;
+    }
+    this.trials.update(dt, action);
+  }
+
+  private endTrial(door: Door, success: boolean): void {
+    this.trial = null;
+    if (success) {
+      this.openDoor(door);
+      return;
+    }
+    this.doorLocks.set(door.id, this.clock + TRIAL_FAIL_LOCK_MS);
+    this.world.shakeDoor(door.id);
+    this.hud.showToast('Porte bloquée', 'bad', 1.4, `Réessaie dans ${TRIAL_FAIL_LOCK_MS / 1000} s`);
+  }
+
+  private cancelTrial(): void {
+    if (!this.trial) return;
+    this.trial = null;
+    this.trials.cancel();
   }
 
   private updateNearestDoor(): void {
@@ -1016,6 +1079,7 @@ export class GameSession {
   }
 
   dispose(): void {
+    this.cancelTrial();
     this.cutscene?.scene.finish();
     this.cutscene = null;
     for (const opponent of this.opponents.values()) opponent.stopScene();

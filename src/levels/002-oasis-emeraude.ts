@@ -12,6 +12,8 @@ export default defineLevel({
     maxFloorsLost: 2,
     maxFloorsGained: 2,
     protectedTopFloors: 1,
+    // Épreuves d'ouverture des portes (mélangées), difficulté du premier au dernier étage. Nouveau : la Mémoire des glyphes.
+    trials: { kinds: ['verrou', 'glyphes'], difficulty: [1, 3] },
     bands: [
       band(1, 1, 2, { smallTrap: 3 }, 0),
       band(2, 2, 2, { smallTrap: 3 }, 2, 1),

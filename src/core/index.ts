@@ -10,3 +10,4 @@ export { getMechanic, registerMechanic } from './mechanics/registry';
 export type { Mechanic, MechanicContext, MechanicOutcome } from './mechanics/mechanic';
 export * from './schema';
 export * from './themeFile';
+export * from './trials';

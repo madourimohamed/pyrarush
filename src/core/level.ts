@@ -56,6 +56,8 @@ export const LEVEL_DEFAULTS = {
   doorsPerSideAtTop: 2,
   publicRevealMs: 4000,
   hints: 'scarab',
+  // Premier niveau : une seule sorte d'épreuve, très facile en bas, un peu moins en haut.
+  trials: { kinds: ['verrou'], difficulty: [1, 2] },
 } satisfies Partial<PyramidConfig>;
 
 type Defaults = typeof LEVEL_DEFAULTS;

@@ -13,6 +13,8 @@ export default defineLevel({
     maxFloorsLost: 5,
     maxFloorsGained: 4,
     protectedTopFloors: 2,
+    // Épreuves d'ouverture des portes (mélangées), difficulté du premier au dernier étage.
+    trials: { kinds: ['verrou', 'glyphes', 'horus'], difficulty: [3, 5] },
     bands: tenFloorBands({ riskyDoor: [0, 1] }),
     limits: { teleportUp: 2, riskyDoor: 3 },
     settings: { teleportUp: { min: 3, max: 4 }, teleportDown: { min: 2, max: 3 }, riskyDoor: { amount: 3 } },

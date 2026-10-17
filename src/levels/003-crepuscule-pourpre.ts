@@ -12,6 +12,8 @@ export default defineLevel({
     maxFloorsLost: 3,
     maxFloorsGained: 2,
     protectedTopFloors: 2,
+    // Épreuves d'ouverture des portes (mélangées), difficulté du premier au dernier étage. Nouveau : l'Œil d'Horus.
+    trials: { kinds: ['verrou', 'glyphes', 'horus'], difficulty: [2, 3] },
     bands: [
       band(1, 2, 3, { smallTrap: 3, teleportUp: [0, 1] }, [0, 2]),
       band(3, 4, 2, { smallTrap: 3, bigTrap: [1, 2], teleportUp: [0, 1], riskyDoor: 1 }, 2, 1),

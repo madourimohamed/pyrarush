@@ -2571,3 +2571,108 @@ body.touch .onb-sub {
   font-size: 13px;
 }
 
+
+/* ---------- Épreuves d'ouverture des portes (client/trials/overlay.ts) ---------- */
+
+#trial {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+#trial.show {
+  display: flex;
+}
+
+.trial-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: min(92vw, 380px);
+  padding: 14px 18px 16px;
+  border-radius: var(--radius);
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  text-align: center;
+  pointer-events: auto;
+  animation: trial-in 0.18s ease-out;
+}
+
+@keyframes trial-in {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+}
+
+.trial-title {
+  color: var(--gold);
+  font-size: 1.15rem;
+}
+
+.trial-rule {
+  color: var(--ink-soft);
+  line-height: 1.25;
+}
+
+.trial-canvas {
+  touch-action: none;
+  cursor: pointer;
+}
+
+.trial-choices {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.trial-choices[hidden] {
+  display: none;
+}
+
+.trial-choices button {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  border: 2px solid var(--glyph);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--glyph);
+  font: 600 1.7rem var(--font);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.08s, background 0.08s;
+}
+
+.trial-choices button.lit {
+  background: var(--glyph);
+  color: #1c140c;
+  transform: scale(1.08);
+  box-shadow: 0 0 22px var(--glyph);
+}
+
+.trial-choices button:disabled:not(.lit) {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.trial-result {
+  min-height: 1.4em;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.trial-result.good {
+  color: var(--good);
+}
+
+.trial-result.bad {
+  color: var(--bad);
+}
