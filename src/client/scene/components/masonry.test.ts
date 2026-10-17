@@ -7,6 +7,8 @@ const BLOCKS: KitPiece[] = [{ width: 1.2 }, { width: 1.6 }, { width: 2.2 }, { wi
 const SLABS: KitPiece[] = [{ width: 1.1 }, { width: 1.5 }, { width: 1.9 }, { width: 2.4 }];
 const OPTIONS = { courses: [1.2, 1.2, 0.6], tall: 0.25, relief: 0.06, joint: 0.03, doorClear: [1.1, 2.4] as [number, number] };
 const SEEDS = [1, 2026, 31337];
+/** Vérifications exhaustives (toutes les paires de blocs) : plusieurs secondes quand tous les tests tournent en même temps. */
+const SLOW = 30_000;
 const overlaps = (a0: number, a1: number, b0: number, b1: number) => a0 < b1 - 1e-6 && b0 < a1 - 1e-6;
 
 describe('maçonnerie (blocs posés sur les parois)', () => {
@@ -47,7 +49,7 @@ describe('maçonnerie (blocs posés sur les parois)', () => {
           }
         }
       }
-    });
+    }, SLOW);
 
     it(`niveau ${level.number} : les dalles couvrent les sols sans recouvrir les trous`, () => {
       for (const seed of SEEDS) {
@@ -76,7 +78,7 @@ describe('maçonnerie (blocs posés sur les parois)', () => {
           }
         }
       }
-    });
+    }, SLOW);
   }
 
   it("avec where: 'terraces', aucune dalle sur l'esplanade (étage 1)", () => {
