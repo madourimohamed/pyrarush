@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { num, int, image } from '../../../core';
 import { texture } from '../images';
 import { defineComponent } from './component';
 
@@ -11,7 +12,15 @@ import { defineComponent } from './component';
  * au-dessous de l'horizon (valeurs du script), `viewWidth` : largeur d'une vue en pixels (90°).
  */
 export const horizon = defineComponent(
-  { image: '', rotation: 0, zoom: 1, above: 272, below: 112, viewWidth: 1536, radius: 350 },
+  {
+    image: image(''),
+    rotation: num(0, { step: 0.01 }),
+    zoom: num(1, { min: 0.1, max: 4, step: 0.05 }),
+    above: int(272, { min: 0 }),
+    below: int(112, { min: 0 }),
+    viewWidth: int(1536, { min: 1 }),
+    radius: num(350, { min: 1 }),
+  },
   (ctx, o) => {
     const image = o.image ? texture(o.image) : null;
     if (!image) return;

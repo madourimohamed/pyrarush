@@ -11,6 +11,13 @@ import {
   FLOOR_HEIGHT,
   HOLE_WIDTH,
   Rng,
+  choice,
+  color,
+  cssColor,
+  models,
+  num,
+  numbers,
+  vector,
   type Layout,
 } from '../../../core';
 import { instancedModel } from '../models';
@@ -201,7 +208,8 @@ interface Surface {
 }
 
 /** Où poser les dalles : partout, ou seulement sur la pyramide (terrasses et sommet, l'esplanade restant du sable). */
-export type PavingArea = 'all' | 'terraces';
+const PAVING_AREAS = ['all', 'terraces'] as const;
+export type PavingArea = (typeof PAVING_AREAS)[number];
 
 /** Surfaces où l'on marche : esplanade autour de la pyramide (selon `where`), terrasses (hors trous), sommet. */
 function walkSurfaces(layout: Layout, where: PavingArea): Surface[] {
@@ -352,13 +360,14 @@ const SLABS_TEMPLE = ['a', 'b', 'c', 'd'].map((v) => `temple/slab_${v}`);
 /** Blocs de pierre sur les parois. Un modèle plus haut que les autres (×1,5) est un bloc double. */
 export const masonry = defineComponent(
   {
-    kit: BLOCKS_TEMPLE,
-    courses: [1.2, 1.2, 0.6],
-    tall: 0.22,
-    relief: 0.06,
-    joint: 0.03,
-    doorClear: [1.1, 2.4] as [number, number],
-    tint: 0.07,
+    kit: models(BLOCKS_TEMPLE),
+    /** Hauteur de chaque assise d'un étage, de bas en haut (m). */
+    courses: numbers([1.2, 1.2, 0.6], { min: 0.1 }),
+    tall: num(0.22, { min: 0, max: 1, step: 0.01 }),
+    relief: num(0.06, { min: 0, step: 0.01 }),
+    joint: num(0.03, { min: 0, step: 0.005 }),
+    doorClear: vector([1.1, 2.4], { min: 0, step: 0.05 }),
+    tint: num(0.07, { min: 0, max: 1, step: 0.01 }),
   },
   (ctx, o) => {
     const { layout, theme, scene } = ctx;
@@ -392,15 +401,15 @@ export const masonry = defineComponent(
  */
 export const flagstones = defineComponent(
   {
-    kit: SLABS_TEMPLE,
-    where: 'all' as PavingArea,
-    size: 1,
-    color: '',
+    kit: models(SLABS_TEMPLE),
+    where: choice('all', PAVING_AREAS),
+    size: num(1, { min: 0.1, step: 0.05 }),
+    color: cssColor(''),
     /** Profondeur des rangées (min, max) en mètres. */
-    rows: [0.9, 1.4] as [number, number],
-    joint: 0.035,
-    raise: 0.03,
-    tint: 0.08,
+    rows: vector([0.9, 1.4], { min: 0.1, step: 0.05 }),
+    joint: num(0.035, { min: 0, step: 0.005 }),
+    raise: num(0.03, { min: 0, step: 0.005 }),
+    tint: num(0.08, { min: 0, max: 1, step: 0.01 }),
   },
   (ctx, o) => {
     const { layout, theme, scene } = ctx;
@@ -469,7 +478,7 @@ export function footBands(ctx: SceneContext, width: number, lift: number, fromFl
  * Ombres de contact au pied des parois (occlusion ambiante simulée) : une bande dégradée posée sur chaque terrasse,
  * interrompue au-dessus des trous. Un seul appel de dessin, aucun calcul de lumière.
  */
-export const wallShadows = defineComponent({ width: 1.1, strength: 0.45, color: 0x3a1d10 }, (ctx, o) => {
+export const wallShadows = defineComponent({ width: num(1.1, { min: 0, step: 0.05 }), strength: num(0.45, { min: 0, max: 1, step: 0.01 }), color: color(0x3a1d10) }, (ctx, o) => {
   const geometry = footBands(ctx, o.width, 0.02);
   if (!geometry) return;
   const texture = canvasTexture(4, 64, (c) => {

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { num, bool, color } from '../../../core';
 import { defineComponent, merged } from './component';
 
 const waterMaterial = (color: number, emissive: number, glow: boolean) =>
@@ -111,7 +112,7 @@ function waterStrip(length: number, width: number, material: THREE.Material): TH
  * Douves : la pyramide se dresse sur une île (le terrain doit être aplati sur au moins `width` mètres).
  * `realistic` : eau animée (vaguelettes, reflets, écume) au lieu de la surface unie.
  */
-export const moat = defineComponent({ color: 0x22b8d0, emissive: 0x0a4a60, width: 5, realistic: false }, (ctx, o) => {
+export const moat = defineComponent({ color: color(0x22b8d0), emissive: color(0x0a4a60), width: num(5, { min: 0.5, step: 0.1 }), realistic: bool(false) }, (ctx, o) => {
   const inner = ctx.groundHalf + 0.6;
   const length = (inner + o.width) * 2;
   const time = { value: 0 };
@@ -132,7 +133,7 @@ export const moat = defineComponent({ color: 0x22b8d0, emissive: 0x0a4a60, width
 });
 
 /** Étang (eau, glace, lave ou lumière) à côté de l'esplanade ; il sert de repère à la végétation. */
-export const pond = defineComponent({ color: 0x2cc3d6, emissive: 0x0b4a63, glow: false, lilies: false, rim: 0x7fb24a }, (ctx, o) => {
+export const pond = defineComponent({ color: color(0x2cc3d6), emissive: color(0x0b4a63), glow: bool(false), lilies: bool(false), rim: color(0x7fb24a) }, (ctx, o) => {
   const { scene, rng, groundHalf } = ctx;
   const center = new THREE.Vector3(-groundHalf - 26 - (ctx.anchors.moatWidth ?? 0), 0, groundHalf + 8);
   ctx.anchors.pond = center;

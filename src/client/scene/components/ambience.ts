@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { num, vector } from '../../../core';
 import { defineComponent } from './component';
 
 /**
@@ -29,7 +30,7 @@ export interface GradeRequest {
  * Carte d'environnement tirée des couleurs du ciel du thème : l'or et les métaux reflètent le ciel,
  * et les faces à l'ombre reçoivent une lumière douce (complément de la lumière d'hémisphère).
  */
-export const environment = defineComponent({ intensity: 0.5 }, (ctx, o) => {
+export const environment = defineComponent({ intensity: num(0.5, { min: 0, max: 3, step: 0.05 }) }, (ctx, o) => {
   const { theme } = ctx;
   const geometry = new THREE.SphereGeometry(10, 32, 16);
   const colors: number[] = [];
@@ -59,11 +60,12 @@ export const environment = defineComponent({ intensity: 0.5 }, (ctx, o) => {
 /** Étalonnage de l'image (après le tone mapping) : saturation, contraste, teintes des ombres et des lumières, vignette. */
 export const grade = defineComponent(
   {
-    saturation: 1.08,
-    contrast: 1.06,
-    shadows: [-0.012, 0.0, 0.03] as [number, number, number],
-    highlights: [0.025, 0.012, -0.02] as [number, number, number],
-    vignette: 0.22,
+    saturation: num(1.08, { min: 0, max: 2, step: 0.01 }),
+    contrast: num(1.06, { min: 0, max: 2, step: 0.01 }),
+    /** Teinte ajoutée aux ombres et aux hautes lumières (r, g, b). */
+    shadows: vector([-0.012, 0.0, 0.03], { step: 0.005 }),
+    highlights: vector([0.025, 0.012, -0.02], { step: 0.005 }),
+    vignette: num(0.22, { min: 0, max: 1, step: 0.01 }),
   },
   (ctx, o) => {
     ctx.scene.userData.grade = { ...o } satisfies GradeRequest;

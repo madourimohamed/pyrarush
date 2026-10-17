@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import type { Layout, Rng, Theme } from '../../../core';
+import { defaultsOf, type Layout, type Rng, type Schema, type Theme, type Values } from '../../../core';
 
 /** Tout ce qu'un composant de décor peut lire pour se construire. */
 export interface SceneContext {
@@ -21,10 +21,12 @@ export interface ComponentInstance {
 }
 
 /**
- * Un composant de décor : des options par défaut et une fonction de construction.
- * Les options déclarées dans le thème du niveau remplacent les valeurs par défaut (les autres sont ignorées).
+ * Un composant de décor : la description de ses options (type, valeur par défaut, limites) et une fonction de construction.
+ * Les options déclarées dans le thème du niveau remplacent les valeurs par défaut.
  */
 export interface Component<O extends object = object> {
+  /** Options réglables : sert à la validation des thèmes et aux formulaires de l'éditeur. */
+  schema: Schema;
   defaults: O;
   build(ctx: SceneContext, options: O): ComponentInstance | void;
   /** Modèles 3D à précharger avant la construction (voir scene/models.ts). */
@@ -33,12 +35,12 @@ export interface Component<O extends object = object> {
   textures?(options: O): string[];
 }
 
-export const defineComponent = <O extends object>(
-  defaults: O,
-  build: (ctx: SceneContext, options: O) => ComponentInstance | void,
-  models?: (options: O) => string[],
-  textures?: (options: O) => string[],
-): Component<O> => ({ defaults, build, models, textures });
+export const defineComponent = <S extends Schema>(
+  schema: S,
+  build: (ctx: SceneContext, options: Values<S>) => ComponentInstance | void,
+  models?: (options: Values<S>) => string[],
+  textures?: (options: Values<S>) => string[],
+): Component<Values<S>> => ({ schema, defaults: defaultsOf(schema), build, models, textures });
 
 // ---------- Utilitaires partagés par les composants ----------
 

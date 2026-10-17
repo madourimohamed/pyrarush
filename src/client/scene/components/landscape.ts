@@ -1,10 +1,11 @@
 import * as THREE from 'three';
+import { num, int, bool, choice, color, image } from '../../../core';
 import { sunDirection } from '../themes';
 import { texture } from '../images';
 import { canvasTexture, defineComponent, merged } from './component';
 
 /** Ciel dégradé avec soleil (ou lune), brume, nuages basse-poly et étoiles optionnelles. */
-export const sky = defineComponent({ clouds: 0xffffff, cloudGlow: 0xffc9a8, cloudCount: 14, stars: false }, (ctx, o) => {
+export const sky = defineComponent({ clouds: color(0xffffff), cloudGlow: color(0xffc9a8), cloudCount: int(14, { min: 0, max: 60 }), stars: bool(false) }, (ctx, o) => {
   const { theme, scene, rng } = ctx;
   scene.fog = new THREE.Fog(theme.sky.horizon, theme.fog.near, theme.fog.far);
   const material = new THREE.ShaderMaterial({
@@ -87,7 +88,7 @@ export const sky = defineComponent({ clouds: 0xffffff, cloudGlow: 0xffc9a8, clou
  * Sans `detail` : basse-poly à facettes. Avec `detail` (ex. 'sand/ripples', voir art/textures/) : relief lissé,
  * texture de détail en nuances de gris (la couleur reste celle du thème) et son relief (<detail>-normal), répétés tous les `tile` mètres.
  */
-export const terrain = defineComponent({ flat: 3, relief: 1, detail: '', tile: 15 }, (ctx, o) => {
+export const terrain = defineComponent({ flat: num(3, { min: 0 }), relief: num(1, { min: 0, step: 0.1 }), detail: image(''), tile: num(15, { min: 0.1 }) }, (ctx, o) => {
   const { theme, groundHalf, lowQuality } = ctx;
   const segments = lowQuality ? 90 : 140;
   const geometry = new THREE.PlaneGeometry(900, 900, segments, segments);
@@ -144,7 +145,7 @@ export const terrain = defineComponent({ flat: 3, relief: 1, detail: '', tile: 1
  * pour que le sol 3D se fonde dans l'horizon. `rotation` (radians) tourne l'image autour de la verticale.
  * Sans l'image (introuvable), repli sur le ciel dégradé du thème.
  */
-export const panorama = defineComponent({ image: '', rotation: 0, environment: 0.6 }, (ctx, o) => {
+export const panorama = defineComponent({ image: image(''), rotation: num(0, { step: 0.01 }), environment: num(0.6, { min: 0, max: 3, step: 0.05 }) }, (ctx, o) => {
   const image = o.image ? texture(o.image) : null;
   if (!image) return sky.build(ctx, sky.defaults);
   image.mapping = THREE.EquirectangularReflectionMapping;
@@ -183,7 +184,7 @@ function horizonColor(image: THREE.Texture): THREE.Color | null {
 }
 
 /** Montagnes à l'horizon : mesas ou pics. */
-export const mountains = defineComponent({ color: 0xc8775a, shape: 'mesa' as 'mesa' | 'peaks', count: 18 }, (ctx, o) => {
+export const mountains = defineComponent({ color: color(0xc8775a), shape: choice('mesa', ['mesa', 'peaks']), count: int(18, { min: 0 }) }, (ctx, o) => {
   const parts: THREE.BufferGeometry[] = [];
   for (let i = 0; i < o.count; i++) {
     const angle = (i / o.count) * Math.PI * 2 + ctx.rng.next() * 0.3;
@@ -199,7 +200,7 @@ export const mountains = defineComponent({ color: 0xc8775a, shape: 'mesa' as 'me
 });
 
 /** Pyramides à l'horizon. */
-export const distantPyramids = defineComponent({ color: 0xd09a62, count: 6 }, (ctx, o) => {
+export const distantPyramids = defineComponent({ color: color(0xd09a62), count: int(6, { min: 0 }) }, (ctx, o) => {
   const parts: THREE.BufferGeometry[] = [];
   for (let i = 0; i < o.count; i++) {
     const angle = (i / o.count) * Math.PI * 2 + ctx.rng.next() * 0.6;
@@ -214,7 +215,7 @@ export const distantPyramids = defineComponent({ color: 0xd09a62, count: 6 }, (c
 });
 
 /** Obélisques et colonnes en ruine autour de l'esplanade. */
-export const obelisks = defineComponent({ color: 0xc8925a, count: 8 }, (ctx, o) => {
+export const obelisks = defineComponent({ color: color(0xc8925a), count: int(8, { min: 0 }) }, (ctx, o) => {
   const parts: THREE.BufferGeometry[] = [];
   const { rng, groundHalf } = ctx;
   for (let i = 0; i < o.count; i++) {
@@ -246,7 +247,7 @@ export const obelisks = defineComponent({ color: 0xc8925a, count: 8 }, (ctx, o) 
 });
 
 /** Falaises autour de l'esplanade, avec cascades animées en option. */
-export const cliffs = defineComponent({ color: 0x9aa68a, count: 8, waterfalls: false }, (ctx, o) => {
+export const cliffs = defineComponent({ color: color(0x9aa68a), count: int(8, { min: 0 }), waterfalls: bool(false) }, (ctx, o) => {
   const { rng, groundHalf } = ctx;
   const rocks: THREE.BufferGeometry[] = [];
   const falls: THREE.BufferGeometry[] = [];

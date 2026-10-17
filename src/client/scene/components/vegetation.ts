@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Rng } from '../../../core';
+import { Rng, int, bool, color } from '../../../core';
 import { canvasTexture, defineComponent, instanced, merged, place, type SceneContext } from './component';
 import { ringPoint, wallFootSlots, wallGapSlots } from './slots';
 
@@ -30,7 +30,7 @@ function forest(
   if (leaves.length) ctx.scene.add(merged(leaves, materials.leaf));
 }
 
-export const palms = defineComponent({ count: 20, trunk: 0x9a6a43, leaf: 0x3f9e4d, aroundPond: false }, (ctx, o) => {
+export const palms = defineComponent({ count: int(20, { min: 0 }), trunk: color(0x9a6a43), leaf: color(0x3f9e4d), aroundPond: bool(false) }, (ctx, o) => {
   const trunk = new THREE.MeshLambertMaterial({ color: o.trunk, flatShading: true });
   const leaf = new THREE.MeshLambertMaterial({ color: o.leaf, flatShading: true, side: THREE.DoubleSide });
   forest(ctx, o.count, o.aroundPond, { trunk, leaf }, (rng, at, trunks, leaves) => {
@@ -57,7 +57,7 @@ export const palms = defineComponent({ count: 20, trunk: 0x9a6a43, leaf: 0x3f9e4
   });
 });
 
-export const pines = defineComponent({ count: 14, trunk: 0x5a4a3a, leaf: 0x2f6a5a, aroundPond: false }, (ctx, o) => {
+export const pines = defineComponent({ count: int(14, { min: 0 }), trunk: color(0x5a4a3a), leaf: color(0x2f6a5a), aroundPond: bool(false) }, (ctx, o) => {
   const trunk = new THREE.MeshLambertMaterial({ color: o.trunk, flatShading: true });
   const leaf = new THREE.MeshLambertMaterial({ color: o.leaf, flatShading: true });
   forest(ctx, o.count, o.aroundPond, { trunk, leaf }, (rng, at, trunks, leaves) => {
@@ -74,7 +74,7 @@ export const pines = defineComponent({ count: 14, trunk: 0x5a4a3a, leaf: 0x2f6a5
 });
 
 /** Aiguilles rocheuses (paysages volcaniques). */
-export const spires = defineComponent({ count: 14, color: 0x3a2a2a, aroundPond: false }, (ctx, o) => {
+export const spires = defineComponent({ count: int(14, { min: 0 }), color: color(0x3a2a2a), aroundPond: bool(false) }, (ctx, o) => {
   forest(ctx, o.count, o.aroundPond, { leaf: new THREE.MeshLambertMaterial({ color: o.color, flatShading: true }) }, (rng, at, _t, out) => {
     for (let i = 0; i < 3; i++) {
       const h = 3 + rng.next() * 5;
@@ -87,7 +87,7 @@ export const spires = defineComponent({ count: 14, color: 0x3a2a2a, aroundPond: 
 });
 
 /** Cristaux lumineux (paysages célestes). */
-export const crystals = defineComponent({ count: 14, color: 0x8a6aff, aroundPond: false }, (ctx, o) => {
+export const crystals = defineComponent({ count: int(14, { min: 0 }), color: color(0x8a6aff), aroundPond: bool(false) }, (ctx, o) => {
   const leaf = new THREE.MeshStandardMaterial({ color: o.color, emissive: o.color, emissiveIntensity: 1.4, roughness: 0.2, flatShading: true });
   forest(ctx, o.count, o.aroundPond, { leaf }, (rng, at, _t, out) => {
     for (let i = 0; i < 3; i++) {
@@ -102,7 +102,7 @@ export const crystals = defineComponent({ count: 14, color: 0x8a6aff, aroundPond
 });
 
 /** Buissons ronds basse-poly. */
-export const bushes = defineComponent({ count: 40, color: 0x5aa046, aroundPond: false }, (ctx, o) => {
+export const bushes = defineComponent({ count: int(40, { min: 0 }), color: color(0x5aa046), aroundPond: bool(false) }, (ctx, o) => {
   const leaf = new THREE.MeshLambertMaterial({ color: o.color, flatShading: true });
   forest(ctx, o.count, o.aroundPond, { leaf }, (rng, at, _t, out) => {
     for (let i = 0; i < 3; i++) {
@@ -115,7 +115,7 @@ export const bushes = defineComponent({ count: 40, color: 0x5aa046, aroundPond: 
 });
 
 /** Lianes suspendues aux parois, entre les portes. */
-export const vines = defineComponent({ leaf: 0x2f9a4a, every: 2, offset: 1 }, (ctx, o) => {
+export const vines = defineComponent({ leaf: color(0x2f9a4a), every: int(2, { min: 1 }), offset: int(1, { min: 0 }) }, (ctx, o) => {
   const rng = new Rng(ctx.layout.seed ^ 0x1f1e5);
   const matrices = wallGapSlots(ctx.layout, o.every, o.offset, ctx.anchors.wallRelief).map((s) =>
     place(s.position.clone().setY(s.position.y + 0.02), s.rotationY, new THREE.Vector3(0.8 + rng.next() * 0.6, 0.8 + rng.next() * 1.4, 1)),
@@ -127,7 +127,7 @@ export const vines = defineComponent({ leaf: 0x2f9a4a, every: 2, offset: 1 }, (c
 });
 
 /** Plantes en pot sur les terrasses, contre la paroi entre deux portes. */
-export const terracePlants = defineComponent({ leaf: 0x4f9e3e, pot: 0xb8643a, every: 2, offset: 1 }, (ctx, o) => {
+export const terracePlants = defineComponent({ leaf: color(0x4f9e3e), pot: color(0xb8643a), every: int(2, { min: 1 }), offset: int(1, { min: 0 }) }, (ctx, o) => {
   const rng = new Rng(ctx.layout.seed ^ 0x9a17);
   const slots = wallFootSlots(ctx.layout, o.every, o.offset);
   const pots = slots.map((s) => place(s.position, rng.next() * 6, 0.9 + rng.next() * 0.3));

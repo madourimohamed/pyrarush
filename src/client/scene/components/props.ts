@@ -1,11 +1,12 @@
 import * as THREE from 'three';
-import type { Layout } from '../../../core';
+import { num, int, bool, choice, vector, models, colorMap, type Layout } from '../../../core';
 import { instancedModel, isModelReady, modelHeight } from '../models';
 import { defineComponent, place, type SceneContext } from './component';
 import { cornerInsetSlots, facadeFlankSlots, ringPoint, terraceEdgeSlots, wallFootSlots, type Slot } from './slots';
 
 /** Où poser les objets : sur la rive, autour de l'étang, au pied des parois, aux coins ou au bord des terrasses, de part et d'autre des entrées. */
-export type Placement = 'shore' | 'pondside' | 'wallFoot' | 'terraceCorner' | 'terraceEdge' | 'facade';
+const PLACEMENTS = ['shore', 'pondside', 'wallFoot', 'terraceCorner', 'terraceEdge', 'facade'] as const;
+export type Placement = (typeof PLACEMENTS)[number];
 
 interface Spot {
   position: THREE.Vector3;
@@ -19,23 +20,23 @@ interface Spot {
  */
 export const props = defineComponent(
   {
-    models: [] as string[],
-    place: 'shore' as Placement,
+    models: models([]),
+    place: choice('shore', PLACEMENTS),
     /** Nombre d'objets (emplacements aléatoires : shore, pondside). */
-    count: 10,
+    count: int(10, { min: 0 }),
     /** Un emplacement sur N, et décalage du motif (emplacements fixes). */
-    every: 1,
-    offset: 0,
+    every: int(1, { min: 1 }),
+    offset: int(0, { min: 0 }),
     /** Hauteur visée en mètres, tirée entre min et max. */
-    height: [1, 1] as [number, number],
+    height: vector([1, 1], { min: 0, step: 0.1 }),
     /** Écart de part et d'autre de l'entrée (facade) ou vers l'intérieur du coin (terraceCorner). */
-    spacing: 1.75,
+    spacing: num(1.75, { min: 0, step: 0.05 }),
     /** Recoloration par nom de matériau (ex. { leafs: 0x3f9e4d }). */
-    colors: {} as Record<string, number>,
+    colors: colorMap({}),
     /** Rotation aléatoire autour de la verticale (sinon : orienté comme l'emplacement). */
-    randomRotation: true,
+    randomRotation: bool(true),
     /** Balancement au vent (0 = immobile) : déplacement du sommet, en fraction de la hauteur (ex. 0.03 pour un palmier). */
-    sway: 0,
+    sway: num(0, { min: 0, max: 0.2, step: 0.005 }),
   },
   (ctx, o) => {
     const models = o.models.filter(isModelReady);

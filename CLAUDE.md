@@ -35,7 +35,8 @@ Commits : committer au fur et à mesure puis pousser chaque commit sur `origin m
 Trois couches : **socle** (`src/core`), **niveaux** (`src/levels`), **affichage** (`src/client`). Ne jamais mettre de logique spécifique à un niveau dans le socle ou le client : un niveau = des données.
 
 - `src/core/` : le socle, TypeScript pur, **aucune dépendance 3D ni DOM**. Sera réutilisé tel quel par les robots et le serveur (V2).
-  - `level.ts` : forme d'un niveau (`defineLevel`, `band`, `buildLevels`, valeurs par défaut). `theme.ts` : forme d'un thème (données pures) + `defineTheme` (surcharge du thème de base).
+  - `level.ts` : forme d'un niveau (`defineLevel`, `band`, `buildLevels`, valeurs par défaut). `theme.ts` : forme d'un thème (données pures) + `defineTheme` (surcharge du thème de base) ; sa palette est décrite par `PALETTE_SCHEMA`.
+  - `schema.ts` : description des options réglables (`num`, `color`, `choice`, `models`…) : valeurs par défaut, typage, validation (`checkValues`) et formulaires de l'éditeur de décor. Les composants de décor déclarent leurs options ainsi (`defineComponent({ count: int(20, { min: 0 }), … }, build)`).
   - `mechanics/` : un type de porte = un objet `Mechanic` enregistré dans `registry.ts`. Ajouter une mécanique : créer l'objet, l'enregistrer, l'utiliser dans un niveau.
   - `layout.ts` : génération déterministe par graine + garantie qu'une pyramide est terminable.
   - `geometry.ts` : géométrie de la pyramide à degrés (positions des portes, trous, points d'arrivée, boîtes de collision).

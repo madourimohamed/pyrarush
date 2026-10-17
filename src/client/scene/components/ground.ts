@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Rng } from '../../../core';
+import { Rng, num, cssColor, image } from '../../../core';
 import { texture } from '../images';
 import { canvasTexture, defineComponent } from './component';
 import { footBands } from './masonry';
@@ -44,7 +44,7 @@ const detailTextures = (o: { detail: string }) => (o.detail ? [o.detail, `${o.de
 
 /** Sable sur l'esplanade (au pied de la pyramide), un seul plan. `tile` : une répétition de la texture tous les N mètres. */
 export const esplanade = defineComponent(
-  { color: '', detail: '', tile: 15 },
+  { color: cssColor(''), detail: image(''), tile: num(15, { min: 0.1 }) },
   (ctx, o) => {
     const half = ctx.groundHalf;
     const geometry = new THREE.PlaneGeometry(half * 2, half * 2);
@@ -93,7 +93,7 @@ function driftMask(): THREE.CanvasTexture {
 
 /** Sable accumulé au pied des parois, sur les terrasses (pas sur l'esplanade, déjà en sable). */
 export const sandDrifts = defineComponent(
-  { color: '', detail: '', width: 1.0, tile: 7, opacity: 0.95 },
+  { color: cssColor(''), detail: image(''), width: num(1.0, { min: 0, step: 0.05 }), tile: num(7, { min: 0.1 }), opacity: num(0.95, { min: 0, max: 1, step: 0.01 }) },
   (ctx, o) => {
     const geometry = footBands(ctx, o.width, 0.012, 2, o.tile);
     if (!geometry) return;

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { DOOR_HEIGHT, DOOR_WIDTH, FLOOR_HEIGHT, Rng, type HDR } from '../../../core';
+import { DOOR_HEIGHT, DOOR_WIDTH, FLOOR_HEIGHT, Rng, num, int, bool, choice, color, cssColor, hdrColor } from '../../../core';
 import { glowTexture } from '../textures';
 import { canvasTexture, defineComponent, hdr, instanced, place, type SceneContext } from './component';
 import { cornerClusterSlots, doorSlots, facadeFlankSlots, terraceCornerSlots, terraceEdgeSlots, wallGapSlots, type Slot } from './slots';
@@ -17,7 +17,7 @@ const offset = (x: number, y: number, z: number) => new THREE.Matrix4().makeTran
  * - simple : cadre sombre, liseré doré, linteau ;
  * - pillars : en plus, deux piliers à bandes colorées de part et d'autre (maquette du niveau 1).
  */
-export const doorFrames = defineComponent({ style: 'pillars' as 'pillars' | 'simple', band: '#2f6fc0' }, (ctx, o) => {
+export const doorFrames = defineComponent({ style: choice('pillars', ['pillars', 'simple']), band: cssColor('#2f6fc0') }, (ctx, o) => {
   const { theme, scene, layout } = ctx;
   const slots = doorSlots(layout);
   const gold = new THREE.MeshStandardMaterial({ color: theme.trim.color, metalness: 0.55, roughness: 0.3, emissive: theme.trim.emissive });
@@ -35,7 +35,7 @@ export const doorFrames = defineComponent({ style: 'pillars' as 'pillars' | 'sim
 });
 
 /** Bannières suspendues entre les portes. */
-export const banners = defineComponent({ cloth: '#2f5fb0', emblem: '#f2c14e', every: 2, offset: 0 }, (ctx, o) => {
+export const banners = defineComponent({ cloth: cssColor('#2f5fb0'), emblem: cssColor('#f2c14e'), every: int(2, { min: 1 }), offset: int(0, { min: 0 }) }, (ctx, o) => {
   const slots = wallGapSlots(ctx.layout, o.every, o.offset, ctx.anchors.wallRelief).map((s) => ({ ...s, position: s.position.clone().setY(s.position.y - 0.2) }));
   const matrices = atSlots(slots, new THREE.Matrix4());
   const cloth = new THREE.PlaneGeometry(0.8, 1.9);
@@ -50,7 +50,7 @@ export const banners = defineComponent({ cloth: '#2f5fb0', emblem: '#f2c14e', ev
  * Braseros allumés le long des terrasses (et de l'esplanade).
  * Les flammes vacillent dans le shader (une seule instance de dessin pour toutes).
  */
-export const braziers = defineComponent({ flame: [3.2, 1.3, 0.25] as HDR, every: 1, corners: true }, (ctx, o) => {
+export const braziers = defineComponent({ flame: hdrColor([3.2, 1.3, 0.25]), every: int(1, { min: 1 }), corners: bool(true) }, (ctx, o) => {
   const { scene, layout } = ctx;
   const slots = [...terraceEdgeSlots(layout, o.every), ...(o.corners ? terraceCornerSlots(layout) : [])];
   const bronze = new THREE.MeshStandardMaterial({ color: 0x4a3020, metalness: 0.4, roughness: 0.5 });
@@ -99,7 +99,7 @@ export const braziers = defineComponent({ flame: [3.2, 1.3, 0.25] as HDR, every:
 });
 
 /** Statues gardiennes de part et d'autre de l'entrée centrale de chaque façade. */
-export const statues = defineComponent({ model: 'anubis' as const, spacing: 1.75 }, (ctx, o) => {
+export const statues = defineComponent({ model: choice('anubis', ['anubis']), spacing: num(1.75, { min: 0, step: 0.05 }) }, (ctx, o) => {
   const parts = anubisParts();
   const matrices = atSlots(facadeFlankSlots(ctx.layout, o.spacing), new THREE.Matrix4());
   const stone = new THREE.MeshStandardMaterial({ color: ctx.theme.stone[1], roughness: 0.85 });
@@ -148,7 +148,7 @@ function anubisParts(): Record<'stone' | 'black' | 'gold', THREE.BufferGeometry>
 }
 
 /** Jarres en terre cuite près des coins des terrasses. */
-export const jars = defineComponent({ color: 0xb8643a, perCorner: 2 }, (ctx, o) => {
+export const jars = defineComponent({ color: color(0xb8643a), perCorner: int(2, { min: 0 }) }, (ctx, o) => {
   const rng = new Rng(ctx.layout.seed ^ 0xdec0);
   const matrices = cornerClusterSlots(ctx.layout, o.perCorner, rng).map((s) => place(s.position, rng.next() * 6, 0.8 + rng.next() * 0.5));
   const profile = [
@@ -165,7 +165,7 @@ export const jars = defineComponent({ color: 0xb8643a, perCorner: 2 }, (ctx, o) 
 });
 
 /** Pierre de faîte : l'objectif, visible de partout grâce à son faisceau. Pyramide dorée ou cristal. */
-export const capstone = defineComponent({ style: 'pyramid' as 'pyramid' | 'crystal', color: 0xffc940, glow: [2.2, 1.5, 0.3] as HDR }, (ctx, o) => {
+export const capstone = defineComponent({ style: choice('pyramid', ['pyramid', 'crystal']), color: color(0xffc940), glow: hdrColor([2.2, 1.5, 0.3]) }, (ctx, o) => {
   const top = ctx.layout.config.floors * FLOOR_HEIGHT;
   const geometry = o.style === 'crystal' ? new THREE.OctahedronGeometry(1.3, 0) : new THREE.ConeGeometry(1.5, 2.4, 4);
   if (o.style === 'crystal') geometry.scale(0.9, 1.4, 0.9);
@@ -192,7 +192,7 @@ export const capstone = defineComponent({ style: 'pyramid' as 'pyramid' | 'cryst
 
 /** Particules d'ambiance : poussière/pollen qui flotte, neige qui tombe, braises qui montent. */
 export const particles = defineComponent(
-  { color: [1.6, 1.25, 0.8] as HDR, size: 0.35, count: 420, motion: 'float' as 'float' | 'snow' | 'embers' },
+  { color: hdrColor([1.6, 1.25, 0.8]), size: num(0.35, { min: 0, step: 0.01 }), count: int(420, { min: 0, max: 3000 }), motion: choice('float', ['float', 'snow', 'embers']) },
   (ctx: SceneContext, o) => {
     const { rng, groundHalf, pyramidHeight } = ctx;
     const top = pyramidHeight + 14;

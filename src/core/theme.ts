@@ -8,6 +8,8 @@
  * Les couleurs HDR (> 1) déclenchent la lueur (bloom).
  */
 
+import { choice, choices, color, cssColor, cssColors, defaultsOf, group, hdrColor, int, num, numbers, text, vector, type Schema } from './schema';
+
 export type HDR = [number, number, number];
 
 /**
@@ -70,24 +72,42 @@ export const KENNEY_COLORS = {
   dirt: 0xd09a5a,
 };
 
+/**
+ * Palette d'un thème (tout sauf les composants de décor) : type, valeur par défaut et limites de chaque réglage.
+ * Les valeurs par défaut sont celles du Temple des Sables (niveau 1), d'après les maquettes.
+ */
+export const PALETTE_SCHEMA = {
+  // Maquette : ciel bleu franc, horizon doré ; soleil de fin d'après-midi (ombres longues) ; ombres bleutées.
+  sky: group({ top: color(0x2f6fd0), mid: color(0x8fbcea), horizon: color(0xffd9a6), sun: color(0xfff1cc) }),
+  sun: group({
+    color: color(0xffc47c),
+    intensity: num(4.4, { min: 0, max: 10, step: 0.1 }),
+    dir: vector([-0.62, 0.42, 0.66], { min: -1, max: 1, step: 0.01, help: 'Direction de la lumière (x, y, z)' }),
+  }),
+  hemi: group({ sky: color(0x8fb4f0), ground: color(0xa8764a), intensity: num(0.95, { min: 0, max: 5, step: 0.05 }) }),
+  fog: group({ near: num(240, { min: 0 }), far: num(700, { min: 0 }) }),
+  exposure: num(1.0, { min: 0.1, max: 3, step: 0.01 }),
+  ground: group({ light: color(0xeeb46a), dark: color(0xc98446) }),
+  paving: cssColor('#cf9c5c'),
+  border: color(0xa8703c),
+  stone: cssColors(['#d4924c', '#c88644']),
+  top: cssColor('#dcae70'),
+  trim: group({ color: color(0xf2b93b), emissive: color(0x5a3500) }),
+  door: group({ panel: color(0x2e1d10), frame: color(0x1a0f07), glyph: hdrColor([1.9, 1.3, 0.35]) }),
+  accent: cssColors(['#ffd84a', '#f59a00']),
+  music: group({
+    scale: numbers([0, 1, 4, 5, 7, 8, 10], { min: 0, max: 11, help: 'Gamme, en demi-tons depuis la tonique' }),
+    root: int(62, { min: 24, max: 96, help: 'Tonique (note MIDI)' }),
+    tempo: int(100, { min: 40, max: 220 }),
+    lead: choice('triangle', ['sine', 'square', 'sawtooth', 'triangle']),
+    drums: text('t..t..t.t..t.t..', { help: '16 pas : k grosse caisse, s caisse claire, h charleston, t darbouka, . silence' }),
+  }),
+  trapStyles: choices(['glove', 'mummy'], ['glove', 'mummy']),
+} satisfies Schema;
+
 /** Thème de base : le Temple des Sables (niveau 1), d'après les maquettes. */
 export const BASE_THEME: Theme = {
-  // Maquette : ciel bleu franc, horizon doré ; soleil de fin d'après-midi (ombres longues) ; ombres bleutées.
-  sky: { top: 0x2f6fd0, mid: 0x8fbcea, horizon: 0xffd9a6, sun: 0xfff1cc },
-  sun: { color: 0xffc47c, intensity: 4.4, dir: [-0.62, 0.42, 0.66] },
-  hemi: { sky: 0x8fb4f0, ground: 0xa8764a, intensity: 0.95 },
-  fog: { near: 240, far: 700 },
-  exposure: 1.0,
-  ground: { light: 0xeeb46a, dark: 0xc98446 },
-  paving: '#cf9c5c',
-  border: 0xa8703c,
-  stone: ['#d4924c', '#c88644'],
-  top: '#dcae70',
-  trim: { color: 0xf2b93b, emissive: 0x5a3500 },
-  door: { panel: 0x2e1d10, frame: 0x1a0f07, glyph: [1.9, 1.3, 0.35] },
-  accent: ['#ffd84a', '#f59a00'],
-  music: { scale: [0, 1, 4, 5, 7, 8, 10], root: 62, tempo: 100, lead: 'triangle', drums: 't..t..t.t..t.t..' },
-  trapStyles: ['glove', 'mummy'],
+  ...defaultsOf(PALETTE_SCHEMA),
   components: [
     // Ambiance : reflets et lumière douce tirés du ciel, étalonnage chaud/froid de la maquette.
     { use: 'environment', intensity: 0.45 },

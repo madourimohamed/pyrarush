@@ -170,7 +170,10 @@ jouable ne changent jamais.
   recoloration par nom de matériau.
 - **Familles de thèmes** partagées (`src/levels/themes.ts`) et `defineTheme(surcharges, base)` /
   `editComponents(liste, modifications)` pour varier sans dupliquer.
-- **Contrôles automatiques** : chaque composant et chaque option cités par un niveau existent (tests).
+- **Options décrites** (`src/core/schema.ts`) : chaque composant déclare le type, la valeur par défaut et les limites de ses
+  options ; la palette aussi (`PALETTE_SCHEMA`). Sert au typage, à la validation et aux formulaires de l'éditeur de décor.
+- **Contrôles automatiques** : chaque composant cité par un niveau existe, chaque option est connue et du bon type,
+  chaque palette est complète (tests) ; le thème complet de chaque niveau est figé par un test de référence.
 
 ### 7.2 Ce qu'il faut ajouter (évolutions prévues, dans cet ordre)
 1. **Matériaux du thème** : `theme.materials.{ wall, terrace, ground, trim, door }`, chacun décrit par un
