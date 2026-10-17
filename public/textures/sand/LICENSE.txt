@@ -2,4 +2,4 @@ Rides de sable (ripples*.jpg)
 
 Dérivées de « Aerial Beach 01 » par Rob Tuytel, Poly Haven — https://polyhaven.com/a/aerial_beach_01
 Licence CC0 1.0 (domaine public) : https://creativecommons.org/publicdomain/zero/1.0/
-Préparées par art/textures/prepare_sand.py (nuances de gris, relief, tailles ordinateur/mobile).
+Préparées par art/textures/prepare_detail.py (nuances de gris, relief, tailles ordinateur/mobile).

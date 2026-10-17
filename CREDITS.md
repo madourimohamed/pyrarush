@@ -14,7 +14,9 @@
 | Image | Auteur | Licence | Dossier |
 |---|---|---|---|
 | Horizon du niveau 1 (4 vues) | porteur du projet, généré avec ChatGPT (OpenAI), sources dans `design/panoramique/`, assemblé par `art/panoramas/build_horizon.py` | appartient au porteur du projet (conditions d'utilisation d'OpenAI : usage commercial autorisé) | `public/textures/panoramas/` |
+| Horizon du niveau 2 (4 vues) | porteur du projet, généré avec ChatGPT (OpenAI), sources dans `design/niveau 2/`, assemblé par `art/panoramas/build_horizon.py` | appartient au porteur du projet (conditions d'utilisation d'OpenAI : usage commercial autorisé) | `public/textures/panoramas/` |
 | Aerial Beach 01 (rides de sable) | Rob Tuytel, [Poly Haven](https://polyhaven.com/a/aerial_beach_01) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | `public/textures/sand/` |
+| Leafy Grass (herbe du niveau 2) | Charlotte Baglioni, [Poly Haven](https://polyhaven.com/a/leafy_grass) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | `public/textures/grass/` |
 
 ## Polices
 

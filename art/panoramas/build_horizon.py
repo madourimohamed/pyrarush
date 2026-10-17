@@ -1,7 +1,7 @@
 """Horizon d'un thème à partir de 4 vues (ouest, nord, est, sud ; chacune couvre 90°), par ex. générées avec ChatGPT.
 
     blender -b --factory-startup --python art/panoramas/build_horizon.py -- <nom> <vue ouest> <vue nord> <vue est> <vue sud>
-        [--horizon 0.54] [--sun-u 0.784]
+        [--horizon 0.54] [--sun-u 0.784] [--dessus 272] [--dessous 112]
 
 Les 4 vues sont collées dans l'ordre (en tournant vers la droite : ouest → nord → est → sud → ouest), avec un fondu
 aux raccords. Produit dans public/textures/panoramas/ :
@@ -13,6 +13,12 @@ aux raccords. Produit dans public/textures/panoramas/ :
 Repères : la ligne d'horizon des vues est à `--horizon` de la hauteur (depuis le haut). Le soleil de la vue ouest
 (au centre) est placé en u = `--sun-u` dans le panorama (0,784 : même place que l'ancien panorama du niveau 1, donc
 même `rotation` dans le thème). Chaque pixel couvre 90° / largeur d'une vue, à l'horizontale comme à la verticale.
+`--dessus` / `--dessous` : hauteur de la bande nette au-dessus et au-dessous de l'horizon, en pixels des vues (à monter
+si le paysage est haut, ex. des falaises) ; à reporter dans les options `above` / `below` du composant `horizon`.
+
+Horizons produits :
+    sables-horizon  niveau 1, design/panoramique/ (4 vues)          --horizon 0.54
+    oasis-horizon   niveau 2, design/niveau 2/ (4 vues)             --horizon 0.62 --dessus 580
 """
 
 import os
@@ -34,7 +40,7 @@ name, views = ARGS[0], ARGS[1:5]
 HORIZON = option("--horizon", 0.54)
 SUN_U = option("--sun-u", 0.784)
 # Bande : rangées au-dessus et au-dessous de l'horizon (en pixels des vues), et fondu des raccords.
-BAND_ABOVE, BAND_BELOW, SEAM = 272, 112, 48
+BAND_ABOVE, BAND_BELOW, SEAM = int(option("--dessus", 272)), int(option("--dessous", 112)), 48
 
 
 def read(path):
@@ -98,7 +104,8 @@ h0 = int(round(HORIZON * h))
 os.makedirs(OUT, exist_ok=True)
 print(f"Horizon « {name} » : {W}×{h}, horizon à la rangée {h0}, décalage {shift} px")
 
-# Bande d'horizon : rangées [h0 - BAND_ABOVE, h0 + BAND_BELOW), découpée en 4 quarts empilés (texture carrée).
+# Bande d'horizon : rangées [h0 - BAND_ABOVE, h0 + BAND_BELOW), découpée en 4 quarts empilés (une seule texture).
+assert h0 - BAND_ABOVE >= 0 and h0 + BAND_BELOW <= h, "bande plus haute que les vues"
 band = strip[h0 - BAND_ABOVE:h0 + BAND_BELOW]
 quarters = np.concatenate([band[:, q * w:(q + 1) * w] for q in range(4)], axis=0)
 for width, suffix, quality in ((w, "", 88), (w // 2, "-mobile", 85)):

@@ -1,0 +1,5 @@
+Herbe (leafy*.jpg)
+
+Dérivées de « Leafy Grass » par Charlotte Baglioni, Poly Haven — https://polyhaven.com/a/leafy_grass
+Licence CC0 1.0 (domaine public) : https://creativecommons.org/publicdomain/zero/1.0/
+Préparées par art/textures/prepare_detail.py (nuances de gris, relief, tailles ordinateur/mobile), contraste 1,6.
